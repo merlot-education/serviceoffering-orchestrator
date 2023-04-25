@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: serviceofferings-orchestrator
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://sso.common.merlot-education.eu/realms/POC1
+          jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/protocol/openid-connect/certs
+
+jwt:
+  auth:
+    converter:
+      resource-id: MARKETPLACE
+      principal-attribute: preferred_username
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+
+server:
+  port: '8084'
+  servlet:
+    context-path: /api
+  error:
+    include-stacktrace: "never"
+
+gxfscatalog:
+  base-uri: "http://localhost:8081"
+  selfdescriptions-uri: "${gxfscatalog.base-uri}/self-descriptions"
+
+keycloak:
+  client-id: "federated-catalogue"
+  authorization-grant-type: "password"
+  base-uri: "https://sso.common.merlot-education.eu"
+  oidc-base-uri: "${keycloak.base-uri}/realms/gxfscatalog/protocol/openid-connect"
+  authorization-uri: "${keycloak.oidc-base-uri}/auth"
+  token-uri: "${keycloak.oidc-base-uri}/token"
+  logout-uri: "${keycloak.oidc-base-uri}/logout"
+  jwk-set-uri: "${keycloak.oidc-base-uri}/certs"
+  client-secret: "KEJER0ZJAc7iTdXOtLFePgbphuuEFFu9"
+  gxfscatalog-user: "gxfscatalog"
+  gxfscatalog-pass: "gxfscatalog"
