@@ -11,7 +11,6 @@ import lombok.Setter;
 @Setter
 public class ServiceOfferingModel {
     private String id;
-    private String subjectId;
     private String sdHash;
     private String status;
     private String issuer;
@@ -34,7 +33,6 @@ public class ServiceOfferingModel {
     public ServiceOfferingModel(SelfDescriptionItem sdItem, SelfDescription sd) {
         SelfDescriptionMeta meta = sdItem.getMeta();
         this.id = meta.getId();
-        this.subjectId = meta.getSubjectId();
         this.sdHash = meta.getSdHash();
         this.status = meta.getStatus();
         this.issuer = meta.getIssuer();

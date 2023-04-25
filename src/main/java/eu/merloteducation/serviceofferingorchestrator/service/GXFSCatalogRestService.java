@@ -96,7 +96,8 @@ public class GXFSCatalogRestService {
         // iterate over all items that we got in the self-description response
         for(SelfDescriptionItem item : selfDescriptionsResponse.getItems()) {
             // only process self-descriptions that belong to a service offering
-            if(item.getMeta().getSubjectId().startsWith("ServiceOffering:")) {
+            if(item.getMeta().getSubjectId().startsWith("ServiceOffering:")
+            && item.getMeta().getStatus().equals("active")) {
                 // get on the self-description endpoint of the gxfs catalog to get all listed service offerings
                 String sdResponse = restTemplate.exchange(gxfscatalogSelfdescriptionsUri + "/" + item.getMeta().getSdHash(),
                         HttpMethod.GET, request, String.class).getBody();
@@ -104,9 +105,6 @@ public class GXFSCatalogRestService {
                 publicServiceOfferings.add(new ServiceOfferingModel(item, sd));
             }
         }
-
-        // extract the items from the ParticipantsResponse and map them to OrganizationModel instances
-        //List<OrganizationModel> orgaModelList = participantsResponse.getItems().stream().map(OrganizationModel::new).toList();
 
         // log out with the gxfscatalog user
         this.logoutGXFScatalog((String) gxfscatalogLoginResponse.get("refresh_token"));
