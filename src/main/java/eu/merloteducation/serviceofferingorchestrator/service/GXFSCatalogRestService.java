@@ -2,11 +2,14 @@ package eu.merloteducation.serviceofferingorchestrator.service;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
+import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
+import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
@@ -34,6 +37,9 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class GXFSCatalogRestService {
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
     @Value("${keycloak.token-uri}")
     private String keycloakTokenUri;

@@ -7,6 +7,21 @@ spring:
         jwt:
           issuer-uri: https://sso.common.merlot-education.eu/realms/POC1
           jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/protocol/openid-connect/certs
+  datasource:
+    url: jdbc:h2:file:./database.db
+    username: sa
+    password:
+    driverClassName: org.h2.Driver
+    initialization-mode: always
+  jpa:
+    generate-ddl: true
+    ddl:
+      ddl-auto: create
+    properties:
+      hibernate:
+        show_sql: true
+        use_sql_comments: true
+        format_sql: true
 
 jwt:
   auth:
