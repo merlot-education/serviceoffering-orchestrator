@@ -1,9 +1,7 @@
 package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -32,7 +30,8 @@ public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
         this.dataAccountExportFormatType = credentialSubject.getDataAccountExport().getFormatType().getValue();
         this.dataAccountExportAccessType = credentialSubject.getDataAccountExport().getAccessType().getValue();
         this.dataAccountExportRequestType = credentialSubject.getDataAccountExport().getRequestType().getValue();
-        this.endPointUrl = credentialSubject.getEndpoint().getEndPointURL().getValue();
+        if (credentialSubject.getEndpoint() != null && credentialSubject.getEndpoint().getEndPointURL() != null)
+            this.endPointUrl = credentialSubject.getEndpoint().getEndPointURL().getValue();
 
     }
 }
