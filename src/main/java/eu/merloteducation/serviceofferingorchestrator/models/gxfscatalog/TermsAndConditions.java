@@ -8,10 +8,15 @@ import lombok.Setter;
 @Getter
 @Setter
 public class TermsAndConditions {
+
+    // mandatory
     @JsonProperty("gax-trust-framework:content")
     private StringTypeValue content;
+
+    // mandatory
     @JsonProperty("gax-trust-framework:hash")
     private StringTypeValue hash;
+
     @JsonProperty("@type")
     private String type;
 }

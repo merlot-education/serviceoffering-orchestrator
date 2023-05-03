@@ -8,8 +8,16 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Endpoint {
+
     @JsonProperty("gax-trust-framework:endPointURL")
     private StringTypeValue endPointURL;
+
+    @JsonProperty("gax-trust-framework:standardConformity")
+    private Standard standardConformity;
+
+    @JsonProperty("gax-trust-framework:endpointDescription")
+    private StringTypeValue endpointDescription;
+
     @JsonProperty("@type")
     private String type;
 }
