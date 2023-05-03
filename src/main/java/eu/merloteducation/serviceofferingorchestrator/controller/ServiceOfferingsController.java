@@ -1,5 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
@@ -43,7 +44,9 @@ public class ServiceOfferingsController {
     public SelfDescriptionsCreateResponse addServiceOffering(Principal principal, HttpServletResponse response,
                                      @RequestBody ServiceOfferingCredentialSubject credentialSubject) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         String credentialSubjectJson = mapper.writeValueAsString(credentialSubject);
+
 
         String vp = """
                 {
