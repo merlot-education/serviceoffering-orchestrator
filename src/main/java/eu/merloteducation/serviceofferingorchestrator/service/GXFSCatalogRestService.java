@@ -6,6 +6,7 @@ import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOff
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
@@ -20,6 +21,7 @@ import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -139,13 +141,15 @@ public class GXFSCatalogRestService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(null, headers);
 
         // get on the self-description endpoint of the gxfs catalog to get all enrolled participants
-        String response = restTemplate.exchange(gxfscatalogSelfdescriptionsUri + "?withContent=true",
+        String response = restTemplate.exchange(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=REVOKED,ACTIVE,DEPRECATED",
                 HttpMethod.GET, request, String.class).getBody();
 
         // as the catalog returns nested but escaped jsons, we need to manually unescape to properly use it
         response = StringEscapeUtils.unescapeJson(response)
                 .replace("\"{", "{")
                 .replace("}\"", "}");
+
+        System.out.println(response);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -160,6 +164,27 @@ public class GXFSCatalogRestService {
         // log out with the gxfscatalog user
         this.logoutGXFScatalog((String) gxfscatalogLoginResponse.get("refresh_token"));
         return publicServiceOfferings;
+    }
+
+    public SelfDescriptionsCreateResponse addServiceOffering(String signedVp) throws Exception {
+        // log in as the gxfscatalog user and add the token to the header
+        Map<String, Object> gxfscatalogLoginResponse = loginGXFScatalog();
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer " + gxfscatalogLoginResponse.get("access_token"));
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> request = new HttpEntity<>(signedVp, headers);
+
+        String response =
+                restTemplate.postForObject(gxfscatalogSelfdescriptionsUri, request, String.class);
+
+        // create a mapper to map the response to the SelfDescriptionsCreateResponse class
+        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
+
+        // log out with the gxfscatalog user
+        this.logoutGXFScatalog((String) gxfscatalogLoginResponse.get("refresh_token"));
+
+        return selfDescriptionsResponse;
     }
 
 }

@@ -5,6 +5,8 @@ import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Map;
+
 @Getter
 @Setter
 public class ServiceOfferingCredentialSubject {
@@ -18,6 +20,10 @@ public class ServiceOfferingCredentialSubject {
     // mandatory
     @JsonProperty("@type")
     private String type;
+
+    // mandatory
+    @JsonProperty("@context")
+    private Map<String, String> context;
 
     // inherited from gax-core:ServiceOffering
 
