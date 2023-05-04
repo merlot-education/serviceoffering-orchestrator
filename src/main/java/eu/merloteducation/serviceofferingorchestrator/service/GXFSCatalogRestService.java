@@ -1,16 +1,19 @@
 package eu.merloteducation.serviceofferingorchestrator.service;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
+import jakarta.transaction.Transactional;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
@@ -39,6 +42,9 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class GXFSCatalogRestService {
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private GXFSSignerService gxfsSignerService;
 
     @Autowired
     private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
@@ -94,23 +100,14 @@ public class GXFSCatalogRestService {
 
     public ServiceOfferingDetailedModel getServiceOfferingById(String id) throws Exception {
 
+        // TODO only allow authorized users to access this
+
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
-        // log in as the gxfscatalog user and add the token to the header
-        Map<String, Object> gxfscatalogLoginResponse = loginGXFScatalog();
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer " + gxfscatalogLoginResponse.get("access_token"));
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(null, headers);
-
-        // get on the self-description endpoint of the gxfs catalog to get all enrolled participants
-        String response = restTemplate.exchange(gxfscatalogSelfdescriptionsUri + "?withContent=true&ids=" + id,
-                HttpMethod.GET, request, String.class).getBody();
-
-        // as the catalog returns nested but escaped jsons, we need to manually unescape to properly use it
-        response = StringEscapeUtils.unescapeJson(response)
-                .replace("\"{", "{")
-                .replace("}\"", "}");
+        String response = restCallAuthenticated(
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&ids=" + id, null,
+                null, HttpMethod.GET);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -122,32 +119,20 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(NOT_FOUND, "No service offering with this id was found.");
         }
 
-        // map the response to a detailed model
-        ServiceOfferingDetailedModel model = new ServiceOfferingDetailedModel(selfDescriptionsResponse.getItems().get(0));
+        SelfDescriptionItem item = selfDescriptionsResponse.getItems().get(0);
 
-        // log out with the gxfscatalog user
-        this.logoutGXFScatalog((String) gxfscatalogLoginResponse.get("refresh_token"));
-        return model;
+        // map the response to a detailed model
+        return new ServiceOfferingDetailedModel(
+                item,
+                serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+        );
     }
 
     public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings() throws Exception {
 
-        // log in as the gxfscatalog user and add the token to the header
-        Map<String, Object> gxfscatalogLoginResponse = loginGXFScatalog();
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer " + gxfscatalogLoginResponse.get("access_token"));
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(null, headers);
-
-        // get on the self-description endpoint of the gxfs catalog to get all enrolled participants
-        String response = restTemplate.exchange(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=REVOKED,ACTIVE,DEPRECATED",
-                HttpMethod.GET, request, String.class).getBody();
-
-        // as the catalog returns nested but escaped jsons, we need to manually unescape to properly use it
-        response = StringEscapeUtils.unescapeJson(response)
-                .replace("\"{", "{")
-                .replace("}\"", "}");
-
-        System.out.println(response);
+        String response = restCallAuthenticated(
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=REVOKED,ACTIVE,DEPRECATED", null,
+                null, HttpMethod.GET);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -157,32 +142,101 @@ public class GXFSCatalogRestService {
         List<ServiceOfferingBasicModel> publicServiceOfferings = selfDescriptionsResponse.getItems().stream()
                 .filter(item -> item.getMeta().getId().startsWith("ServiceOffering:")
                                 && item.getMeta().getStatus().equals("active"))
-                .map(ServiceOfferingBasicModel::new).toList();
+                .filter(item -> serviceOfferingExtensionRepository.existsById(item.getMeta().getId()))
+                .map(item -> new ServiceOfferingBasicModel(
+                        item,
+                        serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+                ))
+                .toList();
 
-        // log out with the gxfscatalog user
-        this.logoutGXFScatalog((String) gxfscatalogLoginResponse.get("refresh_token"));
         return publicServiceOfferings;
     }
 
-    public SelfDescriptionsCreateResponse addServiceOffering(String signedVp) throws Exception {
+    public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
+
+        if (serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
+            ServiceOfferingExtension extension = serviceOfferingExtensionRepository
+                    .findById(credentialSubject.getId()).orElse(null);
+            if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
+                throw new IllegalStateException("Cannot update Self-Description as it is not in draft");
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        String credentialSubjectJson = mapper.writeValueAsString(credentialSubject);
+
+        String signedVp = presentAndSign(credentialSubjectJson, credentialSubject.getOfferedBy().getId());
+
+        String response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
+                MediaType.APPLICATION_JSON, HttpMethod.POST);
+
+        // create a mapper to map the response to the SelfDescriptionsCreateResponse class
+        mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
+
+        addServiceOfferingExtension(selfDescriptionsResponse);
+
+        return selfDescriptionsResponse;
+    }
+
+    private String restCallAuthenticated(String url, String body, MediaType mediaType, HttpMethod method) throws Exception {
         // log in as the gxfscatalog user and add the token to the header
         Map<String, Object> gxfscatalogLoginResponse = loginGXFScatalog();
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + gxfscatalogLoginResponse.get("access_token"));
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<String> request = new HttpEntity<>(signedVp, headers);
+        if (mediaType != null)
+            headers.setContentType(mediaType);
+        HttpEntity<String> request = new HttpEntity<>(body, headers);
 
         String response =
-                restTemplate.postForObject(gxfscatalogSelfdescriptionsUri, request, String.class);
+                restTemplate.exchange(url,
+                        method, request, String.class).getBody();
 
-        // create a mapper to map the response to the SelfDescriptionsCreateResponse class
-        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
+        // as the catalog returns nested but escaped jsons, we need to manually unescape to properly use it
+        response = StringEscapeUtils.unescapeJson(response)
+                .replace("\"{", "{")
+                .replace("}\"", "}");
 
         // log out with the gxfscatalog user
         this.logoutGXFScatalog((String) gxfscatalogLoginResponse.get("refresh_token"));
 
-        return selfDescriptionsResponse;
+        return response;
+    }
+
+    private String presentAndSign(String credentialSubjectJson, String issuer) throws Exception {
+        String vp = """
+                {
+                    "@context": ["https://www.w3.org/2018/credentials/v1"],
+                    "@id": "http://example.edu/verifiablePresentation/self-description1",
+                    "type": ["VerifiablePresentation"],
+                    "verifiableCredential": {
+                        "@context": ["https://www.w3.org/2018/credentials/v1"],
+                        "@id": "https://www.example.org/ServiceOffering.json",
+                        "@type": ["VerifiableCredential"],
+                        "issuer": \"""" + issuer + """
+                        ",
+                        "issuanceDate": "2022-10-19T18:48:09Z",
+                        "credentialSubject":\s""" + credentialSubjectJson + """
+                    }
+                }
+                """;
+
+        return gxfsSignerService.signVerifiablePresentation(vp);
+    }
+
+    /**
+     * Saves a given selfDescriptionsResponse in a ServiceOfferingExtension item in the local database.
+     * It will also update an existing field if a service offering of this id was already saved
+     * as the catalog also accepts existing ids (and makes the previous entry deprecated in the gxfs catalog)
+     * @param selfDescriptionsResponse Object encapsulating the response of adding the service offering to the catalog
+     */
+    @Transactional
+    private void addServiceOfferingExtension(SelfDescriptionsCreateResponse selfDescriptionsResponse) {
+        ServiceOfferingExtension extension = new ServiceOfferingExtension(
+                selfDescriptionsResponse.getId(),
+                selfDescriptionsResponse.getSdHash()
+        );
+        serviceOfferingExtensionRepository.save(extension);
     }
 
 }

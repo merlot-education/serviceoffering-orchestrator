@@ -1,5 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
+import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
@@ -13,6 +14,7 @@ public class ServiceOfferingBasicModel{
     private String id;
     private String sdHash;
     private String status;
+    private String merlotState;
     private String issuer;
     private String uploadTime;
     private String statusTime;
@@ -22,7 +24,7 @@ public class ServiceOfferingBasicModel{
     private String providedBy;
     private String name;
 
-    public ServiceOfferingBasicModel(SelfDescriptionItem sdItem) {
+    public ServiceOfferingBasicModel(SelfDescriptionItem sdItem, ServiceOfferingExtension serviceOfferingExtension) {
         SelfDescriptionMeta meta = sdItem.getMeta();
         this.id = meta.getId();
         this.sdHash = meta.getSdHash();
@@ -37,5 +39,9 @@ public class ServiceOfferingBasicModel{
         this.providedBy = credentialSubject.getProvidedBy().getId();
         this.name = credentialSubject.getName().getValue();
         this.offeredBy = credentialSubject.getOfferedBy().getId();
+
+        if (serviceOfferingExtension != null)
+            this.merlotState = serviceOfferingExtension.getState().name();
+
     }
 }

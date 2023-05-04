@@ -23,9 +23,6 @@ public class ServiceOfferingsController {
     @Autowired
     private GXFSCatalogRestService gxfsCatalogRestService;
 
-    @Autowired
-    private GXFSSignerService gxfsSignerService;
-
 
     @GetMapping("")
     public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings(Principal principal,
@@ -43,35 +40,9 @@ public class ServiceOfferingsController {
     @PostMapping("/serviceoffering")
     public SelfDescriptionsCreateResponse addServiceOffering(Principal principal, HttpServletResponse response,
                                      @RequestBody ServiceOfferingCredentialSubject credentialSubject) throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        String credentialSubjectJson = mapper.writeValueAsString(credentialSubject);
 
 
-        String vp = """
-                {
-                    "@context": ["https://www.w3.org/2018/credentials/v1"],
-                    "@id": "http://example.edu/verifiablePresentation/self-description1",
-                    "type": ["VerifiablePresentation"],
-                    "verifiableCredential": {
-                        "@context": ["https://www.w3.org/2018/credentials/v1"],
-                        "@id": "https://www.example.org/ServiceOffering.json",
-                        "@type": ["VerifiableCredential"],
-                        "issuer": \"""" + credentialSubject.getOfferedBy().getId() + """
-                        ",
-                        "issuanceDate": "2022-10-19T18:48:09Z",
-                        "credentialSubject":\s""" + credentialSubjectJson + """
-                    }
-                }
-                """;
-
-        String signedVp = gxfsSignerService.signVerifiablePresentation(vp);
-
-        SelfDescriptionsCreateResponse catalogResponse = gxfsCatalogRestService.addServiceOffering(signedVp);
-
-        // TODO update internal database with state machine
-
-        return catalogResponse;
+        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
 }

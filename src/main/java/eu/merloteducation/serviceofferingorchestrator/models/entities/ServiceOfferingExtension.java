@@ -8,22 +8,34 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.security.Provider;
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @Setter
 public class ServiceOfferingExtension {
     @Id
-    private String sdHash;
+    private String id;
+
+    private String currentSdHash;
 
     @Enumerated(EnumType.STRING)
     @Setter(AccessLevel.NONE)
     private ServiceOfferingState state;
 
-    private String associatedContractId;
+    private List<String> associatedContractIds;
 
     public ServiceOfferingExtension() {
         this.state = ServiceOfferingState.IN_DRAFT;
-        this.associatedContractId = "";
+        this.associatedContractIds = new ArrayList<>();
+    }
+
+    public ServiceOfferingExtension(String id, String currentSdHash) {
+        this();
+        this.id = id;
+        this.currentSdHash = currentSdHash;
     }
 
     public void release() throws IllegalStateException {
@@ -37,7 +49,7 @@ public class ServiceOfferingExtension {
 
     public void delete() throws IllegalStateException {
         if (state == ServiceOfferingState.IN_DRAFT
-                || (state == ServiceOfferingState.REVOKED && associatedContractId.equals(""))) {
+                || (state == ServiceOfferingState.REVOKED && associatedContractIds.isEmpty())) {
             state = ServiceOfferingState.DELETED;
         } else {
             throw new IllegalStateException(String.format("Cannot transition from state %s to deleted or contract is associated", state.name()));
@@ -45,7 +57,7 @@ public class ServiceOfferingExtension {
     }
 
     public void archive() throws IllegalStateException {
-        if (state == ServiceOfferingState.REVOKED && !associatedContractId.equals("")) {
+        if (state == ServiceOfferingState.REVOKED && !associatedContractIds.isEmpty()) {
             state = ServiceOfferingState.ARCHIVED;
         } else {
             throw new IllegalStateException(String.format("Cannot transition from state %s to archived or no contract is associated", state.name()));
@@ -53,7 +65,7 @@ public class ServiceOfferingExtension {
     }
 
     public void inDraft() throws IllegalStateException {
-        if (state == ServiceOfferingState.REVOKED && associatedContractId.equals("")) {
+        if (state == ServiceOfferingState.REVOKED && associatedContractIds.isEmpty()) {
             state = ServiceOfferingState.IN_DRAFT;
         } else {
             throw new IllegalStateException(String.format("Cannot transition from state %s to archived or contract is associated", state.name()));

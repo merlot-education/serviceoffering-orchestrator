@@ -1,5 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
+import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
 import lombok.Getter;
@@ -18,8 +19,8 @@ public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
     private String endPointUrl;
 
 
-    public ServiceOfferingDetailedModel(SelfDescriptionItem sdItem) {
-        super(sdItem);
+    public ServiceOfferingDetailedModel(SelfDescriptionItem sdItem, ServiceOfferingExtension serviceOfferingExtension) {
+        super(sdItem, serviceOfferingExtension);
 
         ServiceOfferingCredentialSubject credentialSubject = sdItem.getMeta().getContent()
                 .getVerifiableCredential().getCredentialSubject();
