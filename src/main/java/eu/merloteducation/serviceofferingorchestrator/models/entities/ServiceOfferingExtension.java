@@ -39,8 +39,7 @@ public class ServiceOfferingExtension {
     }
 
     public void release() throws IllegalStateException {
-        if (state == ServiceOfferingState.IN_DRAFT
-                || state == ServiceOfferingState.REVOKED) {
+        if (state.checkTransitionAllowed(ServiceOfferingState.RELEASED)) {
             state = ServiceOfferingState.RELEASED;
         } else {
             throw new IllegalStateException(String.format("Cannot transition from state %s to released", state.name()));
@@ -48,33 +47,26 @@ public class ServiceOfferingExtension {
     }
 
     public void delete() throws IllegalStateException {
-        if (state == ServiceOfferingState.IN_DRAFT
-                || (state == ServiceOfferingState.REVOKED && associatedContractIds.isEmpty())) {
+        if (state.checkTransitionAllowed(ServiceOfferingState.DELETED) && associatedContractIds.isEmpty()) {
             state = ServiceOfferingState.DELETED;
-        } else {
-            throw new IllegalStateException(String.format("Cannot transition from state %s to deleted or contract is associated", state.name()));
-        }
-    }
-
-    public void archive() throws IllegalStateException {
-        if (state == ServiceOfferingState.REVOKED && !associatedContractIds.isEmpty()) {
+        } else if (state.checkTransitionAllowed(ServiceOfferingState.ARCHIVED) && !associatedContractIds.isEmpty()) {
             state = ServiceOfferingState.ARCHIVED;
         } else {
-            throw new IllegalStateException(String.format("Cannot transition from state %s to archived or no contract is associated", state.name()));
+            throw new IllegalStateException(String.format("Cannot transition from state %s to deleted/archived", state.name()));
         }
     }
 
     public void inDraft() throws IllegalStateException {
-        if (state == ServiceOfferingState.REVOKED && associatedContractIds.isEmpty()) {
+        if (state.checkTransitionAllowed(ServiceOfferingState.IN_DRAFT) && associatedContractIds.isEmpty()) {
             state = ServiceOfferingState.IN_DRAFT;
         } else {
-            throw new IllegalStateException(String.format("Cannot transition from state %s to archived or contract is associated", state.name()));
+            throw new IllegalStateException(String.format("Cannot transition from state %s to in draft", state.name()));
         }
     }
 
     public void revoke() throws IllegalStateException {
-        if (state == ServiceOfferingState.RELEASED) {
-            state = ServiceOfferingState.IN_DRAFT;
+        if (state.checkTransitionAllowed(ServiceOfferingState.REVOKED)) {
+            state = ServiceOfferingState.REVOKED;
         } else {
             throw new IllegalStateException(String.format("Cannot transition from state %s to revoked", state.name()));
         }
