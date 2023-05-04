@@ -2,6 +2,7 @@ package eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfde
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,7 +11,7 @@ import lombok.Setter;
 public class SaaSCredentialSubject extends ServiceOfferingCredentialSubject {
     // inherited from merlot:MerlotServiceOfferingSaaS
 
-    // mandatory
+    @NotNull
     @JsonProperty("merlot:hardwareRequirements")
     private StringTypeValue hardwareRequirements;
 }

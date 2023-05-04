@@ -2,6 +2,7 @@ package eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfde
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,21 +14,21 @@ public class ServiceOfferingCredentialSubject {
 
     // general catalog fields
 
-    // mandatory
+    @NotNull
     @JsonProperty("@id")
     private String id;
 
-    // mandatory
+    @NotNull
     @JsonProperty("@type")
     private String type;
 
-    // mandatory
+    @NotNull
     @JsonProperty("@context")
     private Map<String, String> context;
 
     // inherited from gax-core:ServiceOffering
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-core:offeredBy")
     private NodeKindIRITypeId offeredBy;
 
@@ -39,22 +40,22 @@ public class ServiceOfferingCredentialSubject {
 
     // inherited from gax-trust-framework:ServiceOffering
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:name")
     private StringTypeValue name;
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:termsAndConditions")
     private TermsAndConditions termsAndConditions;
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:policy")
     private StringTypeValue policy;
 
     @JsonProperty("gax-trust-framework:dataProtectionRegime")
     private StringTypeValue dataProtectionRegime;
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:dataAccountExport")
     private DataAccountExport dataAccountExport;
 
@@ -70,7 +71,7 @@ public class ServiceOfferingCredentialSubject {
     @JsonProperty("gax-trust-framework:endpoint")
     private Endpoint endpoint;
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:providedBy")
     private NodeKindIRITypeId providedBy;
 
@@ -85,23 +86,21 @@ public class ServiceOfferingCredentialSubject {
 
     // inherited from merlot:MerlotServiceOffering
 
-    // mandatory
+    @NotNull
     @JsonProperty("merlot:serviceId")
     private StringTypeValue serviceId;
 
-    // mandatory
+    @NotNull
     @JsonProperty("merlot:creationDate")
     private StringTypeValue creationDate;
 
-    // mandatory
+    @NotNull
     @JsonProperty("merlot:dataAccessType")
     private StringTypeValue dataAccessType;
 
-    // mandatory
     @JsonProperty("merlot:attachments")
     private StringTypeValue attachments;
 
-    // mandatory
     @JsonProperty("merlot:exampleCosts")
     private StringTypeValue exampleCosts;
 

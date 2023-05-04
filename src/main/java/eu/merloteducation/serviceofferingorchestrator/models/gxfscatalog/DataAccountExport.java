@@ -2,6 +2,7 @@ package eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,18 +10,19 @@ import lombok.Setter;
 @Setter
 public class DataAccountExport {
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:formatType")
     private StringTypeValue formatType;
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:accessType")
     private StringTypeValue accessType;
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:requestType")
     private StringTypeValue requestType;
 
+    @NotNull
     @JsonProperty("@type")
     private String type;
 }

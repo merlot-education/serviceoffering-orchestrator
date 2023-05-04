@@ -1,6 +1,7 @@
 package eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,11 +9,11 @@ import lombok.Setter;
 @Setter
 public class Standard {
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:title")
     private StringTypeValue title;
 
-    // mandatory
+    @NotNull
     @JsonProperty("gax-trust-framework:standardReference")
     private StringTypeValue standardReference;
 

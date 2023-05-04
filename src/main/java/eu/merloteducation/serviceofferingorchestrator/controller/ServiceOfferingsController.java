@@ -9,6 +9,7 @@ import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.Servic
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSSignerService;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,7 +40,7 @@ public class ServiceOfferingsController {
 
     @PostMapping("/serviceoffering")
     public SelfDescriptionsCreateResponse addServiceOffering(Principal principal, HttpServletResponse response,
-                                     @RequestBody ServiceOfferingCredentialSubject credentialSubject) throws Exception {
+                                     @Valid @RequestBody ServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
 
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
