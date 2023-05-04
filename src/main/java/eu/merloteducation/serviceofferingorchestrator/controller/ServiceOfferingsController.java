@@ -2,6 +2,7 @@ package eu.merloteducation.serviceofferingorchestrator.controller;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
@@ -44,6 +45,34 @@ public class ServiceOfferingsController {
 
 
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+    }
+
+    @GetMapping("/serviceoffering/inDraft/{soId}")
+    public void inDraftServiceOffering(Principal principal,
+                                                               @PathVariable(value = "soId") String serviceofferingId,
+                                                               HttpServletResponse response) throws Exception {
+        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, ServiceOfferingState.IN_DRAFT);
+    }
+
+    @GetMapping("/serviceoffering/release/{soId}")
+    public void releaseServiceOffering(Principal principal,
+                                                               @PathVariable(value = "soId") String serviceofferingId,
+                                                               HttpServletResponse response) throws Exception {
+        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, ServiceOfferingState.RELEASED);
+    }
+
+    @GetMapping("/serviceoffering/revoke/{soId}")
+    public void revokeServiceOffering(Principal principal,
+                                                              @PathVariable(value = "soId") String serviceofferingId,
+                                                              HttpServletResponse response) throws Exception {
+        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, ServiceOfferingState.REVOKED);
+    }
+
+    @GetMapping("/serviceoffering/delete/{soId}")
+    public void deleteServiceOffering(Principal principal,
+                                                              @PathVariable(value = "soId") String serviceofferingId,
+                                                              HttpServletResponse response) throws Exception {
+        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, ServiceOfferingState.DELETED);
     }
 
 }

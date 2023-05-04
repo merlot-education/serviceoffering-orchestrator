@@ -15,6 +15,7 @@ import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.Servic
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import jakarta.transaction.Transactional;
 import org.apache.commons.text.StringEscapeUtils;
+import org.hibernate.ObjectNotFoundException;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
 @Service
 public class GXFSCatalogRestService {
@@ -98,6 +100,28 @@ public class GXFSCatalogRestService {
         restTemplate.postForObject(keycloakLogoutUri, request, String.class);
     }
 
+    public void transitionServiceOfferingExtension(String id, ServiceOfferingState targetState) {
+        if (!serviceOfferingExtensionRepository.existsById(id)) {
+            throw new ResponseStatusException(NOT_FOUND, "No service offering with this id was found.");
+        }
+
+        ServiceOfferingExtension extension = serviceOfferingExtensionRepository.findById(id).orElse(null);
+        if (extension != null) {
+            try {
+                switch (targetState) {
+                    case IN_DRAFT -> extension.inDraft();
+                    case RELEASED -> extension.release();
+                    case REVOKED -> extension.revoke();
+                    case DELETED, ARCHIVED -> extension.delete();
+                }
+                serviceOfferingExtensionRepository.save(extension);
+            } catch (IllegalStateException e) {
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
+            }
+        }
+
+    }
+
     public ServiceOfferingDetailedModel getServiceOfferingById(String id) throws Exception {
 
         // TODO only allow authorized users to access this
@@ -139,17 +163,18 @@ public class GXFSCatalogRestService {
         SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
-        List<ServiceOfferingBasicModel> publicServiceOfferings = selfDescriptionsResponse.getItems().stream()
+
+        return selfDescriptionsResponse.getItems().stream()
                 .filter(item -> item.getMeta().getId().startsWith("ServiceOffering:")
                                 && item.getMeta().getStatus().equals("active"))
                 .filter(item -> serviceOfferingExtensionRepository.existsById(item.getMeta().getId()))
+                .filter(item -> serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+                        .getState() == ServiceOfferingState.RELEASED)
                 .map(item -> new ServiceOfferingBasicModel(
                         item,
                         serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
                 ))
                 .toList();
-
-        return publicServiceOfferings;
     }
 
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
@@ -158,7 +183,7 @@ public class GXFSCatalogRestService {
             ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);
             if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
-                throw new IllegalStateException("Cannot update Self-Description as it is not in draft");
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
         }
 
         ObjectMapper mapper = new ObjectMapper();
