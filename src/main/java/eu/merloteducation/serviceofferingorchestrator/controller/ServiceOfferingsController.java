@@ -83,4 +83,20 @@ public class ServiceOfferingsController {
         gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, ServiceOfferingState.DELETED);
     }
 
+    @GetMapping("/shapes/getAvailableShapesCategorized")
+    public String getAvailableShapes    (Principal principal,
+                                                               @PathVariable(value = "soId") String serviceofferingId,
+                                                               HttpServletResponse response) throws Exception {
+        // TODO check authentication and pass through wizard api
+        return "";
+    }
+
+    @GetMapping("/shapes/getJSON")
+    public String getShapeJson    (Principal principal,
+                                        @RequestParam String name,
+                                         HttpServletResponse response) throws Exception {
+        // TODO check authentication and pass through wizard api
+        return "";
+    }
+
 }
