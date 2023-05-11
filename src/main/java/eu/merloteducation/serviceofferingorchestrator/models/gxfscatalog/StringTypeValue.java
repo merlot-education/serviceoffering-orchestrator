@@ -8,6 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class StringTypeValue {
     @NotNull
     @JsonProperty("@type")
@@ -16,4 +17,10 @@ public class StringTypeValue {
     @NotNull
     @JsonProperty("@value")
     private String value;
+
+    public StringTypeValue(String value) {
+        this.type = "xsd:String";
+        this.value = value;
+    }
+
 }

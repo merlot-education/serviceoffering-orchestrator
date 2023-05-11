@@ -23,6 +23,7 @@ public class ServiceOfferingBasicModel{
     private String offeredBy;
     private String providedBy;
     private String name;
+    private String description;
 
     public ServiceOfferingBasicModel(SelfDescriptionItem sdItem, ServiceOfferingExtension serviceOfferingExtension) {
         SelfDescriptionMeta meta = sdItem.getMeta();
@@ -39,6 +40,8 @@ public class ServiceOfferingBasicModel{
         this.providedBy = credentialSubject.getProvidedBy().getId();
         this.name = credentialSubject.getName().getValue();
         this.offeredBy = credentialSubject.getOfferedBy().getId();
+        if (credentialSubject.getDescription() != null)
+            this.description = credentialSubject.getDescription().getValue();
 
         if (serviceOfferingExtension != null)
             this.merlotState = serviceOfferingExtension.getState().name();

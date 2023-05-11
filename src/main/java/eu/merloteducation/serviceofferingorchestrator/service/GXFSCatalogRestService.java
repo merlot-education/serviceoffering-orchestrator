@@ -112,7 +112,7 @@ public class GXFSCatalogRestService {
                     case IN_DRAFT -> extension.inDraft();
                     case RELEASED -> extension.release();
                     case REVOKED -> extension.revoke();
-                    case DELETED, ARCHIVED -> extension.delete();
+                    case DELETED, ARCHIVED -> extension.delete(); // TODO also set status to revoked in catalog
                 }
                 serviceOfferingExtensionRepository.save(extension);
             } catch (IllegalStateException e) {
@@ -155,6 +155,29 @@ public class GXFSCatalogRestService {
     public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings() throws Exception {
 
         String response = restCallAuthenticated(
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE", null,
+                null, HttpMethod.GET);
+
+        // create a mapper to map the response to the SelfDescriptionResponse class
+        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
+
+        // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
+
+        return selfDescriptionsResponse.getItems().stream()
+                .filter(item -> item.getMeta().getId().startsWith("ServiceOffering:"))
+                .filter(item -> serviceOfferingExtensionRepository.existsById(item.getMeta().getId()))
+                .filter(item -> serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+                        .getState() == ServiceOfferingState.RELEASED)
+                .map(item -> new ServiceOfferingBasicModel(
+                        item,
+                        serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+                ))
+                .toList();
+    }
+
+    public List<ServiceOfferingBasicModel> getOrganizationServiceOfferings(String orgaId) throws Exception {
+        String response = restCallAuthenticated(
                 gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=REVOKED,ACTIVE,DEPRECATED", null,
                 null, HttpMethod.GET);
 
@@ -166,10 +189,8 @@ public class GXFSCatalogRestService {
 
         return selfDescriptionsResponse.getItems().stream()
                 .filter(item -> item.getMeta().getId().startsWith("ServiceOffering:")
-                                && item.getMeta().getStatus().equals("active"))
+                        && item.getMeta().getIssuer().replace("Participant:", "").equals(orgaId))
                 .filter(item -> serviceOfferingExtensionRepository.existsById(item.getMeta().getId()))
-                .filter(item -> serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
-                        .getState() == ServiceOfferingState.RELEASED)
                 .map(item -> new ServiceOfferingBasicModel(
                         item,
                         serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
@@ -184,6 +205,8 @@ public class GXFSCatalogRestService {
                     .findById(credentialSubject.getId()).orElse(null);
             if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
+        } else {
+            // TODO in this case we need to generate an id and set the creation time
         }
 
         ObjectMapper mapper = new ObjectMapper();

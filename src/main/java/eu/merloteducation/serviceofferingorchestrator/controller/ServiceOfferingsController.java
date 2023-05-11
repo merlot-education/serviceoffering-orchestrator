@@ -39,6 +39,14 @@ public class ServiceOfferingsController {
         return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
     }
 
+    @GetMapping("/organization/{orgaId}")
+    public List<ServiceOfferingBasicModel> getOrganizationServiceOfferings(Principal principal,
+                                                               @PathVariable(value = "orgaId") String orgaId,
+                                                               HttpServletResponse response) throws Exception {
+        // TODO make sure the user is authenticated and has this role
+        return gxfsCatalogRestService.getOrganizationServiceOfferings(orgaId);
+    }
+
     @PostMapping("/serviceoffering")
     public SelfDescriptionsCreateResponse addServiceOffering(Principal principal, HttpServletResponse response,
                                      @Valid @RequestBody ServiceOfferingCredentialSubject credentialSubject) throws Exception {
