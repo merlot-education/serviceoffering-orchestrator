@@ -19,7 +19,7 @@ public class StringTypeValue {
     private String value;
 
     public StringTypeValue(String value) {
-        this.type = "xsd:String";
+        this.type = "xsd:string";
         this.value = value;
     }
 

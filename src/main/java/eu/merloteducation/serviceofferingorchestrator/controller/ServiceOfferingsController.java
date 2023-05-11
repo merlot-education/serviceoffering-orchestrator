@@ -51,7 +51,7 @@ public class ServiceOfferingsController {
     public SelfDescriptionsCreateResponse addServiceOffering(Principal principal, HttpServletResponse response,
                                      @Valid @RequestBody ServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
-
+        // TODO check if the user is allowed to create an offering for the claimed organization
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
