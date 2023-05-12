@@ -13,39 +13,29 @@ import lombok.Setter;
 public class ServiceOfferingBasicModel{
     private String id;
     private String sdHash;
-    private String status;
-    private String merlotState;
-    private String issuer;
-    private String uploadTime;
-    private String statusTime;
-
-    private String type;
-    private String offeredBy;
-    private String providedBy;
     private String name;
-    private String description;
+    private String creationDate;
+    private String serviceId;
+    private String offeredBy;
+    private String merlotState;
+    private String type;
 
     public ServiceOfferingBasicModel(SelfDescriptionItem sdItem, ServiceOfferingExtension serviceOfferingExtension) {
-        // TODO adjust to MER-61
         SelfDescriptionMeta meta = sdItem.getMeta();
         this.id = meta.getId();
         this.sdHash = meta.getSdHash();
-        this.status = meta.getStatus();
-        this.issuer = meta.getIssuer();
-        this.uploadTime = meta.getUploadDatetime();
-        this.statusTime = meta.getStatusDatetime();
 
         ServiceOfferingCredentialSubject credentialSubject = meta.getContent()
                 .getVerifiableCredential().getCredentialSubject();
         this.type = credentialSubject.getType();
-        this.providedBy = credentialSubject.getProvidedBy().getId();
         this.name = credentialSubject.getName().getValue();
         this.offeredBy = credentialSubject.getOfferedBy().getId();
-        if (credentialSubject.getDescription() != null)
-            this.description = credentialSubject.getDescription().getValue();
+        this.creationDate = credentialSubject.getCreationDate().getValue();
+        this.serviceId = credentialSubject.getServiceId().getValue();
 
         if (serviceOfferingExtension != null)
             this.merlotState = serviceOfferingExtension.getState().name();
+
 
     }
 }
