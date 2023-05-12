@@ -26,6 +26,7 @@ public class ServiceOfferingBasicModel{
     private String description;
 
     public ServiceOfferingBasicModel(SelfDescriptionItem sdItem, ServiceOfferingExtension serviceOfferingExtension) {
+        // TODO adjust to MER-61
         SelfDescriptionMeta meta = sdItem.getMeta();
         this.id = meta.getId();
         this.sdHash = meta.getSdHash();

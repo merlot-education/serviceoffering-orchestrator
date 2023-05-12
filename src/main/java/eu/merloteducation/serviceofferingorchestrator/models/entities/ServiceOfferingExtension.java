@@ -21,6 +21,8 @@ public class ServiceOfferingExtension {
 
     private String currentSdHash;
 
+    private String issuer;
+
     @Enumerated(EnumType.STRING)
     @Setter(AccessLevel.NONE)
     private ServiceOfferingState state;
@@ -32,10 +34,11 @@ public class ServiceOfferingExtension {
         this.associatedContractIds = new ArrayList<>();
     }
 
-    public ServiceOfferingExtension(String id, String currentSdHash) {
+    public ServiceOfferingExtension(String id, String currentSdHash, String issuer) {
         this();
         this.id = id;
         this.currentSdHash = currentSdHash;
+        this.issuer = issuer;
     }
 
     public void release() throws IllegalStateException {

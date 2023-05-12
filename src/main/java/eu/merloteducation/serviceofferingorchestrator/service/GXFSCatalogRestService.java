@@ -37,13 +37,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
+import static org.springframework.http.HttpStatus.*;
 
 @Service
 public class GXFSCatalogRestService {
@@ -105,13 +101,17 @@ public class GXFSCatalogRestService {
         restTemplate.postForObject(keycloakLogoutUri, request, String.class);
     }
 
-    public void transitionServiceOfferingExtension(String id, ServiceOfferingState targetState) {
+    public void transitionServiceOfferingExtension(String id, ServiceOfferingState targetState, Set<String> representedOrgaIds) {
         if (!serviceOfferingExtensionRepository.existsById(id)) {
             throw new ResponseStatusException(NOT_FOUND, "No service offering with this id was found.");
         }
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository.findById(id).orElse(null);
         if (extension != null) {
+            if (!representedOrgaIds.contains(extension.getIssuer().replace("Participant:", ""))) {
+                throw new ResponseStatusException(FORBIDDEN, "Missing permissions to change status of this offering.");
+            }
+
             try {
                 switch (targetState) {
                     case IN_DRAFT -> extension.inDraft();
@@ -128,9 +128,6 @@ public class GXFSCatalogRestService {
     }
 
     public ServiceOfferingDetailedModel getServiceOfferingById(String id) throws Exception {
-
-        // TODO only allow authorized users to access this
-
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -217,8 +214,6 @@ public class GXFSCatalogRestService {
             credentialSubject.setId("ServiceOffering:" + UUID.randomUUID());
         }
 
-
-
         ObjectMapper mapper = new ObjectMapper();
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         String credentialSubjectJson = mapper.writeValueAsString(credentialSubject);
@@ -232,7 +227,7 @@ public class GXFSCatalogRestService {
         mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
-        addServiceOfferingExtension(selfDescriptionsResponse);
+        addServiceOfferingExtension(selfDescriptionsResponse); // TODO load from db if exists
 
         return selfDescriptionsResponse;
     }
@@ -292,7 +287,8 @@ public class GXFSCatalogRestService {
     private void addServiceOfferingExtension(SelfDescriptionsCreateResponse selfDescriptionsResponse) {
         ServiceOfferingExtension extension = new ServiceOfferingExtension(
                 selfDescriptionsResponse.getId(),
-                selfDescriptionsResponse.getSdHash()
+                selfDescriptionsResponse.getSdHash(),
+                selfDescriptionsResponse.getIssuer()
         );
         serviceOfferingExtensionRepository.save(extension);
     }
