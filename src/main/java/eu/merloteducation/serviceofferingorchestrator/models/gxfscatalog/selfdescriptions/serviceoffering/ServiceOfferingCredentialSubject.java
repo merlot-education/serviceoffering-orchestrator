@@ -2,10 +2,12 @@ package eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfde
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -87,10 +89,6 @@ public class ServiceOfferingCredentialSubject {
     // inherited from merlot:MerlotServiceOffering
 
     @NotNull
-    @JsonProperty("merlot:serviceId")
-    private StringTypeValue serviceId;
-
-    @NotNull
     @JsonProperty("merlot:creationDate")
     private StringTypeValue creationDate;
 
@@ -104,5 +102,11 @@ public class ServiceOfferingCredentialSubject {
     @JsonProperty("merlot:exampleCosts")
     private StringTypeValue exampleCosts;
 
+    @NotNull
+    @JsonProperty("merlot:runtimeOption")
+    private Runtime runtimes;
 
+    @NotNull
+    @JsonProperty("merlot:merlotTermsAndConditionsAccepted")
+    private boolean merlotTermsAndConditionsAccepted;
 }

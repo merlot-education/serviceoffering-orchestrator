@@ -3,6 +3,8 @@ package eu.merloteducation.serviceofferingorchestrator.controller;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
@@ -85,9 +87,21 @@ public class ServiceOfferingsController {
         return gxfsCatalogRestService.getOrganizationServiceOfferings(orgaId);
     }
 
-    @PostMapping("/serviceoffering")
-    public SelfDescriptionsCreateResponse addServiceOffering(Principal principal, HttpServletResponse response,
-                                     @Valid @RequestBody ServiceOfferingCredentialSubject credentialSubject) throws Exception {
+    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
+    public SelfDescriptionsCreateResponse addServiceOfferingSaas(Principal principal, HttpServletResponse response,
+                                                             @Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
+        // if the requested organization id is not in the roles of this user,
+        // the user is not allowed to request this endpoint
+        if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return null;
+        }
+        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+    }
+
+    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
+    public SelfDescriptionsCreateResponse addServiceOfferingDataDelivery(Principal principal, HttpServletResponse response,
+                                                                 @Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
         // if the requested organization id is not in the roles of this user,
         // the user is not allowed to request this endpoint
         if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {

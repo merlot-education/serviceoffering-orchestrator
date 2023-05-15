@@ -15,7 +15,6 @@ public class ServiceOfferingBasicModel{
     private String sdHash;
     private String name;
     private String creationDate;
-    private String serviceId;
     private String offeredBy;
     private String merlotState;
     private String type;
@@ -31,7 +30,6 @@ public class ServiceOfferingBasicModel{
         this.name = credentialSubject.getName().getValue();
         this.offeredBy = credentialSubject.getOfferedBy().getId();
         this.creationDate = credentialSubject.getCreationDate().getValue();
-        this.serviceId = credentialSubject.getServiceId().getValue();
 
         if (serviceOfferingExtension != null)
             this.merlotState = serviceOfferingExtension.getState().name();
