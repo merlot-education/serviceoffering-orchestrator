@@ -45,6 +45,9 @@ gxfscatalog:
   base-uri: "http://localhost:8081"
   selfdescriptions-uri: "${gxfscatalog.base-uri}/self-descriptions"
 
+gxfswizard:
+  base-uri: "http://localhost:8085"
+
 keycloak:
   client-id: "federated-catalogue"
   authorization-grant-type: "password"

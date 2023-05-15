@@ -9,6 +9,7 @@ import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.Servic
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSSignerService;
+import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -29,6 +31,9 @@ public class ServiceOfferingsController {
 
     @Autowired
     private GXFSCatalogRestService gxfsCatalogRestService;
+
+    @Autowired
+    private GXFSWizardRestService gxfsWizardRestService;
 
 
     private Set<String> getMerlotRoles(Principal principal) {
@@ -121,19 +126,16 @@ public class ServiceOfferingsController {
     }
 
     @GetMapping("/shapes/getAvailableShapesCategorized")
-    public String getAvailableShapes    (Principal principal,
-                                                               @PathVariable(value = "soId") String serviceofferingId,
-                                                               HttpServletResponse response) throws Exception {
-        // TODO pass through wizard api
-        return "";
+    public Map<String, List<String>> getAvailableShapes(Principal principal,
+                                                            HttpServletResponse response) throws Exception {
+        return gxfsWizardRestService.getServiceOfferingShapes();
     }
 
     @GetMapping("/shapes/getJSON")
-    public String getShapeJson    (Principal principal,
+    public String getShapeJson(Principal principal,
                                         @RequestParam String name,
                                          HttpServletResponse response) throws Exception {
-        // TODO pass through wizard api
-        return "";
+        return gxfsWizardRestService.getShape(name);
     }
 
 }
