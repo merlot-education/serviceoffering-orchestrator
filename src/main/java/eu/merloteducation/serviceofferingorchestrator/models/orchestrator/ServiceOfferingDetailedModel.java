@@ -1,6 +1,8 @@
 package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
@@ -11,46 +13,69 @@ import lombok.Setter;
 @Setter
 public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
 
-    private String status;
-    private String issuer;
-    private String uploadTime;
-    private String statusTime;
-
-    private String providedBy;
     private String description;
+    private String modifiedDate;
+    private String dataAccessType;
+    private String exampleCosts;
+    private String attachments;
+    private TermsAndConditions termsAndConditions;
+    private Runtime runtime;
 
-    private String termsAndConditionsHash;
-    private String termsAndConditionsUrl;
-    private String policy;
-    private String dataAccountExportFormatType;
-    private String dataAccountExportAccessType;
-    private String dataAccountExportRequestType;
-    private String endPointUrl;
+
+    private String hardwareRequirements;
+    private AllowedUserCount allowedUserCount;
+
+    private DataExchangeCount dataExchangeCount;
 
 
     public ServiceOfferingDetailedModel(SelfDescriptionItem sdItem, ServiceOfferingExtension serviceOfferingExtension) {
         super(sdItem, serviceOfferingExtension);
 
         SelfDescriptionMeta meta = sdItem.getMeta();
-        this.status = meta.getStatus();
-        this.issuer = meta.getIssuer();
-        this.uploadTime = meta.getUploadDatetime();
-        this.statusTime = meta.getStatusDatetime();
+        this.modifiedDate = meta.getStatusDatetime();
 
         ServiceOfferingCredentialSubject credentialSubject = meta.getContent()
                 .getVerifiableCredential().getCredentialSubject();
-        this.providedBy = credentialSubject.getProvidedBy().getId();
+
         if (credentialSubject.getDescription() != null)
             this.description = credentialSubject.getDescription().getValue();
+        this.dataAccessType = credentialSubject.getDataAccessType().getValue();
+        if (credentialSubject.getExampleCosts() != null)
+            this.exampleCosts = credentialSubject.getExampleCosts().getValue();
+        if (credentialSubject.getAttachments() != null)
+            this.attachments = credentialSubject.getAttachments().getValue();
+        this.termsAndConditions = new TermsAndConditions();
+        this.termsAndConditions.setUrl(credentialSubject.getTermsAndConditions().getContent().getValue());
+        this.termsAndConditions.setHash(credentialSubject.getTermsAndConditions().getHash().getValue());
+        this.runtime = new Runtime();
+        if (credentialSubject.getRuntimes().getRuntimeCount() != null)
+            this.runtime.setRuntimeCount(credentialSubject.getRuntimes().getRuntimeCount().getValue());
+        if (credentialSubject.getRuntimes().getRuntimeMeasurement() != null)
+            this.runtime.setRuntimeMeasurement(credentialSubject.getRuntimes().getRuntimeMeasurement().getValue());
+        this.runtime.setRuntimeUnlimited(credentialSubject.getRuntimes().isRuntimeUnlimited());
 
-        this.termsAndConditionsHash = credentialSubject.getTermsAndConditions().getHash().getValue();
-        this.termsAndConditionsUrl = credentialSubject.getTermsAndConditions().getContent().getValue();
-        this.policy = credentialSubject.getPolicy().getValue();
-        this.dataAccountExportFormatType = credentialSubject.getDataAccountExport().getFormatType().getValue();
-        this.dataAccountExportAccessType = credentialSubject.getDataAccountExport().getAccessType().getValue();
-        this.dataAccountExportRequestType = credentialSubject.getDataAccountExport().getRequestType().getValue();
-        if (credentialSubject.getEndpoint() != null && credentialSubject.getEndpoint().getEndPointURL() != null)
-            this.endPointUrl = credentialSubject.getEndpoint().getEndPointURL().getValue();
+        if (credentialSubject instanceof SaaSCredentialSubject sub) {
+            if (sub.getHardwareRequirements() != null)
+                this.hardwareRequirements = sub.getHardwareRequirements().getValue();
+            this.allowedUserCount = new AllowedUserCount();
+            if (sub.getUserCountOption() != null) {
+                if (sub.getUserCountOption().getUserCountUpTo() != null)
+                    this.allowedUserCount.setUserCountUpTo(sub.getUserCountOption().getUserCountUpTo().getValue());
+                this.allowedUserCount.setUserCountUnlimited(sub.getUserCountOption().isUserCountUnlimited());
+            }
+        }
+
+        if (credentialSubject instanceof DataDeliveryCredentialSubject sub) {
+            this.dataExchangeCount = new DataExchangeCount();
+            if (sub.getExchangeCountOption() != null) {
+                if (sub.getExchangeCountOption().getExchangeCountUpTo() != null)
+                    this.dataExchangeCount.setExchangeCountUpTo(sub.getExchangeCountOption().getExchangeCountUpTo().getValue());
+                this.dataExchangeCount.setExchangeCountUnlimited(sub.getExchangeCountOption().isExchangeCountUnlimited());
+            }
+        }
+
+
+
 
     }
 }

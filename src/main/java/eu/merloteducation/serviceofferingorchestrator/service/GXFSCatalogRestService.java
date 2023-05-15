@@ -205,6 +205,10 @@ public class GXFSCatalogRestService {
 
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
+        if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
+            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot process Self-Description as MERLOT terms and conditions were not accepted.");
+        }
+
         if (!credentialSubject.getId().equals("ServiceOffering:TBR") && serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
             ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);
