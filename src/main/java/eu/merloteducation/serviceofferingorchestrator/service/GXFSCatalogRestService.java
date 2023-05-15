@@ -205,7 +205,7 @@ public class GXFSCatalogRestService {
 
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
-        if (serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
+        if (!credentialSubject.getId().equals("ServiceOffering:TBR") && serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
             ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);
             if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
@@ -221,7 +221,6 @@ public class GXFSCatalogRestService {
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         String credentialSubjectJson = mapper.writeValueAsString(credentialSubject);
 
-        System.out.println(credentialSubjectJson);
 
         String signedVp = presentAndSign(credentialSubjectJson, credentialSubject.getOfferedBy().getId());
 

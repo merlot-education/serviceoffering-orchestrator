@@ -14,7 +14,6 @@ import java.util.List;
 public class SaaSCredentialSubject extends ServiceOfferingCredentialSubject {
     // inherited from merlot:MerlotServiceOfferingSaaS
 
-    @NotNull
     @JsonProperty("merlot:hardwareRequirements")
     private StringTypeValue hardwareRequirements;
 
