@@ -1,6 +1,7 @@
 package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
@@ -8,6 +9,10 @@ import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdes
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -17,15 +22,15 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
     private String modifiedDate;
     private String dataAccessType;
     private String exampleCosts;
-    private String attachments;
-    private TermsAndConditions termsAndConditions;
-    private Runtime runtime;
+    private List<String> attachments;
+    private List<TermsAndConditions> termsAndConditions;
+    private List<Runtime> runtimes;
 
 
     private String hardwareRequirements;
-    private AllowedUserCount allowedUserCount;
+    private List<AllowedUserCount> allowedUserCounts;
 
-    private DataExchangeCount dataExchangeCount;
+    private List<DataExchangeCount> dataExchangeCounts;
 
 
     public ServiceOfferingDetailedModel(SelfDescriptionItem<T> sdItem, ServiceOfferingExtension serviceOfferingExtension) {
@@ -43,35 +48,54 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
         if (credentialSubject.getExampleCosts() != null)
             this.exampleCosts = credentialSubject.getExampleCosts().getValue();
         if (credentialSubject.getAttachments() != null)
-            this.attachments = credentialSubject.getAttachments().getValue();
-        this.termsAndConditions = new TermsAndConditions();
-        this.termsAndConditions.setUrl(credentialSubject.getTermsAndConditions().getContent().getValue());
-        this.termsAndConditions.setHash(credentialSubject.getTermsAndConditions().getHash().getValue());
-        this.runtime = new Runtime();
-        if (credentialSubject.getRuntimes().getRuntimeCount() != null)
-            this.runtime.setRuntimeCount(credentialSubject.getRuntimes().getRuntimeCount().getValue());
-        if (credentialSubject.getRuntimes().getRuntimeMeasurement() != null)
-            this.runtime.setRuntimeMeasurement(credentialSubject.getRuntimes().getRuntimeMeasurement().getValue());
-        this.runtime.setRuntimeUnlimited(credentialSubject.getRuntimes().isRuntimeUnlimited());
-
+            this.attachments = credentialSubject.getAttachments().stream().map(StringTypeValue::getValue).collect(Collectors.toList());
+        this.termsAndConditions = new ArrayList<>();
+        for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions tnc
+                : credentialSubject.getTermsAndConditions()) {
+            TermsAndConditions tncEntry = new TermsAndConditions();
+            tncEntry.setUrl(tnc.getContent().getValue());
+            tncEntry.setHash(tnc.getHash().getValue());
+            this.termsAndConditions.add(tncEntry);
+        }
+        this.runtimes = new ArrayList<>();
+        for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime rt
+                : credentialSubject.getRuntimes()) {
+            Runtime rtEntry = new Runtime();
+            if (rt.getRuntimeCount() != null)
+                rtEntry.setRuntimeCount(rt.getRuntimeCount().getValue());
+            if (rt.getRuntimeMeasurement() != null)
+                rtEntry.setRuntimeMeasurement(rt.getRuntimeMeasurement().getValue());
+            rtEntry.setRuntimeUnlimited(rt.isRuntimeUnlimited());
+            this.runtimes.add(rtEntry);
+        }
 
         if (credentialSubject instanceof SaaSCredentialSubject sub) {
             if (sub.getHardwareRequirements() != null)
                 this.hardwareRequirements = sub.getHardwareRequirements().getValue();
-            this.allowedUserCount = new AllowedUserCount();
+            this.allowedUserCounts = new ArrayList<>();
             if (sub.getUserCountOption() != null) {
-                if (sub.getUserCountOption().getUserCountUpTo() != null)
-                    this.allowedUserCount.setUserCountUpTo(sub.getUserCountOption().getUserCountUpTo().getValue());
-                this.allowedUserCount.setUserCountUnlimited(sub.getUserCountOption().isUserCountUnlimited());
+                for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.AllowedUserCount uc
+                        : sub.getUserCountOption()) {
+                    AllowedUserCount ucEntry = new AllowedUserCount();
+                    if (uc.getUserCountUpTo() != null)
+                        ucEntry.setUserCountUpTo(uc.getUserCountUpTo().getValue());
+                    ucEntry.setUserCountUnlimited(uc.isUserCountUnlimited());
+                    this.allowedUserCounts.add(ucEntry);
+                }
             }
         }
 
         if (credentialSubject instanceof DataDeliveryCredentialSubject sub) {
-            this.dataExchangeCount = new DataExchangeCount();
+            this.dataExchangeCounts = new ArrayList<>();
             if (sub.getExchangeCountOption() != null) {
-                if (sub.getExchangeCountOption().getExchangeCountUpTo() != null)
-                    this.dataExchangeCount.setExchangeCountUpTo(sub.getExchangeCountOption().getExchangeCountUpTo().getValue());
-                this.dataExchangeCount.setExchangeCountUnlimited(sub.getExchangeCountOption().isExchangeCountUnlimited());
+                for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataExchangeCount dec
+                        : sub.getExchangeCountOption()) {
+                    DataExchangeCount decEntry = new DataExchangeCount();
+                    if (dec.getExchangeCountUpTo() != null)
+                        decEntry.setExchangeCountUpTo(dec.getExchangeCountUpTo().getValue());
+                    decEntry.setExchangeCountUnlimited(dec.isExchangeCountUnlimited());
+                    this.dataExchangeCounts.add(decEntry);
+                }
             }
         }
 

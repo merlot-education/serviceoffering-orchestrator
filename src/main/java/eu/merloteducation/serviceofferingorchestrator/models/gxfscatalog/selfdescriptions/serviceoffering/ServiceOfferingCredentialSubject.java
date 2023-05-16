@@ -1,5 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
@@ -34,11 +35,13 @@ public class ServiceOfferingCredentialSubject {
     @JsonProperty("gax-core:offeredBy")
     private NodeKindIRITypeId offeredBy;
 
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-core:aggregationOf")
-    private NodeKindIRITypeId coreAggregationOf;
+    private List<NodeKindIRITypeId> coreAggregationOf;
 
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-core:dependsOn")
-    private NodeKindIRITypeId coreDependsOn;
+    private List<NodeKindIRITypeId> coreDependsOn;
 
     // inherited from gax-trust-framework:ServiceOffering
 
@@ -47,44 +50,53 @@ public class ServiceOfferingCredentialSubject {
     private StringTypeValue name;
 
     @NotNull
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-trust-framework:termsAndConditions")
-    private TermsAndConditions termsAndConditions;
+    private List<TermsAndConditions> termsAndConditions;
 
     @NotNull
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-trust-framework:policy")
-    private StringTypeValue policy;
+    private List<StringTypeValue> policy;
 
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-trust-framework:dataProtectionRegime")
-    private StringTypeValue dataProtectionRegime;
+    private List<StringTypeValue> dataProtectionRegime;
 
     @NotNull
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-trust-framework:dataAccountExport")
-    private DataAccountExport dataAccountExport;
+    private List<DataAccountExport> dataAccountExport;
 
     @JsonProperty("dct:description")
     private StringTypeValue description;
 
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("dcat:keyword")
-    private StringTypeValue keyword;
+    private List<StringTypeValue> keyword;
 
     @JsonProperty("gax-trust-framework:provisionType")
     private StringTypeValue provisionType;
 
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-trust-framework:endpoint")
-    private Endpoint endpoint;
+    private List<Endpoint> endpoint;
 
     @NotNull
     @JsonProperty("gax-trust-framework:providedBy")
     private NodeKindIRITypeId providedBy;
 
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-trust-framework:aggregationOf")
-    private NodeKindIRITypeId trustAggregationOf;
+    private List<NodeKindIRITypeId> trustAggregationOf;
 
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-trust-framework:dependsOn")
-    private StringTypeValue trustDependsOn;
+    private List<StringTypeValue> trustDependsOn;
 
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("gax-trust-framework:ServiceOfferingLocations")
-    private StringTypeValue serviceOfferingLocations;
+    private List<StringTypeValue> serviceOfferingLocations;
 
     // inherited from merlot:MerlotServiceOffering
 
@@ -96,15 +108,17 @@ public class ServiceOfferingCredentialSubject {
     @JsonProperty("merlot:dataAccessType")
     private StringTypeValue dataAccessType;
 
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("merlot:attachments")
-    private StringTypeValue attachments;
+    private List<StringTypeValue> attachments;
 
     @JsonProperty("merlot:exampleCosts")
     private StringTypeValue exampleCosts;
 
     @NotNull
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("merlot:runtimeOption")
-    private Runtime runtimes;
+    private List<Runtime> runtimes;
 
     @NotNull
     @JsonProperty("merlot:merlotTermsAndConditionsAccepted")
