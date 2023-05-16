@@ -11,7 +11,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
+public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSubject> extends ServiceOfferingBasicModel {
 
     private String description;
     private String modifiedDate;
@@ -28,10 +28,10 @@ public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
     private DataExchangeCount dataExchangeCount;
 
 
-    public ServiceOfferingDetailedModel(SelfDescriptionItem sdItem, ServiceOfferingExtension serviceOfferingExtension) {
-        super(sdItem, serviceOfferingExtension);
+    public ServiceOfferingDetailedModel(SelfDescriptionItem<T> sdItem, ServiceOfferingExtension serviceOfferingExtension) {
+        super((SelfDescriptionItem<ServiceOfferingCredentialSubject>)sdItem, serviceOfferingExtension);
 
-        SelfDescriptionMeta meta = sdItem.getMeta();
+        SelfDescriptionMeta<T> meta = sdItem.getMeta();
         this.modifiedDate = meta.getStatusDatetime();
 
         ServiceOfferingCredentialSubject credentialSubject = meta.getContent()
@@ -53,6 +53,7 @@ public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
         if (credentialSubject.getRuntimes().getRuntimeMeasurement() != null)
             this.runtime.setRuntimeMeasurement(credentialSubject.getRuntimes().getRuntimeMeasurement().getValue());
         this.runtime.setRuntimeUnlimited(credentialSubject.getRuntimes().isRuntimeUnlimited());
+
 
         if (credentialSubject instanceof SaaSCredentialSubject sub) {
             if (sub.getHardwareRequirements() != null)

@@ -19,8 +19,8 @@ public class ServiceOfferingBasicModel{
     private String merlotState;
     private String type;
 
-    public ServiceOfferingBasicModel(SelfDescriptionItem sdItem, ServiceOfferingExtension serviceOfferingExtension) {
-        SelfDescriptionMeta meta = sdItem.getMeta();
+    public ServiceOfferingBasicModel(SelfDescriptionItem<ServiceOfferingCredentialSubject> sdItem, ServiceOfferingExtension serviceOfferingExtension) {
+        SelfDescriptionMeta<ServiceOfferingCredentialSubject> meta = sdItem.getMeta();
         this.id = meta.getId();
         this.sdHash = meta.getSdHash();
 

@@ -2,6 +2,7 @@ package eu.merloteducation.serviceofferingorchestrator.service;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
@@ -140,21 +141,38 @@ public class GXFSCatalogRestService {
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
+        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, new TypeReference<>() {});
 
         // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith("ServiceOffering:")) {
-            throw new ResponseStatusException(NOT_FOUND, "No service offering with this id was found.");
+            throw new ResponseStatusException(NOT_FOUND, "No valid service offering with this id was found.");
         }
 
-        SelfDescriptionItem item = selfDescriptionsResponse.getItems().get(0);
+        String sdType = selfDescriptionsResponse.getItems().get(0).getMeta().getContent()
+                .getVerifiableCredential().getCredentialSubject().getType();
 
-        // map the response to a detailed model
-        return new ServiceOfferingDetailedModel(
-                item,
-                serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
-        );
+        if (sdType.equals("merlot:MerlotServiceOfferingSaaS")) {
+            SelfDescriptionsResponse<SaaSCredentialSubject> sdResponse = mapper.readValue(response, new TypeReference<>() {});
+            SelfDescriptionItem<SaaSCredentialSubject> item = sdResponse.getItems().get(0);
+
+            // map the response to a detailed model
+            return new ServiceOfferingDetailedModel<>(
+                    item,
+                    serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+            );
+        } else if (sdType.equals("merlot:MerlotServiceOfferingDataDelivery")) {
+            SelfDescriptionsResponse<DataDeliveryCredentialSubject> sdResponse = mapper.readValue(response, new TypeReference<>() {});
+            SelfDescriptionItem<DataDeliveryCredentialSubject> item = sdResponse.getItems().get(0);
+
+            // map the response to a detailed model
+            return new ServiceOfferingDetailedModel<>(
+                    item,
+                    serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+            );
+        } else {
+            throw new ResponseStatusException(NOT_FOUND, "No valid service offering with this id was found.");
+        }
     }
 
     public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings() throws Exception {
@@ -165,7 +183,7 @@ public class GXFSCatalogRestService {
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
+        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
 
@@ -188,7 +206,7 @@ public class GXFSCatalogRestService {
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
+        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
 
