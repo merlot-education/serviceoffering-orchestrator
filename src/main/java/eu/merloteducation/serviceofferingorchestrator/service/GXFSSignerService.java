@@ -19,9 +19,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -38,12 +36,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class GXFSSignerService {
 
-    // TODO put the paths in the application.yml
-    private static final String PATH_TO_PRIVATE_KEY = "src/main/resources/prk.ss.pem";
-    private static final String PATH_TO_PUBLIC_KEY = "src/main/resources/cert.ss.pem";
 
     public String signVerifiablePresentation(String verifiablePresentationJson) throws Exception {
         Security.addProvider(new BouncyCastleProvider());
+
 
         VerifiablePresentation vp = VerifiablePresentation.fromJson(verifiablePresentationJson);
         VerifiableCredential vc = vp.getVerifiableCredential();
@@ -67,9 +63,9 @@ public class GXFSSignerService {
     }
 
     private static LdProof sign (JsonLDObject credential) throws IOException, GeneralSecurityException, JsonLDException {
-        FileReader fileReader = new FileReader(PATH_TO_PRIVATE_KEY); // TODO load this once when the service is created instead
+        InputStream privateKeyStream = GXFSSignerService.class.getClassLoader().getResourceAsStream("prk.ss.pem");
 
-        PEMParser pemParser = new PEMParser(fileReader);
+        PEMParser pemParser = new PEMParser(new InputStreamReader(privateKeyStream));
         JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
         PrivateKeyInfo privateKeyInfo = PrivateKeyInfo.getInstance(pemParser.readObject());
 
@@ -91,7 +87,8 @@ public class GXFSSignerService {
 
     public static void check (JsonLDObject credential, LdProof proof) throws IOException, GeneralSecurityException, JsonLDException {
         //---extract Expiration Date--- https://stackoverflow.com/a/11621488
-        String certString = Files.readString(Path.of(PATH_TO_PUBLIC_KEY));  // TODO load this once when the service is created instead
+        InputStream publicKeyStream = GXFSSignerService.class.getClassLoader().getResourceAsStream("cert.ss.pem");
+        String certString = new String(publicKeyStream.readAllBytes(), StandardCharsets.UTF_8);
         ByteArrayInputStream certStream  =  new ByteArrayInputStream(certString.getBytes(StandardCharsets.UTF_8));
         CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
         List<X509Certificate> certs = (List<X509Certificate>) certFactory.generateCertificates(certStream);
