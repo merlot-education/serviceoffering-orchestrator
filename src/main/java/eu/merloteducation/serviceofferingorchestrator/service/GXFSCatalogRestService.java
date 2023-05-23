@@ -228,41 +228,53 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot process Self-Description as MERLOT terms and conditions were not accepted.");
         }
 
-        // if id is ServiceOffering:TBR, the user requested the creation of a new service offering, we will replace this later
-        if (!credentialSubject.getId().equals("ServiceOffering:TBR") && serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
-            // offering exists already
-            ServiceOfferingExtension extension = serviceOfferingExtensionRepository
-                    .findById(credentialSubject.getId()).orElse(null);
-            if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
-                // exists but not in draft
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
-            if (extension != null &&
-                    (!extension.getIssuer().equals(credentialSubject.getOfferedBy().getId()))) {
-                // change of issuer requested, not allowed
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
-            }
-        } else {
+        if (credentialSubject.getId().equals("ServiceOffering:TBR")) {
             // override specified time to correspond to the current time and generate an ID
             credentialSubject.setCreationDate(new StringTypeValue(
                     ZonedDateTime.now( ZoneOffset.UTC ).format( DateTimeFormatter.ISO_INSTANT )));
             credentialSubject.setId("ServiceOffering:" + UUID.randomUUID());
+        } else {
+            // handle possible failure points
+            if (!serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
+            }
+
+            ServiceOfferingExtension extension = serviceOfferingExtensionRepository
+                    .findById(credentialSubject.getId()).orElse(null);
+
+            if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
+            if (extension != null &&
+                    (!extension.getIssuer().equals(credentialSubject.getOfferedBy().getId())))
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
+
+            ServiceOfferingDetailedModel model;
+            try {
+                model = getServiceOfferingById(credentialSubject.getId());
+            } catch(Exception e) {
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot load service offering data from the catalog");
+            }
+
+            if (model != null && !model.getCreationDate().equals(credentialSubject.getCreationDate().getValue())) {
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
+            }
         }
 
+        // prepare a json to send to the gxfs catalog, sign it and read the response
         ObjectMapper mapper = new ObjectMapper();
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         String credentialSubjectJson = mapper.writeValueAsString(credentialSubject);
-
 
         String signedVp = presentAndSign(credentialSubjectJson, credentialSubject.getOfferedBy().getId());
 
         String response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
                 MediaType.APPLICATION_JSON, HttpMethod.POST);
 
-        // create a mapper to map the response to the SelfDescriptionsCreateResponse class
         mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
-        addServiceOfferingExtension(selfDescriptionsResponse); // TODO load from db if exists, also reject if creation time changes
+        // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self description
+        addServiceOfferingExtension(selfDescriptionsResponse);
 
         return selfDescriptionsResponse;
     }
@@ -320,11 +332,13 @@ public class GXFSCatalogRestService {
      */
     @Transactional
     private void addServiceOfferingExtension(SelfDescriptionsCreateResponse selfDescriptionsResponse) {
-        ServiceOfferingExtension extension = new ServiceOfferingExtension(
-                selfDescriptionsResponse.getId(),
-                selfDescriptionsResponse.getSdHash(),
-                selfDescriptionsResponse.getIssuer()
-        );
+        ServiceOfferingExtension extension = serviceOfferingExtensionRepository
+                    .findById(selfDescriptionsResponse.getId()).orElse(new ServiceOfferingExtension());
+
+        extension.setId(selfDescriptionsResponse.getId());
+        extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
+        extension.setIssuer(selfDescriptionsResponse.getIssuer());
+
         serviceOfferingExtensionRepository.save(extension);
     }
 
