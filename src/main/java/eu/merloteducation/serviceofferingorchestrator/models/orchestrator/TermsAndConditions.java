@@ -6,6 +6,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class TermsAndConditions {
-    private String url;
+    private String content;
     private String hash;
 }

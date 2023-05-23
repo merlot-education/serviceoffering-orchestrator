@@ -54,7 +54,7 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
         for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions tnc
                 : credentialSubject.getTermsAndConditions()) {
             TermsAndConditions tncEntry = new TermsAndConditions();
-            tncEntry.setUrl(tnc.getContent().getValue());
+            tncEntry.setContent(tnc.getContent().getValue());
             tncEntry.setHash(tnc.getHash().getValue());
             this.termsAndConditions.add(tncEntry);
         }
