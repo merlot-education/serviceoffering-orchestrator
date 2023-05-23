@@ -201,7 +201,7 @@ public class GXFSCatalogRestService {
 
     public List<ServiceOfferingBasicModel> getOrganizationServiceOfferings(String orgaId) throws Exception {
         String response = restCallAuthenticated(
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=REVOKED,ACTIVE,DEPRECATED", null,
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE", null, // TODO allow revoked if it is also deleted in our database
                 null, HttpMethod.GET);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
