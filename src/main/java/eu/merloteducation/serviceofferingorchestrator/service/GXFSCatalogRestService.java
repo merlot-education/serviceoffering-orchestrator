@@ -224,14 +224,23 @@ public class GXFSCatalogRestService {
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
         if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
+            // Merlot TnC not accepted
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot process Self-Description as MERLOT terms and conditions were not accepted.");
         }
 
+        // if id is ServiceOffering:TBR, the user requested the creation of a new service offering, we will replace this later
         if (!credentialSubject.getId().equals("ServiceOffering:TBR") && serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
+            // offering exists already
             ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);
             if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
+                // exists but not in draft
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
+            if (extension != null &&
+                    (!extension.getIssuer().equals(credentialSubject.getOfferedBy().getId()))) {
+                // change of issuer requested, not allowed
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
+            }
         } else {
             // override specified time to correspond to the current time and generate an ID
             credentialSubject.setCreationDate(new StringTypeValue(
@@ -253,7 +262,7 @@ public class GXFSCatalogRestService {
         mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
-        addServiceOfferingExtension(selfDescriptionsResponse); // TODO load from db if exists
+        addServiceOfferingExtension(selfDescriptionsResponse); // TODO load from db if exists, also reject if creation time changes
 
         return selfDescriptionsResponse;
     }
