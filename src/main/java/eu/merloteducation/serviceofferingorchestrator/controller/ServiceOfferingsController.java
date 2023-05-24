@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @CrossOrigin
-@RequestMapping("/serviceofferings")
+@RequestMapping("/serviceofferings") // TODO map to root instead
 public class ServiceOfferingsController {
 
     @Autowired
@@ -38,6 +38,7 @@ public class ServiceOfferingsController {
     private GXFSWizardRestService gxfsWizardRestService;
 
 
+    // TODO refactor to library
     private Set<String> getMerlotRoles(Principal principal) {
         // get roles from the authenticated user
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -59,7 +60,7 @@ public class ServiceOfferingsController {
     }
 
 
-    @GetMapping("")
+    @GetMapping("") // TODO paging, sorting
     public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings(Principal principal,
                                                                         HttpServletResponse response) throws Exception {
         return gxfsCatalogRestService.getAllPublicServiceOfferings();
@@ -111,6 +112,7 @@ public class ServiceOfferingsController {
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
+    // TODO refactor state as parameter
     @GetMapping("/serviceoffering/inDraft/{soId}")
     public void inDraftServiceOffering(Principal principal,
                                                                @PathVariable(value = "soId") String serviceofferingId,
