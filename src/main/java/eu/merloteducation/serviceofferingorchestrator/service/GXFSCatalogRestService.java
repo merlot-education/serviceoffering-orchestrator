@@ -258,10 +258,8 @@ public class GXFSCatalogRestService {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot load service offering data from the catalog");
             }
 
-            if (model != null && !model.getCreationDate().equals(credentialSubject.getCreationDate().getValue())) {
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
-            }
-
+            // override creation date
+            credentialSubject.setCreationDate(new StringTypeValue(model.getCreationDate()));
         }
 
         // prepare a json to send to the gxfs catalog, sign it and read the response
