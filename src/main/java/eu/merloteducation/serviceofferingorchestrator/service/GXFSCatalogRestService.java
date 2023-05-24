@@ -222,7 +222,7 @@ public class GXFSCatalogRestService {
     }
 
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
-
+        String previousSdHash = null;
         if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
             // Merlot TnC not accepted
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot process Self-Description as MERLOT terms and conditions were not accepted.");
@@ -242,6 +242,9 @@ public class GXFSCatalogRestService {
             ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);
 
+            if (extension != null)
+                previousSdHash = extension.getCurrentSdHash();
+
             if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
             if (extension != null &&
@@ -258,6 +261,7 @@ public class GXFSCatalogRestService {
             if (model != null && !model.getCreationDate().equals(credentialSubject.getCreationDate().getValue())) {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
             }
+
         }
 
         // prepare a json to send to the gxfs catalog, sign it and read the response
@@ -269,6 +273,12 @@ public class GXFSCatalogRestService {
 
         String response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
                 MediaType.APPLICATION_JSON, HttpMethod.POST);
+
+        // delete previous entry if it exists
+        if (previousSdHash != null) {
+            restCallAuthenticated(gxfscatalogSelfdescriptionsUri + "/" + previousSdHash, null,
+                    null, HttpMethod.DELETE);
+        }
 
         mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
@@ -293,9 +303,10 @@ public class GXFSCatalogRestService {
                         method, request, String.class).getBody();
 
         // as the catalog returns nested but escaped jsons, we need to manually unescape to properly use it
-        response = StringEscapeUtils.unescapeJson(response)
-                .replace("\"{", "{")
-                .replace("}\"", "}");
+
+        response = StringEscapeUtils.unescapeJson(response);
+        if (response != null)
+            response = response.replace("\"{", "{").replace("}\"", "}");
 
         // log out with the gxfscatalog user
         this.logoutGXFScatalog((String) gxfscatalogLoginResponse.get("refresh_token"));
