@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @CrossOrigin
-@RequestMapping("/serviceofferings") // TODO map to root instead
+@RequestMapping("/")
 public class ServiceOfferingsController {
 
     @Autowired
@@ -36,6 +36,10 @@ public class ServiceOfferingsController {
 
     @Autowired
     private GXFSWizardRestService gxfsWizardRestService;
+
+    @GetMapping("health")
+    public void getHealth() {
+    }
 
 
     // TODO refactor to library
@@ -112,33 +116,12 @@ public class ServiceOfferingsController {
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
-    // TODO refactor state as parameter
-    @GetMapping("/serviceoffering/inDraft/{soId}")
-    public void inDraftServiceOffering(Principal principal,
+    @PatchMapping("/serviceoffering/status/{soId}/{status}")
+    public void patchStatusServiceOffering(Principal principal,
                                                                @PathVariable(value = "soId") String serviceofferingId,
+                                                               @PathVariable(value = "status") ServiceOfferingState status,
                                                                HttpServletResponse response) throws Exception {
-        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, ServiceOfferingState.IN_DRAFT, getRepresentedOrgaIds(principal));
-    }
-
-    @GetMapping("/serviceoffering/release/{soId}")
-    public void releaseServiceOffering(Principal principal,
-                                                               @PathVariable(value = "soId") String serviceofferingId,
-                                                               HttpServletResponse response) throws Exception {
-        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, ServiceOfferingState.RELEASED, getRepresentedOrgaIds(principal));
-    }
-
-    @GetMapping("/serviceoffering/revoke/{soId}")
-    public void revokeServiceOffering(Principal principal,
-                                                              @PathVariable(value = "soId") String serviceofferingId,
-                                                              HttpServletResponse response) throws Exception {
-        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, ServiceOfferingState.REVOKED, getRepresentedOrgaIds(principal));
-    }
-
-    @GetMapping("/serviceoffering/delete/{soId}")
-    public void deleteServiceOffering(Principal principal,
-                                                              @PathVariable(value = "soId") String serviceofferingId,
-                                                              HttpServletResponse response) throws Exception {
-        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, ServiceOfferingState.DELETED, getRepresentedOrgaIds(principal));
+        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, status, getRepresentedOrgaIds(principal));
     }
 
     @GetMapping("/shapes/getAvailableShapesCategorized")
