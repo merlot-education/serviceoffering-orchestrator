@@ -16,16 +16,21 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @RestController
 @CrossOrigin
@@ -65,31 +70,26 @@ public class ServiceOfferingsController {
     }
 
 
-    @GetMapping(path = "") // TODO paging
-    public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings(
+    @GetMapping(path = "", params = { "page", "size" })
+    public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(@RequestParam("page") int page,
+                                                                        @RequestParam("size") int size,
                                                                         Principal principal,
                                                                         HttpServletResponse response) throws Exception {
 
-        /*Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService.getAllPublicServiceOfferings(page, size);
+        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService.getAllPublicServiceOfferings(PageRequest.of(page, size));
         if (page > resultPage.getTotalPages()) {
-            throw new MyResourceNotFoundException();
+            throw new ResponseStatusException(NOT_FOUND, "Requested page exceeds available entries.");
         }
 
-        return resultPage.getContent();*/
-        return gxfsCatalogRestService.getAllPublicServiceOfferings();
+        return resultPage;
     }
 
-    @GetMapping("/serviceoffering/{soId}")
-    public ServiceOfferingDetailedModel getServiceOfferingById(Principal principal,
-                                                                  @PathVariable(value = "soId") String serviceofferingId,
-                                                                  HttpServletResponse response) throws Exception {
-        return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
-    }
-
-    @GetMapping("/organization/{orgaId}")
-    public List<ServiceOfferingBasicModel> getOrganizationServiceOfferings(Principal principal,
-                                                               @PathVariable(value = "orgaId") String orgaId,
-                                                               HttpServletResponse response) throws Exception {
+    @GetMapping(path = "/organization/{orgaId}", params = { "page", "size" })
+    public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(@RequestParam("page") int page,
+                                                                           @RequestParam("size") int size,
+                                                                            Principal principal,
+                                                                           @PathVariable(value = "orgaId") String orgaId,
+                                                                           HttpServletResponse response) throws Exception {
 
         // if the requested organization id is not in the roles of this user,
         // the user is not allowed to request this endpoint
@@ -98,7 +98,19 @@ public class ServiceOfferingsController {
             return null;
         }
 
-        return gxfsCatalogRestService.getOrganizationServiceOfferings(orgaId);
+        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService.getOrganizationServiceOfferings(orgaId, PageRequest.of(page, size));
+        if (page > resultPage.getTotalPages()) {
+            throw new ResponseStatusException(NOT_FOUND, "Requested page exceeds available entries.");
+        }
+
+        return resultPage;
+    }
+
+    @GetMapping("/serviceoffering/{soId}")
+    public ServiceOfferingDetailedModel getServiceOfferingById(Principal principal,
+                                                                  @PathVariable(value = "soId") String serviceofferingId,
+                                                                  HttpServletResponse response) throws Exception {
+        return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
     }
 
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")

@@ -29,6 +29,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.json.JsonParser;
 import org.springframework.boot.json.JsonParserFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -188,10 +192,10 @@ public class GXFSCatalogRestService {
         }
     }
 
-    public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings() throws Exception {
+    public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
 
-        List<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
-                .findAllByState(ServiceOfferingState.RELEASED);
+        Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
+                .findAllByState(ServiceOfferingState.RELEASED, pageable);
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
          .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
         String extensionHashes = Joiner.on(",")
@@ -207,30 +211,30 @@ public class GXFSCatalogRestService {
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
-        if (selfDescriptionsResponse.getTotalCount() != extensions.size()) {
+        if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             System.out.println("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
-
-        return selfDescriptionsResponse.getItems().stream()
+        List<ServiceOfferingBasicModel> models = selfDescriptionsResponse.getItems().stream()
                 .map(item -> new ServiceOfferingBasicModel(item, extensionMap.get(item.getMeta().getSdHash())))
                 .sorted(Comparator.comparing(offer ->
                         (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
                         Comparator.reverseOrder()))
                 .toList();
+
+        return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
-    public List<ServiceOfferingBasicModel> getOrganizationServiceOfferings(String orgaId) throws Exception {
+    public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(String orgaId, Pageable pageable) throws Exception {
 
-        List<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
-                .findAllByIssuer("Participant:" + orgaId);
+        Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
+                .findAllByIssuer("Participant:" + orgaId, pageable);
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
         String extensionHashes = Joiner.on(",")
                 .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                         .collect(Collectors.toSet()));
-
 
         String response = restCallAuthenticated(
                 gxfscatalogSelfdescriptionsUri + "?withContent=true&hashes=" + extensionHashes, null,
@@ -240,9 +244,12 @@ public class GXFSCatalogRestService {
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
-        // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
+        if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
+            System.out.println("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
+        }
 
-        return selfDescriptionsResponse.getItems().stream()
+        // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
+        List<ServiceOfferingBasicModel> models = selfDescriptionsResponse.getItems().stream()
                 .map(item -> new ServiceOfferingBasicModel(
                         item,
                         extensionMap.get(item.getMeta().getSdHash())
@@ -251,6 +258,8 @@ public class GXFSCatalogRestService {
                                 (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
                         Comparator.reverseOrder()))
                 .toList();
+
+        return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
