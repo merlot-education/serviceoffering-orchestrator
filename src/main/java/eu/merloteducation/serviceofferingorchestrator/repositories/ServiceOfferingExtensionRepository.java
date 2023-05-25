@@ -13,5 +13,6 @@ public interface ServiceOfferingExtensionRepository extends JpaRepository<Servic
     Page<ServiceOfferingExtension> findAllByState(ServiceOfferingState state, Pageable pageable);
 
     Page<ServiceOfferingExtension> findAllByIssuer(String issuer, Pageable pageable);
+    Page<ServiceOfferingExtension> findAllByIssuerAndState(String issuer, ServiceOfferingState state, Pageable pageable);
 
 }

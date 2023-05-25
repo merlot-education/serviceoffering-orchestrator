@@ -70,7 +70,7 @@ public class ServiceOfferingsController {
     }
 
 
-    @GetMapping(path = "", params = { "page", "size" })
+    @GetMapping("")
     public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(@RequestParam("page") int page,
                                                                         @RequestParam("size") int size,
                                                                         Principal principal,
@@ -84,9 +84,10 @@ public class ServiceOfferingsController {
         return resultPage;
     }
 
-    @GetMapping(path = "/organization/{orgaId}", params = { "page", "size" })
+    @GetMapping("/organization/{orgaId}")
     public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(@RequestParam("page") int page,
                                                                            @RequestParam("size") int size,
+                                                                           @RequestParam(name = "state", required = false) ServiceOfferingState state,
                                                                             Principal principal,
                                                                            @PathVariable(value = "orgaId") String orgaId,
                                                                            HttpServletResponse response) throws Exception {
@@ -98,7 +99,7 @@ public class ServiceOfferingsController {
             return null;
         }
 
-        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService.getOrganizationServiceOfferings(orgaId, PageRequest.of(page, size));
+        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService.getOrganizationServiceOfferings(orgaId, state, PageRequest.of(page, size));
         if (page > resultPage.getTotalPages()) {
             throw new ResponseStatusException(NOT_FOUND, "Requested page exceeds available entries.");
         }

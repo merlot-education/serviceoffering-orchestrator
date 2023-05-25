@@ -226,10 +226,15 @@ public class GXFSCatalogRestService {
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
-    public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(String orgaId, Pageable pageable) throws Exception {
-
-        Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
-                .findAllByIssuer("Participant:" + orgaId, pageable);
+    public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable) throws Exception {
+        Page<ServiceOfferingExtension> extensions;
+        if (state != null) {
+            extensions = serviceOfferingExtensionRepository
+                    .findAllByIssuerAndState("Participant:" + orgaId, state, pageable);
+        } else {
+            extensions = serviceOfferingExtensionRepository
+                    .findAllByIssuer("Participant:" + orgaId, pageable);
+        }
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
         String extensionHashes = Joiner.on(",")
