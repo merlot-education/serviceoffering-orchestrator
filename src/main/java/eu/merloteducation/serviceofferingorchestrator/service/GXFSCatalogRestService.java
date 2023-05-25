@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.util.DateTime;
+import com.google.common.base.Joiner;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
@@ -45,6 +46,8 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -138,6 +141,13 @@ public class GXFSCatalogRestService {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
+
+        ServiceOfferingExtension extension = serviceOfferingExtensionRepository.findById(id).orElse(null);
+
+        if (extension == null) {
+            throw new ResponseStatusException(NOT_FOUND, "No valid service offering with this id was found.");
+        }
+
         String response = restCallAuthenticated(
                 gxfscatalogSelfdescriptionsUri + "?withContent=true&ids=" + id, null,
                 null, HttpMethod.GET);
@@ -162,7 +172,7 @@ public class GXFSCatalogRestService {
             // map the response to a detailed model
             return new ServiceOfferingDetailedModel<>(
                     item,
-                    serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+                    extension
             );
         } else if (sdType.equals("merlot:MerlotServiceOfferingDataDelivery")) {
             SelfDescriptionsResponse<DataDeliveryCredentialSubject> sdResponse = mapper.readValue(response, new TypeReference<>() {});
@@ -171,7 +181,7 @@ public class GXFSCatalogRestService {
             // map the response to a detailed model
             return new ServiceOfferingDetailedModel<>(
                     item,
-                    serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+                    extension
             );
         } else {
             throw new ResponseStatusException(NOT_FOUND, "No valid service offering with this id was found.");
@@ -180,25 +190,31 @@ public class GXFSCatalogRestService {
 
     public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings() throws Exception {
 
+        List<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
+                .findAllByState(ServiceOfferingState.RELEASED);
+        Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
+         .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
+        String extensionHashes = Joiner.on(",")
+                .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
+                        .collect(Collectors.toSet()));
+
         String response = restCallAuthenticated(
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE", null,
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE&hashes=" + extensionHashes, null,
                 null, HttpMethod.GET);
+
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
+        if (selfDescriptionsResponse.getTotalCount() != extensions.size()) {
+            System.out.println("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
+        }
+
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
 
         return selfDescriptionsResponse.getItems().stream()
-                .filter(item -> item.getMeta().getId().startsWith("ServiceOffering:"))
-                .filter(item -> serviceOfferingExtensionRepository.existsById(item.getMeta().getId()))
-                .filter(item -> serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
-                        .getState() == ServiceOfferingState.RELEASED)
-                .map(item -> new ServiceOfferingBasicModel(
-                        item,
-                        serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
-                ))
+                .map(item -> new ServiceOfferingBasicModel(item, extensionMap.get(item.getMeta().getSdHash())))
                 .sorted(Comparator.comparing(offer ->
                         (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
                         Comparator.reverseOrder()))
@@ -206,8 +222,18 @@ public class GXFSCatalogRestService {
     }
 
     public List<ServiceOfferingBasicModel> getOrganizationServiceOfferings(String orgaId) throws Exception {
+
+        List<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
+                .findAllByIssuer("Participant:" + orgaId);
+        Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
+                .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
+        String extensionHashes = Joiner.on(",")
+                .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
+                        .collect(Collectors.toSet()));
+
+
         String response = restCallAuthenticated(
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE", null, // TODO allow revoked if it is also deleted in our database
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&hashes=" + extensionHashes, null,
                 null, HttpMethod.GET);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
@@ -217,12 +243,9 @@ public class GXFSCatalogRestService {
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
 
         return selfDescriptionsResponse.getItems().stream()
-                .filter(item -> item.getMeta().getId().startsWith("ServiceOffering:")
-                        && item.getMeta().getIssuer().replace("Participant:", "").equals(orgaId))
-                .filter(item -> serviceOfferingExtensionRepository.existsById(item.getMeta().getId()))
                 .map(item -> new ServiceOfferingBasicModel(
                         item,
-                        serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
+                        extensionMap.get(item.getMeta().getSdHash())
                 ))
                 .sorted(Comparator.comparing(offer ->
                                 (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),

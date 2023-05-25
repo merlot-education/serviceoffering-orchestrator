@@ -15,6 +15,7 @@ import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestServ
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -64,9 +65,17 @@ public class ServiceOfferingsController {
     }
 
 
-    @GetMapping("") // TODO paging, sorting
-    public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings(Principal principal,
+    @GetMapping(path = "") // TODO paging
+    public List<ServiceOfferingBasicModel> getAllPublicServiceOfferings(
+                                                                        Principal principal,
                                                                         HttpServletResponse response) throws Exception {
+
+        /*Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService.getAllPublicServiceOfferings(page, size);
+        if (page > resultPage.getTotalPages()) {
+            throw new MyResourceNotFoundException();
+        }
+
+        return resultPage.getContent();*/
         return gxfsCatalogRestService.getAllPublicServiceOfferings();
     }
 
