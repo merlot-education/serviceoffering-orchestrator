@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.util.DateTime;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
@@ -38,6 +39,8 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -196,6 +199,9 @@ public class GXFSCatalogRestService {
                         item,
                         serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
                 ))
+                .sorted(Comparator.comparing(offer ->
+                        (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
+                        Comparator.reverseOrder()))
                 .toList();
     }
 
@@ -218,6 +224,9 @@ public class GXFSCatalogRestService {
                         item,
                         serviceOfferingExtensionRepository.findById(item.getMeta().getId()).orElse(null)
                 ))
+                .sorted(Comparator.comparing(offer ->
+                                (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
+                        Comparator.reverseOrder()))
                 .toList();
     }
 
