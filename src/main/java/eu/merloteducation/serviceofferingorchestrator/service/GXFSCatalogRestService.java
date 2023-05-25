@@ -1,16 +1,13 @@
 package eu.merloteducation.serviceofferingorchestrator.service;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.api.client.util.DateTime;
 import com.google.common.base.Joiner;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
@@ -22,16 +19,16 @@ import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.Servic
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import jakarta.transaction.Transactional;
 import org.apache.commons.text.StringEscapeUtils;
-import org.hibernate.ObjectNotFoundException;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.json.JsonParser;
 import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -40,11 +37,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -90,6 +85,12 @@ public class GXFSCatalogRestService {
     @Value("${gxfscatalog.selfdescriptions-uri}")
     private String gxfscatalogSelfdescriptionsUri;
 
+    private final Logger logger = LoggerFactory.getLogger(GXFSCatalogRestService.class);
+
+    private static final String PARTICIPANT_START = "Participant:";
+    private static final String OFFERING_START = "ServiceOffering:";
+    private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
+
     private Map<String, Object> loginGXFScatalog() {
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
         map.add("username", keycloakGXFScatalogUser);
@@ -117,12 +118,12 @@ public class GXFSCatalogRestService {
 
     public void transitionServiceOfferingExtension(String id, ServiceOfferingState targetState, Set<String> representedOrgaIds) {
         if (!serviceOfferingExtensionRepository.existsById(id)) {
-            throw new ResponseStatusException(NOT_FOUND, "No service offering with this id was found.");
+            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository.findById(id).orElse(null);
         if (extension != null) {
-            if (!representedOrgaIds.contains(extension.getIssuer().replace("Participant:", ""))) {
+            if (!representedOrgaIds.contains(extension.getIssuer().replace(PARTICIPANT_START, ""))) {
                 throw new ResponseStatusException(FORBIDDEN, "Missing permissions to change status of this offering.");
             }
 
@@ -149,7 +150,7 @@ public class GXFSCatalogRestService {
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository.findById(id).orElse(null);
 
         if (extension == null) {
-            throw new ResponseStatusException(NOT_FOUND, "No valid service offering with this id was found.");
+            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
 
         String response = restCallAuthenticated(
@@ -162,8 +163,8 @@ public class GXFSCatalogRestService {
 
         // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
-                || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith("ServiceOffering:")) {
-            throw new ResponseStatusException(NOT_FOUND, "No valid service offering with this id was found.");
+                || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
+            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
 
         String sdType = selfDescriptionsResponse.getItems().get(0).getMeta().getContent()
@@ -188,7 +189,7 @@ public class GXFSCatalogRestService {
                     extension
             );
         } else {
-            throw new ResponseStatusException(NOT_FOUND, "No valid service offering with this id was found.");
+            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
     }
 
@@ -212,7 +213,7 @@ public class GXFSCatalogRestService {
         SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
-            System.out.println("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
+            logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
@@ -230,10 +231,10 @@ public class GXFSCatalogRestService {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository
-                    .findAllByIssuerAndState("Participant:" + orgaId, state, pageable);
+                    .findAllByIssuerAndState(PARTICIPANT_START + orgaId, state, pageable);
         } else {
             extensions = serviceOfferingExtensionRepository
-                    .findAllByIssuer("Participant:" + orgaId, pageable);
+                    .findAllByIssuer(PARTICIPANT_START + orgaId, pageable);
         }
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
@@ -250,7 +251,7 @@ public class GXFSCatalogRestService {
         SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
-            System.out.println("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
+            logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
@@ -274,11 +275,11 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot process Self-Description as MERLOT terms and conditions were not accepted.");
         }
 
-        if (credentialSubject.getId().equals("ServiceOffering:TBR")) {
+        if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
             // override specified time to correspond to the current time and generate an ID
             credentialSubject.setCreationDate(new StringTypeValue(
                     ZonedDateTime.now( ZoneOffset.UTC ).format( DateTimeFormatter.ISO_INSTANT )));
-            credentialSubject.setId("ServiceOffering:" + UUID.randomUUID());
+            credentialSubject.setId(OFFERING_START + UUID.randomUUID());
         } else {
             // handle possible failure points
             if (!serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
