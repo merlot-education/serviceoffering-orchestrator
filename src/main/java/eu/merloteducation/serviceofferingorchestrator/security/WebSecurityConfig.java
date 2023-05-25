@@ -18,7 +18,8 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests()
-                .requestMatchers("/serviceofferings").permitAll()
+                .requestMatchers("/").permitAll()
+                .requestMatchers("/health").permitAll()
                 .anyRequest().authenticated();
         http.oauth2ResourceServer()
                 .jwt()
