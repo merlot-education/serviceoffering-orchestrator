@@ -45,6 +45,7 @@ public class ServiceOfferingsController {
 
     @GetMapping("health")
     public void getHealth() {
+        // always return code 200
     }
 
 
