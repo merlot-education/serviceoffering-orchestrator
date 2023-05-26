@@ -41,6 +41,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -102,8 +103,7 @@ public class GXFSCatalogRestService {
         String response = restTemplate.postForObject(keycloakTokenUri, request, String.class);
 
         JsonParser parser = JsonParserFactory.getJsonParser();
-        Map<String, Object> loginResult = parser.parseMap(response);
-        return loginResult;
+        return parser.parseMap(response);
     }
 
     private void logoutGXFScatalog(String refreshToken) throws Exception {
@@ -196,7 +196,7 @@ public class GXFSCatalogRestService {
     public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
 
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
-                .findAllByState(ServiceOfferingState.RELEASED, pageable);
+                .findAllByState(ServiceOfferingState.RELEASED, pageable);  // TODO extend pageable for sorting
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
          .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
         String extensionHashes = Joiner.on(",")
@@ -269,16 +269,17 @@ public class GXFSCatalogRestService {
     }
 
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
-        String previousSdHash = null;
         if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
             // Merlot TnC not accepted
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot process Self-Description as MERLOT terms and conditions were not accepted.");
         }
 
+        String previousSdHash = null;
+        OffsetDateTime creationDate = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
             // override specified time to correspond to the current time and generate an ID
-            credentialSubject.setCreationDate(new StringTypeValue(
-                    ZonedDateTime.now( ZoneOffset.UTC ).format( DateTimeFormatter.ISO_INSTANT )));
+            creationDate = OffsetDateTime.now();
+            credentialSubject.setCreationDate(new StringTypeValue(creationDate.format( DateTimeFormatter.ISO_INSTANT )));
             credentialSubject.setId(OFFERING_START + UUID.randomUUID());
         } else {
             // handle possible failure points
@@ -289,8 +290,10 @@ public class GXFSCatalogRestService {
             ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);
 
-            if (extension != null)
+            if (extension != null) {
                 previousSdHash = extension.getCurrentSdHash();
+                creationDate = extension.getCreationDate(); // TODO consider completely removing this field from the catalog and storing it only in our database
+            }
 
             if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
@@ -329,7 +332,7 @@ public class GXFSCatalogRestService {
         SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self description
-        addServiceOfferingExtension(selfDescriptionsResponse);
+        addServiceOfferingExtension(selfDescriptionsResponse, creationDate);
 
         return selfDescriptionsResponse;
     }
@@ -387,13 +390,14 @@ public class GXFSCatalogRestService {
      * @param selfDescriptionsResponse Object encapsulating the response of adding the service offering to the catalog
      */
     @Transactional
-    private void addServiceOfferingExtension(SelfDescriptionsCreateResponse selfDescriptionsResponse) {
+    private void addServiceOfferingExtension(SelfDescriptionsCreateResponse selfDescriptionsResponse, OffsetDateTime creationDate) {
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                     .findById(selfDescriptionsResponse.getId()).orElse(new ServiceOfferingExtension());
 
         extension.setId(selfDescriptionsResponse.getId());
         extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
         extension.setIssuer(selfDescriptionsResponse.getIssuer());
+        extension.setCreationDate(creationDate);
 
         serviceOfferingExtensionRepository.save(extension);
     }
