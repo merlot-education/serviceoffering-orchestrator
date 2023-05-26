@@ -196,7 +196,7 @@ public class GXFSCatalogRestService {
     public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
 
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
-                .findAllByState(ServiceOfferingState.RELEASED, pageable);  // TODO extend pageable for sorting
+                .findAllByState(ServiceOfferingState.RELEASED, pageable);
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
          .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
         String extensionHashes = Joiner.on(",")
@@ -221,7 +221,7 @@ public class GXFSCatalogRestService {
                 .map(item -> new ServiceOfferingBasicModel(item, extensionMap.get(item.getMeta().getSdHash())))
                 .sorted(Comparator.comparing(offer ->
                         (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
-                        Comparator.reverseOrder()))
+                        Comparator.reverseOrder()))  // TODO check if the catalog respects our sorted hashs and maybe remove this
                 .toList();
 
         return new PageImpl<>(models, pageable, extensions.getTotalElements());

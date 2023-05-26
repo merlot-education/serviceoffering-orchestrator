@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -72,7 +73,9 @@ public class ServiceOfferingsController {
                                                                         Principal principal,
                                                                         HttpServletResponse response) throws Exception {
 
-        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService.getAllPublicServiceOfferings(PageRequest.of(page, size));
+        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService
+                .getAllPublicServiceOfferings(
+                        PageRequest.of(page, size, Sort.by("creationDate").descending()));
         if (page > resultPage.getTotalPages()) {
             throw new ResponseStatusException(NOT_FOUND, "Requested page exceeds available entries.");
         }
@@ -95,7 +98,9 @@ public class ServiceOfferingsController {
             return null;
         }
 
-        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService.getOrganizationServiceOfferings(orgaId, state, PageRequest.of(page, size));
+        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService
+                .getOrganizationServiceOfferings(
+                        orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()));
         if (page > resultPage.getTotalPages()) {
             throw new ResponseStatusException(NOT_FOUND, "Requested page exceeds available entries.");
         }
