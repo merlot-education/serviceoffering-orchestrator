@@ -261,7 +261,7 @@ public class GXFSCatalogRestService {
                         extensionMap.get(item.getMeta().getSdHash())
                 ))
                 .sorted(Comparator.comparing(offer ->
-                                (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
+                                (LocalDateTime.parse(offer.getCreationDate() != null ? offer.getCreationDate() : LocalDateTime.now().toString(), DateTimeFormatter.ISO_DATE_TIME)),
                         Comparator.reverseOrder()))
                 .toList();
 

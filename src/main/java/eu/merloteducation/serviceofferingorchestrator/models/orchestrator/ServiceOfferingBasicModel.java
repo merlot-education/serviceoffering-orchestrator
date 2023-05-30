@@ -34,7 +34,9 @@ public class ServiceOfferingBasicModel{
 
         if (serviceOfferingExtension != null) {
             this.merlotState = serviceOfferingExtension.getState().name();
-            this.creationDate = serviceOfferingExtension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT);
+            if (serviceOfferingExtension.getCreationDate() != null) {
+                this.creationDate = serviceOfferingExtension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT);
+            }
         }
 
 
