@@ -46,7 +46,7 @@ import static org.mockito.Mockito.lenient;
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
 @EnableConfigurationProperties
-public class GXFSCatalogRestServiceTest {
+class GXFSCatalogRestServiceTest {
 
     @Mock
     private RestTemplate restTemplate;
@@ -237,7 +237,7 @@ public class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    public void addNewValidServiceOffering() throws Exception {
+    void addNewValidServiceOffering() throws Exception {
 
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
 
@@ -248,7 +248,7 @@ public class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    public void addNewInvalidServiceOfferingTncNotAccepted() throws Exception {
+    void addNewInvalidServiceOfferingTncNotAccepted() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setMerlotTermsAndConditionsAccepted(false);
 
@@ -282,7 +282,7 @@ public class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    public void getAllPublicOfferings() throws Exception {
+    void getAllPublicOfferings() throws Exception {
         Page<ServiceOfferingBasicModel> offerings =  gxfsCatalogRestService
                 .getAllPublicServiceOfferings(
                         PageRequest.of(0, 9, Sort.by("creationDate").descending()));
@@ -291,7 +291,7 @@ public class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    public void getOrganizationOfferingsNoState() throws Exception {
+    void getOrganizationOfferingsNoState() throws Exception {
         Page<ServiceOfferingBasicModel> offerings =  gxfsCatalogRestService
                 .getOrganizationServiceOfferings("10", null,
                         PageRequest.of(0, 9, Sort.by("creationDate").descending()));
@@ -300,7 +300,7 @@ public class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    public void getOrganizationOfferingsByState() throws Exception {
+    void getOrganizationOfferingsByState() throws Exception {
         Page<ServiceOfferingBasicModel> offerings =  gxfsCatalogRestService
                 .getOrganizationServiceOfferings("10", ServiceOfferingState.IN_DRAFT,
                         PageRequest.of(0, 9, Sort.by("creationDate").descending()));
