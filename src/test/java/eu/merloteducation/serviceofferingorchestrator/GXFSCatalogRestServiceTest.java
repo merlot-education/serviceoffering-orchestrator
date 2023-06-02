@@ -1,6 +1,7 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
+import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataAccountExport;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.NodeKindIRITypeId;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
@@ -8,35 +9,38 @@ import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringT
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
+import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSSignerService;
+import org.apache.commons.text.StringSubstitutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.lenient;
 
 @SpringBootTest
@@ -73,9 +77,57 @@ public class GXFSCatalogRestServiceTest {
     @InjectMocks
     private GXFSCatalogRestService gxfsCatalogRestService;
 
-    @Mock
+    @Autowired
     private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
+    private String createCatalogItem(String id, String issuer, String sdHash) {
+         String catalogItem = """
+                        {
+                            "meta": {
+                                "expirationTime": null,
+                                "content": "{\\"@context\\":[\\"https://www.w3.org/2018/credentials/v1\\"],\\"@id\\":\\"http://example.edu/verifiablePresentation/self-description1\\",\\"type\\":[\\"VerifiablePresentation\\"],\\"verifiableCredential\\":{\\"@context\\":[\\"https://www.w3.org/2018/credentials/v1\\"],\\"@id\\":\\"https://www.example.org/ServiceOffering.json\\",\\"@type\\":[\\"VerifiableCredential\\"],\\"issuer\\":\\"${issuer}\\",\\"issuanceDate\\":\\"2022-10-19T18:48:09Z\\",\\"credentialSubject\\":{\\"@id\\":\\"${id}\\",\\"@type\\":\\"merlot:MerlotServiceOfferingSaaS\\",\\"@context\\":{\\"merlot\\":\\"http://w3id.org/gaia-x/merlot#\\",\\"dct\\":\\"http://purl.org/dc/terms/\\",\\"gax-trust-framework\\":\\"http://w3id.org/gaia-x/gax-trust-framework#\\",\\"rdf\\":\\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\\",\\"sh\\":\\"http://www.w3.org/ns/shacl#\\",\\"xsd\\":\\"http://www.w3.org/2001/XMLSchema#\\",\\"gax-validation\\":\\"http://w3id.org/gaia-x/validation#\\",\\"skos\\":\\"http://www.w3.org/2004/02/skos/core#\\",\\"dcat\\":\\"http://www.w3.org/ns/dcat#\\",\\"gax-core\\":\\"http://w3id.org/gaia-x/core#\\"},\\"gax-core:offeredBy\\":{\\"@id\\":\\"${issuer}\\"},\\"gax-trust-framework:name\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Test\\"},\\"gax-trust-framework:termsAndConditions\\":[{\\"gax-trust-framework:content\\":{\\"@type\\":\\"xsd:anyURI\\",\\"@value\\":\\"Test\\"},\\"gax-trust-framework:hash\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Test\\"},\\"@type\\":\\"gax-trust-framework:TermsAndConditions\\"}],\\"gax-trust-framework:policy\\":[{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyPolicy\\"}],\\"gax-trust-framework:dataAccountExport\\":[{\\"gax-trust-framework:formatType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"gax-trust-framework:accessType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"gax-trust-framework:requestType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"@type\\":\\"gax-trust-framework:DataAccountExport\\"}],\\"gax-trust-framework:providedBy\\":{\\"@id\\":\\"${issuer}\\"},\\"merlot:creationDate\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"2023-05-24T13:30:12.382871745Z\\"},\\"merlot:dataAccessType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Download\\"},\\"merlot:runtimeOption\\":[{\\"merlot:runtimeUnlimited\\":true}],\\"merlot:merlotTermsAndConditionsAccepted\\":true,\\"merlot:userCountOption\\":[{\\"merlot:userCountUnlimited\\":true}]},\\"proof\\":{\\"type\\":\\"JsonWebSignature2020\\",\\"created\\":\\"2023-05-24T13:32:22Z\\",\\"proofPurpose\\":\\"assertionMethod\\",\\"verificationMethod\\":\\"did:web:compliance.lab.gaia-x.eu\\",\\"jws\\":\\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\\"}},\\"proof\\":{\\"type\\":\\"JsonWebSignature2020\\",\\"created\\":\\"2023-05-24T13:32:22Z\\",\\"proofPurpose\\":\\"assertionMethod\\",\\"verificationMethod\\":\\"did:web:compliance.lab.gaia-x.eu\\",\\"jws\\":\\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\\"}}",
+                                "validators": [
+                                    "did:web:compliance.lab.gaia-x.eu"
+                                ],
+                                "subjectId": "${id}",
+                                "sdHash": "${sdHash}",
+                                "id": "${id}",
+                                "status": "active",
+                                "issuer": "${issuer}",
+                                "validatorDids": [
+                                    "did:web:compliance.lab.gaia-x.eu"
+                                ],
+                                "uploadDatetime": "2023-05-24T13:32:22.712661Z",
+                                "statusDatetime": "2023-05-24T13:32:22.712662Z"
+                            },
+                            "content": "{\\"@context\\":[\\"https://www.w3.org/2018/credentials/v1\\"],\\"@id\\":\\"http://example.edu/verifiablePresentation/self-description1\\",\\"type\\":[\\"VerifiablePresentation\\"],\\"verifiableCredential\\":{\\"@context\\":[\\"https://www.w3.org/2018/credentials/v1\\"],\\"@id\\":\\"https://www.example.org/ServiceOffering.json\\",\\"@type\\":[\\"VerifiableCredential\\"],\\"issuer\\":\\"Participant:10\\",\\"issuanceDate\\":\\"2022-10-19T18:48:09Z\\",\\"credentialSubject\\":{\\"@id\\":\\"ServiceOffering:exists\\",\\"@type\\":\\"merlot:MerlotServiceOfferingSaaS\\",\\"@context\\":{\\"merlot\\":\\"http://w3id.org/gaia-x/merlot#\\",\\"dct\\":\\"http://purl.org/dc/terms/\\",\\"gax-trust-framework\\":\\"http://w3id.org/gaia-x/gax-trust-framework#\\",\\"rdf\\":\\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\\",\\"sh\\":\\"http://www.w3.org/ns/shacl#\\",\\"xsd\\":\\"http://www.w3.org/2001/XMLSchema#\\",\\"gax-validation\\":\\"http://w3id.org/gaia-x/validation#\\",\\"skos\\":\\"http://www.w3.org/2004/02/skos/core#\\",\\"dcat\\":\\"http://www.w3.org/ns/dcat#\\",\\"gax-core\\":\\"http://w3id.org/gaia-x/core#\\"},\\"gax-core:offeredBy\\":{\\"@id\\":\\"Participant:10\\"},\\"gax-trust-framework:name\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Test\\"},\\"gax-trust-framework:termsAndConditions\\":[{\\"gax-trust-framework:content\\":{\\"@type\\":\\"xsd:anyURI\\",\\"@value\\":\\"Test\\"},\\"gax-trust-framework:hash\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Test\\"},\\"@type\\":\\"gax-trust-framework:TermsAndConditions\\"}],\\"gax-trust-framework:policy\\":[{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyPolicy\\"}],\\"gax-trust-framework:dataAccountExport\\":[{\\"gax-trust-framework:formatType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"gax-trust-framework:accessType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"gax-trust-framework:requestType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"@type\\":\\"gax-trust-framework:DataAccountExport\\"}],\\"gax-trust-framework:providedBy\\":{\\"@id\\":\\"Participant:10\\"},\\"merlot:creationDate\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"2023-05-24T13:30:12.382871745Z\\"},\\"merlot:dataAccessType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Download\\"},\\"merlot:runtimeOption\\":[{\\"merlot:runtimeUnlimited\\":true}],\\"merlot:merlotTermsAndConditionsAccepted\\":true,\\"merlot:userCountOption\\":[{\\"merlot:userCountUnlimited\\":true}]},\\"proof\\":{\\"type\\":\\"JsonWebSignature2020\\",\\"created\\":\\"2023-05-24T13:32:22Z\\",\\"proofPurpose\\":\\"assertionMethod\\",\\"verificationMethod\\":\\"did:web:compliance.lab.gaia-x.eu\\",\\"jws\\":\\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\\"}},\\"proof\\":{\\"type\\":\\"JsonWebSignature2020\\",\\"created\\":\\"2023-05-24T13:32:22Z\\",\\"proofPurpose\\":\\"assertionMethod\\",\\"verificationMethod\\":\\"did:web:compliance.lab.gaia-x.eu\\",\\"jws\\":\\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\\"}}"
+                        }
+                """;
+        Map<String, Object> params = new HashMap<>();
+        params.put("id", id);
+        params.put("issuer", issuer);
+        params.put("sdHash", sdHash);
+        return StringSubstitutor.replace(catalogItem, params, "${", "}");
+    }
+
+    private String createCatalogResponse(List<String> catalogItems) {
+        StringBuilder offeringQueryResponseBuilder = new StringBuilder(String.format("""
+                {
+                    "totalCount": %d,
+                    "items": [
+                    """, catalogItems.size()));
+        for (int i = 0; i < catalogItems.size(); i++) {
+            offeringQueryResponseBuilder.append(catalogItems.get(i));
+            if (i != catalogItems.size()-1) {
+                offeringQueryResponseBuilder.append(",");
+            }
+        }
+        offeringQueryResponseBuilder.append("""
+                    ]
+                }
+                """);
+        return offeringQueryResponseBuilder.toString();
+    }
     @BeforeEach
     public void setUp() {
         ReflectionTestUtils.setField(gxfsCatalogRestService, "keycloakTokenUri", keycloakTokenUri);
@@ -87,21 +139,20 @@ public class GXFSCatalogRestServiceTest {
         ReflectionTestUtils.setField(gxfsCatalogRestService, "keycloakGXFScatalogPass", keycloakGXFScatalogPass);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfscatalogSelfdescriptionsUri", gxfscatalogSelfdescriptionsUri);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfsSignerService", new GXFSSignerService());
-
-        lenient().when(serviceOfferingExtensionRepository.existsById("ServiceOffering:exists")).thenReturn(true);
+        ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
 
         ServiceOfferingExtension extension = new ServiceOfferingExtension();
         extension.setIssuer("Participant:10");
         extension.setCurrentSdHash("1234");
         extension.setId("ServiceOffering:exists");
-        lenient().when(serviceOfferingExtensionRepository.findById("ServiceOffering:exists")).thenReturn(Optional.of(extension));
+        serviceOfferingExtensionRepository.save(extension);
 
         ServiceOfferingExtension extension2 = new ServiceOfferingExtension();
         extension2.setIssuer("Participant:10");
         extension2.setCurrentSdHash("12345");
         extension2.setId("ServiceOffering:exists2");
         extension2.release();
-        lenient().when(serviceOfferingExtensionRepository.findById("ServiceOffering:exists2")).thenReturn(Optional.of(extension2));
+        serviceOfferingExtensionRepository.save(extension2);
 
 
 
@@ -115,39 +166,21 @@ public class GXFSCatalogRestServiceTest {
                         eq(HttpMethod.GET), any(), eq(String.class)))
                 .thenThrow(HttpClientErrorException.NotFound.class);
 
-        String offeringQueryResponse = """
-                {
-                    "totalCount": 1,
-                    "items": [
-                        {
-                            "meta": {
-                                "expirationTime": null,
-                                "content": "{\\"@context\\":[\\"https://www.w3.org/2018/credentials/v1\\"],\\"@id\\":\\"http://example.edu/verifiablePresentation/self-description1\\",\\"type\\":[\\"VerifiablePresentation\\"],\\"verifiableCredential\\":{\\"@context\\":[\\"https://www.w3.org/2018/credentials/v1\\"],\\"@id\\":\\"https://www.example.org/ServiceOffering.json\\",\\"@type\\":[\\"VerifiableCredential\\"],\\"issuer\\":\\"Participant:10\\",\\"issuanceDate\\":\\"2022-10-19T18:48:09Z\\",\\"credentialSubject\\":{\\"@id\\":\\"ServiceOffering:exists\\",\\"@type\\":\\"merlot:MerlotServiceOfferingSaaS\\",\\"@context\\":{\\"merlot\\":\\"http://w3id.org/gaia-x/merlot#\\",\\"dct\\":\\"http://purl.org/dc/terms/\\",\\"gax-trust-framework\\":\\"http://w3id.org/gaia-x/gax-trust-framework#\\",\\"rdf\\":\\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\\",\\"sh\\":\\"http://www.w3.org/ns/shacl#\\",\\"xsd\\":\\"http://www.w3.org/2001/XMLSchema#\\",\\"gax-validation\\":\\"http://w3id.org/gaia-x/validation#\\",\\"skos\\":\\"http://www.w3.org/2004/02/skos/core#\\",\\"dcat\\":\\"http://www.w3.org/ns/dcat#\\",\\"gax-core\\":\\"http://w3id.org/gaia-x/core#\\"},\\"gax-core:offeredBy\\":{\\"@id\\":\\"Participant:10\\"},\\"gax-trust-framework:name\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Test\\"},\\"gax-trust-framework:termsAndConditions\\":[{\\"gax-trust-framework:content\\":{\\"@type\\":\\"xsd:anyURI\\",\\"@value\\":\\"Test\\"},\\"gax-trust-framework:hash\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Test\\"},\\"@type\\":\\"gax-trust-framework:TermsAndConditions\\"}],\\"gax-trust-framework:policy\\":[{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyPolicy\\"}],\\"gax-trust-framework:dataAccountExport\\":[{\\"gax-trust-framework:formatType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"gax-trust-framework:accessType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"gax-trust-framework:requestType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"@type\\":\\"gax-trust-framework:DataAccountExport\\"}],\\"gax-trust-framework:providedBy\\":{\\"@id\\":\\"Participant:10\\"},\\"merlot:creationDate\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"2023-05-24T13:30:12.382871745Z\\"},\\"merlot:dataAccessType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Download\\"},\\"merlot:runtimeOption\\":[{\\"merlot:runtimeUnlimited\\":true}],\\"merlot:merlotTermsAndConditionsAccepted\\":true,\\"merlot:userCountOption\\":[{\\"merlot:userCountUnlimited\\":true}]},\\"proof\\":{\\"type\\":\\"JsonWebSignature2020\\",\\"created\\":\\"2023-05-24T13:32:22Z\\",\\"proofPurpose\\":\\"assertionMethod\\",\\"verificationMethod\\":\\"did:web:compliance.lab.gaia-x.eu\\",\\"jws\\":\\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\\"}},\\"proof\\":{\\"type\\":\\"JsonWebSignature2020\\",\\"created\\":\\"2023-05-24T13:32:22Z\\",\\"proofPurpose\\":\\"assertionMethod\\",\\"verificationMethod\\":\\"did:web:compliance.lab.gaia-x.eu\\",\\"jws\\":\\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\\"}}",
-                                "validators": [
-                                    "did:web:compliance.lab.gaia-x.eu"
-                                ],
-                                "subjectId": "ServiceOffering:exists",
-                                "sdHash": "1234",
-                                "id": "ServiceOffering:exists",
-                                "status": "active",
-                                "issuer": "Participant:10",
-                                "validatorDids": [
-                                    "did:web:compliance.lab.gaia-x.eu"
-                                ],
-                                "uploadDatetime": "2023-05-24T13:32:22.712661Z",
-                                "statusDatetime": "2023-05-24T13:32:22.712662Z"
-                            },
-                            "content": "{\\"@context\\":[\\"https://www.w3.org/2018/credentials/v1\\"],\\"@id\\":\\"http://example.edu/verifiablePresentation/self-description1\\",\\"type\\":[\\"VerifiablePresentation\\"],\\"verifiableCredential\\":{\\"@context\\":[\\"https://www.w3.org/2018/credentials/v1\\"],\\"@id\\":\\"https://www.example.org/ServiceOffering.json\\",\\"@type\\":[\\"VerifiableCredential\\"],\\"issuer\\":\\"Participant:10\\",\\"issuanceDate\\":\\"2022-10-19T18:48:09Z\\",\\"credentialSubject\\":{\\"@id\\":\\"ServiceOffering:exists\\",\\"@type\\":\\"merlot:MerlotServiceOfferingSaaS\\",\\"@context\\":{\\"merlot\\":\\"http://w3id.org/gaia-x/merlot#\\",\\"dct\\":\\"http://purl.org/dc/terms/\\",\\"gax-trust-framework\\":\\"http://w3id.org/gaia-x/gax-trust-framework#\\",\\"rdf\\":\\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\\",\\"sh\\":\\"http://www.w3.org/ns/shacl#\\",\\"xsd\\":\\"http://www.w3.org/2001/XMLSchema#\\",\\"gax-validation\\":\\"http://w3id.org/gaia-x/validation#\\",\\"skos\\":\\"http://www.w3.org/2004/02/skos/core#\\",\\"dcat\\":\\"http://www.w3.org/ns/dcat#\\",\\"gax-core\\":\\"http://w3id.org/gaia-x/core#\\"},\\"gax-core:offeredBy\\":{\\"@id\\":\\"Participant:10\\"},\\"gax-trust-framework:name\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Test\\"},\\"gax-trust-framework:termsAndConditions\\":[{\\"gax-trust-framework:content\\":{\\"@type\\":\\"xsd:anyURI\\",\\"@value\\":\\"Test\\"},\\"gax-trust-framework:hash\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Test\\"},\\"@type\\":\\"gax-trust-framework:TermsAndConditions\\"}],\\"gax-trust-framework:policy\\":[{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyPolicy\\"}],\\"gax-trust-framework:dataAccountExport\\":[{\\"gax-trust-framework:formatType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"gax-trust-framework:accessType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"gax-trust-framework:requestType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"dummyValue\\"},\\"@type\\":\\"gax-trust-framework:DataAccountExport\\"}],\\"gax-trust-framework:providedBy\\":{\\"@id\\":\\"Participant:10\\"},\\"merlot:creationDate\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"2023-05-24T13:30:12.382871745Z\\"},\\"merlot:dataAccessType\\":{\\"@type\\":\\"xsd:string\\",\\"@value\\":\\"Download\\"},\\"merlot:runtimeOption\\":[{\\"merlot:runtimeUnlimited\\":true}],\\"merlot:merlotTermsAndConditionsAccepted\\":true,\\"merlot:userCountOption\\":[{\\"merlot:userCountUnlimited\\":true}]},\\"proof\\":{\\"type\\":\\"JsonWebSignature2020\\",\\"created\\":\\"2023-05-24T13:32:22Z\\",\\"proofPurpose\\":\\"assertionMethod\\",\\"verificationMethod\\":\\"did:web:compliance.lab.gaia-x.eu\\",\\"jws\\":\\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\\"}},\\"proof\\":{\\"type\\":\\"JsonWebSignature2020\\",\\"created\\":\\"2023-05-24T13:32:22Z\\",\\"proofPurpose\\":\\"assertionMethod\\",\\"verificationMethod\\":\\"did:web:compliance.lab.gaia-x.eu\\",\\"jws\\":\\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\\"}}"
-                        }
-                    ]
-                }
-                """;
+        List<String> catalogItems = new ArrayList<>();
+        catalogItems.add(createCatalogItem("ServiceOffering:exists", "Participant:10", "1234"));
+        catalogItems.add(createCatalogItem("ServiceOffering:exists2", "Participant:10", "12345"));
+
+        String offeringQueryResponse = createCatalogResponse(catalogItems);
+
+        List<String> catalogSingleItem = new ArrayList<>();
+        catalogSingleItem.add(createCatalogItem("ServiceOffering:exists", "Participant:10", "1234"));
+        String offeringQueryResponseSingle = createCatalogResponse(catalogSingleItem);
 
         lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "/1234"),
                         eq(HttpMethod.DELETE), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(offeringQueryResponse, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(offeringQueryResponseSingle, HttpStatus.OK));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&ids=ServiceOffering:exists"),
+        lenient().when(restTemplate.exchange(startsWith(gxfscatalogSelfdescriptionsUri + "?"),
                         eq(HttpMethod.GET), any(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>(offeringQueryResponse, HttpStatus.OK));
 
@@ -223,7 +256,7 @@ public class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    public void updateExistingWithValidServiceOffering() throws Exception {
+    void updateExistingWithValidServiceOffering() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId("ServiceOffering:exists");
 
@@ -232,7 +265,7 @@ public class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    public void updateExistingWithInvalidServiceOfferingDifferentIssuer() throws Exception {
+    void updateExistingWithInvalidServiceOfferingDifferentIssuer() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId("ServiceOffering:exists");
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:20"));
@@ -241,10 +274,37 @@ public class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    public void updateExistingWithInvalidServiceOfferingNotInDraft() throws Exception {
+    void updateExistingWithInvalidServiceOfferingNotInDraft() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId("ServiceOffering:exists2");
 
         assertThrows(ResponseStatusException.class , () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+    }
+
+    @Test
+    public void getAllPublicOfferings() throws Exception {
+        Page<ServiceOfferingBasicModel> offerings =  gxfsCatalogRestService
+                .getAllPublicServiceOfferings(
+                        PageRequest.of(0, 9, Sort.by("creationDate").descending()));
+
+        assertTrue(offerings.getNumberOfElements() > 0 && offerings.getNumberOfElements() <= 9);
+    }
+
+    @Test
+    public void getOrganizationOfferingsNoState() throws Exception {
+        Page<ServiceOfferingBasicModel> offerings =  gxfsCatalogRestService
+                .getOrganizationServiceOfferings("10", null,
+                        PageRequest.of(0, 9, Sort.by("creationDate").descending()));
+
+        assertTrue(offerings.getNumberOfElements() > 0 && offerings.getNumberOfElements() <= 9);
+    }
+
+    @Test
+    public void getOrganizationOfferingsByState() throws Exception {
+        Page<ServiceOfferingBasicModel> offerings =  gxfsCatalogRestService
+                .getOrganizationServiceOfferings("10", ServiceOfferingState.IN_DRAFT,
+                        PageRequest.of(0, 9, Sort.by("creationDate").descending()));
+
+        assertTrue(offerings.getNumberOfElements() > 0 && offerings.getNumberOfElements() <= 9);
     }
 }
