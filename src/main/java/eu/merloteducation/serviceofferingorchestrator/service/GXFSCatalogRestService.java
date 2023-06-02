@@ -41,8 +41,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
@@ -102,8 +100,7 @@ public class GXFSCatalogRestService {
         String response = restTemplate.postForObject(keycloakTokenUri, request, String.class);
 
         JsonParser parser = JsonParserFactory.getJsonParser();
-        Map<String, Object> loginResult = parser.parseMap(response);
-        return loginResult;
+        return parser.parseMap(response);
     }
 
     private void logoutGXFScatalog(String refreshToken) throws Exception {
@@ -219,9 +216,10 @@ public class GXFSCatalogRestService {
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
         List<ServiceOfferingBasicModel> models = selfDescriptionsResponse.getItems().stream()
                 .map(item -> new ServiceOfferingBasicModel(item, extensionMap.get(item.getMeta().getSdHash())))
-                .sorted(Comparator.comparing(offer ->
-                        (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
-                        Comparator.reverseOrder()))
+                .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
+                                ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
+                                : LocalDateTime.MIN,
+                        Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
@@ -249,64 +247,60 @@ public class GXFSCatalogRestService {
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
-
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
         List<ServiceOfferingBasicModel> models = selfDescriptionsResponse.getItems().stream()
-                .map(item -> new ServiceOfferingBasicModel(
-                        item,
-                        extensionMap.get(item.getMeta().getSdHash())
-                ))
-                .sorted(Comparator.comparing(offer ->
-                                (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
-                        Comparator.reverseOrder()))
+                .map(item -> new ServiceOfferingBasicModel(item, extensionMap.get(item.getMeta().getSdHash())))
+                .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
+                                ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
+                                : LocalDateTime.MIN,
+                        Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
+    @Transactional
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
-        String previousSdHash = null;
         if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
             // Merlot TnC not accepted
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot process Self-Description as MERLOT terms and conditions were not accepted.");
         }
-
+        ServiceOfferingExtension extension;
+        String previousSdHash = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
-            // override specified time to correspond to the current time and generate an ID
+            // override creation time time to correspond to the current time and generate an ID
+            extension = new ServiceOfferingExtension();
             credentialSubject.setCreationDate(new StringTypeValue(
-                    ZonedDateTime.now( ZoneOffset.UTC ).format( DateTimeFormatter.ISO_INSTANT )));
+                    extension.getCreationDate().format( DateTimeFormatter.ISO_INSTANT )));
             credentialSubject.setId(OFFERING_START + UUID.randomUUID());
         } else {
-            // handle possible failure points
-            if (!serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
-            }
-
-            ServiceOfferingExtension extension = serviceOfferingExtensionRepository
+            extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);
 
-            if (extension != null)
+            // handle potential failure points
+            if (extension != null) {
                 previousSdHash = extension.getCurrentSdHash();
 
-            if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
-            if (extension != null &&
-                    (!extension.getIssuer().equals(credentialSubject.getOfferedBy().getId())))
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
+                // must be in draft
+                if (extension.getState() != ServiceOfferingState.IN_DRAFT) {
+                    throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
+                }
 
-            ServiceOfferingDetailedModel model;
-            try {
-                model = getServiceOfferingById(credentialSubject.getId());
-            } catch(Exception e) {
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot load service offering data from the catalog");
+                // issuer may not change
+                if (!extension.getIssuer().equals(credentialSubject.getOfferedBy().getId())) {
+                    throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
+                }
+
+                // override creation date
+                credentialSubject.setCreationDate(new StringTypeValue(
+                        extension.getCreationDate().format( DateTimeFormatter.ISO_INSTANT )));
+            } else {
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
             }
-
-            // override creation date
-            credentialSubject.setCreationDate(new StringTypeValue(model.getCreationDate()));
         }
 
         // prepare a json to send to the gxfs catalog, sign it and read the response
@@ -329,7 +323,10 @@ public class GXFSCatalogRestService {
         SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self description
-        addServiceOfferingExtension(selfDescriptionsResponse);
+        extension.setId(selfDescriptionsResponse.getId());
+        extension.setIssuer(selfDescriptionsResponse.getIssuer());
+        extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
+        serviceOfferingExtensionRepository.save(extension);
 
         return selfDescriptionsResponse;
     }
@@ -380,22 +377,5 @@ public class GXFSCatalogRestService {
         return gxfsSignerService.signVerifiablePresentation(vp);
     }
 
-    /**
-     * Saves a given selfDescriptionsResponse in a ServiceOfferingExtension item in the local database.
-     * It will also update an existing field if a service offering of this id was already saved
-     * as the catalog also accepts existing ids (and makes the previous entry deprecated in the gxfs catalog)
-     * @param selfDescriptionsResponse Object encapsulating the response of adding the service offering to the catalog
-     */
-    @Transactional
-    private void addServiceOfferingExtension(SelfDescriptionsCreateResponse selfDescriptionsResponse) {
-        ServiceOfferingExtension extension = serviceOfferingExtensionRepository
-                    .findById(selfDescriptionsResponse.getId()).orElse(new ServiceOfferingExtension());
-
-        extension.setId(selfDescriptionsResponse.getId());
-        extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
-        extension.setIssuer(selfDescriptionsResponse.getIssuer());
-
-        serviceOfferingExtensionRepository.save(extension);
-    }
 
 }

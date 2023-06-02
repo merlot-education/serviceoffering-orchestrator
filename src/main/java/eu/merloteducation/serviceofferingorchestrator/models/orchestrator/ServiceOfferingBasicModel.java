@@ -8,6 +8,8 @@ import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdes
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.format.DateTimeFormatter;
+
 @Getter
 @Setter
 public class ServiceOfferingBasicModel{
@@ -29,10 +31,13 @@ public class ServiceOfferingBasicModel{
         this.type = credentialSubject.getType();
         this.name = credentialSubject.getName().getValue();
         this.offeredBy = credentialSubject.getOfferedBy().getId();
-        this.creationDate = credentialSubject.getCreationDate().getValue();
 
-        if (serviceOfferingExtension != null)
+        if (serviceOfferingExtension != null) {
             this.merlotState = serviceOfferingExtension.getState().name();
+            if (serviceOfferingExtension.getCreationDate() != null) {
+                this.creationDate = serviceOfferingExtension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT);
+            }
+        }
 
 
     }

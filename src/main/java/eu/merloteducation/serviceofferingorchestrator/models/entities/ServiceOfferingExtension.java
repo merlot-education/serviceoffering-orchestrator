@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.security.Provider;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +25,8 @@ public class ServiceOfferingExtension {
 
     private String issuer;
 
+    private OffsetDateTime creationDate;
+
     @Enumerated(EnumType.STRING)
     @Setter(AccessLevel.NONE)
     private ServiceOfferingState state;
@@ -32,13 +36,7 @@ public class ServiceOfferingExtension {
     public ServiceOfferingExtension() {
         this.state = ServiceOfferingState.IN_DRAFT;
         this.associatedContractIds = new ArrayList<>();
-    }
-
-    public ServiceOfferingExtension(String id, String currentSdHash, String issuer) {
-        this();
-        this.id = id;
-        this.currentSdHash = currentSdHash;
-        this.issuer = issuer;
+        this.creationDate = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public void release() throws IllegalStateException {
