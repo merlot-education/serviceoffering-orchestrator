@@ -49,6 +49,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
 import static org.springframework.http.HttpStatus.*;
 
 @Service
@@ -219,9 +220,10 @@ public class GXFSCatalogRestService {
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
         List<ServiceOfferingBasicModel> models = selfDescriptionsResponse.getItems().stream()
                 .map(item -> new ServiceOfferingBasicModel(item, extensionMap.get(item.getMeta().getSdHash())))
-                .sorted(Comparator.comparing(offer ->
-                        (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME)),
-                        Comparator.reverseOrder()))  // TODO check if the catalog respects our sorted hashs and maybe remove this
+                .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
+                                ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
+                                : LocalDateTime.MIN,
+                        Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
@@ -249,20 +251,17 @@ public class GXFSCatalogRestService {
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
-
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
         // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
         List<ServiceOfferingBasicModel> models = selfDescriptionsResponse.getItems().stream()
-                .map(item -> new ServiceOfferingBasicModel(
-                        item,
-                        extensionMap.get(item.getMeta().getSdHash())
-                ))
-                .sorted(Comparator.comparing(offer ->
-                                (LocalDateTime.parse(offer.getCreationDate() != null ? offer.getCreationDate() : LocalDateTime.now().toString(), DateTimeFormatter.ISO_DATE_TIME)),
-                        Comparator.reverseOrder()))
+                .map(item -> new ServiceOfferingBasicModel(item, extensionMap.get(item.getMeta().getSdHash())))
+                .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
+                                ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
+                                : LocalDateTime.MIN,
+                        Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
