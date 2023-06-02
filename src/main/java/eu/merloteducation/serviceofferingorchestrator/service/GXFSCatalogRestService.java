@@ -268,48 +268,44 @@ public class GXFSCatalogRestService {
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
+    @Transactional
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
         if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
             // Merlot TnC not accepted
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot process Self-Description as MERLOT terms and conditions were not accepted.");
         }
-
+        ServiceOfferingExtension extension;
         String previousSdHash = null;
-        OffsetDateTime creationDate = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
-            // override specified time to correspond to the current time and generate an ID
-            creationDate = OffsetDateTime.now();
-            credentialSubject.setCreationDate(new StringTypeValue(creationDate.format( DateTimeFormatter.ISO_INSTANT )));
+            // override creation time time to correspond to the current time and generate an ID
+            extension = new ServiceOfferingExtension();
+            credentialSubject.setCreationDate(new StringTypeValue(
+                    extension.getCreationDate().format( DateTimeFormatter.ISO_INSTANT )));
             credentialSubject.setId(OFFERING_START + UUID.randomUUID());
         } else {
-            // handle possible failure points
-            if (!serviceOfferingExtensionRepository.existsById(credentialSubject.getId())) {
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
-            }
-
-            ServiceOfferingExtension extension = serviceOfferingExtensionRepository
+            extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);
 
+            // handle potential failure points
             if (extension != null) {
                 previousSdHash = extension.getCurrentSdHash();
-                creationDate = extension.getCreationDate(); // TODO consider completely removing this field from the catalog and storing it only in our database
+
+                // must be in draft
+                if (extension.getState() != ServiceOfferingState.IN_DRAFT) {
+                    throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
+                }
+
+                // issuer may not change
+                if (!extension.getIssuer().equals(credentialSubject.getOfferedBy().getId())) {
+                    throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
+                }
+
+                // override creation date
+                credentialSubject.setCreationDate(new StringTypeValue(
+                        extension.getCreationDate().format( DateTimeFormatter.ISO_INSTANT )));
+            } else {
+                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
             }
-
-            if (extension != null && extension.getState() != ServiceOfferingState.IN_DRAFT)
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
-            if (extension != null &&
-                    (!extension.getIssuer().equals(credentialSubject.getOfferedBy().getId())))
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
-
-            ServiceOfferingDetailedModel model;
-            try {
-                model = getServiceOfferingById(credentialSubject.getId());
-            } catch(Exception e) {
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot load service offering data from the catalog");
-            }
-
-            // override creation date
-            credentialSubject.setCreationDate(new StringTypeValue(model.getCreationDate()));
         }
 
         // prepare a json to send to the gxfs catalog, sign it and read the response
@@ -332,7 +328,10 @@ public class GXFSCatalogRestService {
         SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self description
-        addServiceOfferingExtension(selfDescriptionsResponse, creationDate);
+        extension.setId(selfDescriptionsResponse.getId());
+        extension.setIssuer(selfDescriptionsResponse.getIssuer());
+        extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
+        serviceOfferingExtensionRepository.save(extension);
 
         return selfDescriptionsResponse;
     }
@@ -383,23 +382,5 @@ public class GXFSCatalogRestService {
         return gxfsSignerService.signVerifiablePresentation(vp);
     }
 
-    /**
-     * Saves a given selfDescriptionsResponse in a ServiceOfferingExtension item in the local database.
-     * It will also update an existing field if a service offering of this id was already saved
-     * as the catalog also accepts existing ids (and makes the previous entry deprecated in the gxfs catalog)
-     * @param selfDescriptionsResponse Object encapsulating the response of adding the service offering to the catalog
-     */
-    @Transactional
-    private void addServiceOfferingExtension(SelfDescriptionsCreateResponse selfDescriptionsResponse, OffsetDateTime creationDate) {
-        ServiceOfferingExtension extension = serviceOfferingExtensionRepository
-                    .findById(selfDescriptionsResponse.getId()).orElse(new ServiceOfferingExtension());
-
-        extension.setId(selfDescriptionsResponse.getId());
-        extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
-        extension.setIssuer(selfDescriptionsResponse.getIssuer());
-        extension.setCreationDate(creationDate);
-
-        serviceOfferingExtensionRepository.save(extension);
-    }
 
 }

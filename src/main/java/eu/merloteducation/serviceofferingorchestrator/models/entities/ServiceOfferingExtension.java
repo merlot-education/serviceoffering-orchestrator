@@ -39,13 +39,6 @@ public class ServiceOfferingExtension {
         this.creationDate = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
-    public ServiceOfferingExtension(String id, String currentSdHash, String issuer) {
-        this();
-        this.id = id;
-        this.currentSdHash = currentSdHash;
-        this.issuer = issuer;
-    }
-
     public void release() throws IllegalStateException {
         if (state.checkTransitionAllowed(ServiceOfferingState.RELEASED)) {
             state = ServiceOfferingState.RELEASED;
