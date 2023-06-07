@@ -31,6 +31,7 @@ public class ServiceOfferingExtension {
     @Setter(AccessLevel.NONE)
     private ServiceOfferingState state;
 
+    @Setter(AccessLevel.NONE)
     private List<String> associatedContractIds;
 
     public ServiceOfferingExtension() {
@@ -71,6 +72,10 @@ public class ServiceOfferingExtension {
         } else {
             throw new IllegalStateException(String.format("Cannot transition from state %s to revoked", state.name()));
         }
+    }
+
+    public void addAssociatedContract(String contractId) {
+        this.associatedContractIds.add(contractId);
     }
 
 }

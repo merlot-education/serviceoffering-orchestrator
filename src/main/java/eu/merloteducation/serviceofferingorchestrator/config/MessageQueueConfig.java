@@ -13,20 +13,20 @@ public class MessageQueueConfig {
 
     public static final String ORCHESTRATOR_EXCHANGE = "orchestrator.exchange";
     public static final String CONTRACT_CREATED_KEY = "created.contract";
-    public static final String SERVICEOFFERING_QUEUE = "serviceoffering.queue";
+    public static final String CONTRACT_CREATED_QUEUE = "serviceoffering.create.contract.queue";
     @Bean
     DirectExchange orchestratorExchange() {
         return new DirectExchange(ORCHESTRATOR_EXCHANGE);
     }
 
     @Bean
-    Binding createdContractBinding(Queue serviceofferingQueue, DirectExchange orchestratorExchange) {
-        return BindingBuilder.bind(serviceofferingQueue).to(orchestratorExchange).with(CONTRACT_CREATED_KEY);
+    Binding createdContractBinding(Queue contractCreatedQueue, DirectExchange orchestratorExchange) {
+        return BindingBuilder.bind(contractCreatedQueue).to(orchestratorExchange).with(CONTRACT_CREATED_KEY);
     }
 
     @Bean
-    public Queue serviceofferingQueue() {
-        return new Queue(SERVICEOFFERING_QUEUE, false);
+    public Queue contractCreatedQueue() {
+        return new Queue(CONTRACT_CREATED_QUEUE, false);
     }
 
     @Bean
