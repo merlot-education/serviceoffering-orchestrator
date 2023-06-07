@@ -269,7 +269,8 @@ public class GXFSCatalogRestService {
 
     private boolean validRuntimeOptions(ServiceOfferingCredentialSubject credentialSubject) {
         // verify runtime options
-        if (credentialSubject.getRuntimes() == null) {
+        if (credentialSubject.getRuntimes() == null
+                || credentialSubject.getRuntimes().isEmpty()) {
             return false;
         }
 
@@ -282,7 +283,8 @@ public class GXFSCatalogRestService {
     }
 
     private boolean validUserCountOptions(SaaSCredentialSubject saaSCredentialSubject) {
-        if (saaSCredentialSubject.getUserCountOption() == null) {
+        if (saaSCredentialSubject.getUserCountOption() == null
+                || saaSCredentialSubject.getUserCountOption().isEmpty()) {
             return false;
         }
 
@@ -295,7 +297,8 @@ public class GXFSCatalogRestService {
     }
 
     private boolean validDataExchangeCountOptions(DataDeliveryCredentialSubject dataDeliveryCredentialSubject) {
-        if (dataDeliveryCredentialSubject.getExchangeCountOption() == null) {
+        if (dataDeliveryCredentialSubject.getExchangeCountOption() == null
+                || dataDeliveryCredentialSubject.getExchangeCountOption().isEmpty()) {
             return false;
         }
 
