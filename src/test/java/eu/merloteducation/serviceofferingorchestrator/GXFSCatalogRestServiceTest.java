@@ -1,18 +1,17 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
+import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataAccountExport;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.NodeKindIRITypeId;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSSignerService;
+import eu.merloteducation.serviceofferingorchestrator.service.MessageQueueService;
 import org.apache.commons.text.StringSubstitutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +49,12 @@ class GXFSCatalogRestServiceTest {
 
     @Mock
     private RestTemplate restTemplate;
+
+    @Mock
+    MessageQueueService messageQueueService;
+
+    @Mock
+    MessageQueueConfig messageQueueConfig;
 
     @Value("${keycloak.token-uri}")
     private String keycloakTokenUri;
@@ -232,6 +237,13 @@ class GXFSCatalogRestServiceTest {
         runtime.setRuntimeUnlimited(true);
         runtimes.add(runtime);
         credentialSubject.setRuntimes(runtimes);
+
+        List<AllowedUserCount> userCounts = new ArrayList<>();
+        AllowedUserCount userCount = new AllowedUserCount();
+        userCount.setUserCountUnlimited(true);
+        userCounts.add(userCount);
+        credentialSubject.setUserCountOption(userCounts);
+
         credentialSubject.setMerlotTermsAndConditionsAccepted(true);
         return credentialSubject;
     }
