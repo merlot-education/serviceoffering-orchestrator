@@ -23,14 +23,15 @@ public class ServiceOfferingExtension {
 
     private String currentSdHash;
 
-    private String issuer;
+    private String issuer; // duplicated from gxfs catalog to allow local querying
 
-    private OffsetDateTime creationDate;
+    private OffsetDateTime creationDate; // duplicated from gxfs catalog to allow local paging
 
     @Enumerated(EnumType.STRING)
     @Setter(AccessLevel.NONE)
     private ServiceOfferingState state;
 
+    @Setter(AccessLevel.NONE)
     private List<String> associatedContractIds;
 
     public ServiceOfferingExtension() {
@@ -71,6 +72,10 @@ public class ServiceOfferingExtension {
         } else {
             throw new IllegalStateException(String.format("Cannot transition from state %s to revoked", state.name()));
         }
+    }
+
+    public void addAssociatedContract(String contractId) {
+        this.associatedContractIds.add(contractId);
     }
 
 }

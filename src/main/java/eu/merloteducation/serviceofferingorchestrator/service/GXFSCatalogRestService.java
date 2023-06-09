@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.AllowedUserCount;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataExchangeCount;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
@@ -40,6 +43,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.xml.crypto.Data;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -263,12 +267,77 @@ public class GXFSCatalogRestService {
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
+    private boolean validRuntimeOptions(ServiceOfferingCredentialSubject credentialSubject) {
+        // verify runtime options
+        if (credentialSubject.getRuntimes() == null
+                || credentialSubject.getRuntimes().isEmpty()) {
+            return false;
+        }
+
+        for (Runtime runtime: credentialSubject.getRuntimes()) {
+            if (!(runtime.isRuntimeUnlimited() || (runtime.getRuntimeMeasurement() != null && runtime.getRuntimeCount() != null))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean validUserCountOptions(SaaSCredentialSubject saaSCredentialSubject) {
+        if (saaSCredentialSubject.getUserCountOption() == null
+                || saaSCredentialSubject.getUserCountOption().isEmpty()) {
+            return false;
+        }
+
+        for (AllowedUserCount userCount : saaSCredentialSubject.getUserCountOption()) {
+            if (!(userCount.isUserCountUnlimited() || userCount.getUserCountUpTo() != null)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean validDataExchangeCountOptions(DataDeliveryCredentialSubject dataDeliveryCredentialSubject) {
+        if (dataDeliveryCredentialSubject.getExchangeCountOption() == null
+                || dataDeliveryCredentialSubject.getExchangeCountOption().isEmpty()) {
+            return false;
+        }
+
+        for (DataExchangeCount exchangeCount : dataDeliveryCredentialSubject.getExchangeCountOption()) {
+            if (!(exchangeCount.isExchangeCountUnlimited() || exchangeCount.getExchangeCountUpTo() != null)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean validSelfDescriptionFields(ServiceOfferingCredentialSubject credentialSubject) {
+        if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
+            return false;
+        }
+
+        if (!validRuntimeOptions(credentialSubject)) {
+            return false;
+        }
+
+        if (credentialSubject instanceof SaaSCredentialSubject saaSCredentialSubject
+                && !validUserCountOptions(saaSCredentialSubject)) {
+           return false;
+        }
+
+        if (credentialSubject instanceof DataDeliveryCredentialSubject dataDeliveryCredentialSubject
+                && !validDataExchangeCountOptions(dataDeliveryCredentialSubject)) {
+            return false;
+        }
+        return true;
+    }
+
     @Transactional
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
-        if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
-            // Merlot TnC not accepted
-            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot process Self-Description as MERLOT terms and conditions were not accepted.");
+
+        if (!validSelfDescriptionFields(credentialSubject)) {
+            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Self-Description contains invalid fields.");
         }
+
         ServiceOfferingExtension extension;
         String previousSdHash = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
