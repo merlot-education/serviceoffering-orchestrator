@@ -23,9 +23,9 @@ public class ServiceOfferingExtension {
 
     private String currentSdHash;
 
-    private String issuer;
+    private String issuer; // duplicated from gxfs catalog to allow local querying
 
-    private OffsetDateTime creationDate;
+    private OffsetDateTime creationDate; // duplicated from gxfs catalog to allow local paging
 
     @Enumerated(EnumType.STRING)
     @Setter(AccessLevel.NONE)
