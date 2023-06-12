@@ -1,12 +1,12 @@
 package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
-import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.modelslib.gxfscatalog.StringTypeValue;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
+import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import lombok.Getter;
 import lombok.Setter;
 
