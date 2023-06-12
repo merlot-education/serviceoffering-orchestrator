@@ -1,12 +1,12 @@
 package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
+import eu.merloteducation.modelslib.gxfscatalog.StringTypeValue;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -35,7 +35,7 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
 
 
     public ServiceOfferingDetailedModel(SelfDescriptionItem<T> sdItem, ServiceOfferingExtension serviceOfferingExtension) {
-        super((SelfDescriptionItem<ServiceOfferingCredentialSubject>)sdItem, serviceOfferingExtension);
+        super((SelfDescriptionItem<ServiceOfferingCredentialSubject>) sdItem, serviceOfferingExtension);
 
         SelfDescriptionMeta<T> meta = sdItem.getMeta();
         this.modifiedDate = meta.getStatusDatetime();
@@ -51,7 +51,7 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
         if (credentialSubject.getAttachments() != null)
             this.attachments = credentialSubject.getAttachments().stream().map(StringTypeValue::getValue).collect(Collectors.toList());
         this.termsAndConditions = new ArrayList<>();
-        for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions tnc
+        for (eu.merloteducation.modelslib.gxfscatalog.TermsAndConditions tnc
                 : credentialSubject.getTermsAndConditions()) {
             TermsAndConditions tncEntry = new TermsAndConditions();
             tncEntry.setContent(tnc.getContent().getValue());
@@ -59,7 +59,7 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
             this.termsAndConditions.add(tncEntry);
         }
         this.runtimeOption = new ArrayList<>();
-        for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime rt
+        for (eu.merloteducation.modelslib.gxfscatalog.Runtime rt
                 : credentialSubject.getRuntimes()) {
             Runtime rtEntry = new Runtime();
             if (rt.getRuntimeCount() != null)
@@ -76,7 +76,7 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
                 this.hardwareRequirements = sub.getHardwareRequirements().getValue();
             this.userCountOption = new ArrayList<>();
             if (sub.getUserCountOption() != null) {
-                for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.AllowedUserCount uc
+                for (eu.merloteducation.modelslib.gxfscatalog.AllowedUserCount uc
                         : sub.getUserCountOption()) {
                     AllowedUserCount ucEntry = new AllowedUserCount();
                     if (uc.getUserCountUpTo() != null)
@@ -90,7 +90,7 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
         if (credentialSubject instanceof DataDeliveryCredentialSubject sub) {
             this.exchangeCountOption = new ArrayList<>();
             if (sub.getExchangeCountOption() != null) {
-                for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataExchangeCount dec
+                for (eu.merloteducation.modelslib.gxfscatalog.DataExchangeCount dec
                         : sub.getExchangeCountOption()) {
                     DataExchangeCount decEntry = new DataExchangeCount();
                     if (dec.getExchangeCountUpTo() != null)
@@ -100,8 +100,6 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
                 }
             }
         }
-
-
 
 
     }

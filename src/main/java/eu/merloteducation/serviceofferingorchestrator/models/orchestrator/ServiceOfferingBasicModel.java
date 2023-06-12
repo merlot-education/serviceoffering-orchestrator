@@ -1,10 +1,9 @@
 package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,7 +11,7 @@ import java.time.format.DateTimeFormatter;
 
 @Getter
 @Setter
-public class ServiceOfferingBasicModel{
+public class ServiceOfferingBasicModel {
     private String id;
     private String sdHash;
     private String name;
