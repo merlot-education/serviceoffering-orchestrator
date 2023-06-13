@@ -133,6 +133,11 @@
             <artifactId>modelslib</artifactId>
             <version>0.0.1</version>
         </dependency>
+        <dependency>
+            <groupId>eu.merloteducation.jwtlib</groupId>
+            <artifactId>jwtlib</artifactId>
+            <version>0.0.5</version>
+        </dependency>
     </dependencies>
 
     <build>
