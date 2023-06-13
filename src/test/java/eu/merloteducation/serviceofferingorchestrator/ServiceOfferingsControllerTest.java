@@ -1,8 +1,11 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
+import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
 import eu.merloteducation.serviceofferingorchestrator.controller.ServiceOfferingsController;
+import eu.merloteducation.serviceofferingorchestrator.service.MessageQueueService;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +15,12 @@ import static org.mockito.Mockito.when;
 
 @WebMvcTest(ServiceOfferingsController.class)
 public class ServiceOfferingsControllerTest {
+
+    @MockBean
+    MessageQueueService messageQueueService;
+
+    @MockBean
+    MessageQueueConfig messageQueueConfig;
 
     @BeforeEach
     public void setUp() throws Exception {

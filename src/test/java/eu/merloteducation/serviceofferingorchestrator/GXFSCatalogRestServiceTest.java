@@ -229,7 +229,6 @@ class GXFSCatalogRestServiceTest {
     private SaaSCredentialSubject createValidSaasCredentialSubject() {
         SaaSCredentialSubject credentialSubject = new SaaSCredentialSubject();
         credentialSubject.setId("ServiceOffering:TBR");
-        credentialSubject.setType("merlot:MerlotServiceOfferingSaaS");
         credentialSubject.setContext(new HashMap<>());
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:10"));
         credentialSubject.setName(new StringTypeValue("Test Offering"));

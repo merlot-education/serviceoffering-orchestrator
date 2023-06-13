@@ -10,5 +10,5 @@ import java.util.List;
 @Setter
 public class SelfDescriptionsResponse<T extends ServiceOfferingCredentialSubject> {
     private int totalCount;
-    private List<SelfDescriptionItem<T>> items;
+    private List<SelfDescriptionItem> items;
 }

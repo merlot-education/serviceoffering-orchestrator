@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Getter
 @Setter
-public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSubject> extends ServiceOfferingBasicModel {
+public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
 
     private String description;
     private String modifiedDate;
@@ -28,16 +28,11 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
     private boolean merlotTermsAndConditionsAccepted;
 
 
-    private String hardwareRequirements;
-    private List<AllowedUserCount> userCountOption;
+    public ServiceOfferingDetailedModel(SelfDescriptionItem sdItem,
+                                        ServiceOfferingExtension serviceOfferingExtension) {
+        super(sdItem, serviceOfferingExtension);
 
-    private List<DataExchangeCount> exchangeCountOption;
-
-
-    public ServiceOfferingDetailedModel(SelfDescriptionItem<T> sdItem, ServiceOfferingExtension serviceOfferingExtension) {
-        super((SelfDescriptionItem<ServiceOfferingCredentialSubject>)sdItem, serviceOfferingExtension);
-
-        SelfDescriptionMeta<T> meta = sdItem.getMeta();
+        SelfDescriptionMeta meta = sdItem.getMeta();
         this.modifiedDate = meta.getStatusDatetime();
 
         ServiceOfferingCredentialSubject credentialSubject = meta.getContent()
@@ -70,39 +65,5 @@ public class ServiceOfferingDetailedModel<T extends ServiceOfferingCredentialSub
             this.runtimeOption.add(rtEntry);
         }
         this.merlotTermsAndConditionsAccepted = credentialSubject.isMerlotTermsAndConditionsAccepted();
-
-        if (credentialSubject instanceof SaaSCredentialSubject sub) {
-            if (sub.getHardwareRequirements() != null)
-                this.hardwareRequirements = sub.getHardwareRequirements().getValue();
-            this.userCountOption = new ArrayList<>();
-            if (sub.getUserCountOption() != null) {
-                for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.AllowedUserCount uc
-                        : sub.getUserCountOption()) {
-                    AllowedUserCount ucEntry = new AllowedUserCount();
-                    if (uc.getUserCountUpTo() != null)
-                        ucEntry.setUserCountUpTo(uc.getUserCountUpTo().getValue());
-                    ucEntry.setUserCountUnlimited(uc.isUserCountUnlimited());
-                    this.userCountOption.add(ucEntry);
-                }
-            }
-        }
-
-        if (credentialSubject instanceof DataDeliveryCredentialSubject sub) {
-            this.exchangeCountOption = new ArrayList<>();
-            if (sub.getExchangeCountOption() != null) {
-                for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataExchangeCount dec
-                        : sub.getExchangeCountOption()) {
-                    DataExchangeCount decEntry = new DataExchangeCount();
-                    if (dec.getExchangeCountUpTo() != null)
-                        decEntry.setExchangeCountUpTo(dec.getExchangeCountUpTo().getValue());
-                    decEntry.setExchangeCountUnlimited(dec.isExchangeCountUnlimited());
-                    this.exchangeCountOption.add(decEntry);
-                }
-            }
-        }
-
-
-
-
     }
 }

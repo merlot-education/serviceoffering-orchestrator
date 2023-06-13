@@ -2,8 +2,10 @@ package eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfde
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,17 +15,18 @@ import java.util.Map;
 
 @Getter
 @Setter
-public class ServiceOfferingCredentialSubject {
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = DataDeliveryCredentialSubject.class, name = "merlot:MerlotServiceOfferingDataDelivery"),
+        @JsonSubTypes.Type(value = SaaSCredentialSubject.class, name = "merlot:MerlotServiceOfferingSaaS")}
+)
+public abstract class ServiceOfferingCredentialSubject {
 
     // general catalog fields
 
     @NotNull
     @JsonProperty("@id")
     private String id;
-
-    @NotNull
-    @JsonProperty("@type")
-    private String type;
 
     @NotNull
     @JsonProperty("@context")

@@ -14,11 +14,11 @@ import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringT
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
+import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModelFactory;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import jakarta.transaction.Transactional;
 import org.apache.commons.text.StringEscapeUtils;
@@ -43,7 +43,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import javax.xml.crypto.Data;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -160,7 +159,8 @@ public class GXFSCatalogRestService {
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, new TypeReference<>() {});
+        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, new TypeReference<>() {
+        });
 
         // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
@@ -168,30 +168,9 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
 
-        String sdType = selfDescriptionsResponse.getItems().get(0).getMeta().getContent()
-                .getVerifiableCredential().getCredentialSubject().getType();
-
-        if (sdType.equals("merlot:MerlotServiceOfferingSaaS")) {
-            SelfDescriptionsResponse<SaaSCredentialSubject> sdResponse = mapper.readValue(response, new TypeReference<>() {});
-            SelfDescriptionItem<SaaSCredentialSubject> item = sdResponse.getItems().get(0);
-
-            // map the response to a detailed model
-            return new ServiceOfferingDetailedModel<>(
-                    item,
-                    extension
-            );
-        } else if (sdType.equals("merlot:MerlotServiceOfferingDataDelivery")) {
-            SelfDescriptionsResponse<DataDeliveryCredentialSubject> sdResponse = mapper.readValue(response, new TypeReference<>() {});
-            SelfDescriptionItem<DataDeliveryCredentialSubject> item = sdResponse.getItems().get(0);
-
-            // map the response to a detailed model
-            return new ServiceOfferingDetailedModel<>(
-                    item,
-                    extension
-            );
-        } else {
-            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
-        }
+        return ServiceOfferingDetailedModelFactory.createServiceOfferingDetailedModel(
+                selfDescriptionsResponse.getItems().get(0),
+                extension);
     }
 
     public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
@@ -199,7 +178,7 @@ public class GXFSCatalogRestService {
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
-         .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
+                .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
         String extensionHashes = Joiner.on(",")
                 .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                         .collect(Collectors.toSet()));
@@ -274,7 +253,7 @@ public class GXFSCatalogRestService {
             return false;
         }
 
-        for (Runtime runtime: credentialSubject.getRuntimes()) {
+        for (Runtime runtime : credentialSubject.getRuntimes()) {
             if (!(runtime.isRuntimeUnlimited() || (runtime.getRuntimeMeasurement() != null && runtime.getRuntimeCount() != null))) {
                 return false;
             }
@@ -321,7 +300,7 @@ public class GXFSCatalogRestService {
 
         if (credentialSubject instanceof SaaSCredentialSubject saaSCredentialSubject
                 && !validUserCountOptions(saaSCredentialSubject)) {
-           return false;
+            return false;
         }
 
         if (credentialSubject instanceof DataDeliveryCredentialSubject dataDeliveryCredentialSubject
@@ -344,7 +323,7 @@ public class GXFSCatalogRestService {
             // override creation time time to correspond to the current time and generate an ID
             extension = new ServiceOfferingExtension();
             credentialSubject.setCreationDate(new StringTypeValue(
-                    extension.getCreationDate().format( DateTimeFormatter.ISO_INSTANT )));
+                    extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT)));
             credentialSubject.setId(OFFERING_START + UUID.randomUUID());
         } else {
             extension = serviceOfferingExtensionRepository
@@ -366,7 +345,7 @@ public class GXFSCatalogRestService {
 
                 // override creation date
                 credentialSubject.setCreationDate(new StringTypeValue(
-                        extension.getCreationDate().format( DateTimeFormatter.ISO_INSTANT )));
+                        extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT)));
             } else {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
             }
@@ -436,9 +415,9 @@ public class GXFSCatalogRestService {
                         "@id": "https://www.example.org/ServiceOffering.json",
                         "@type": ["VerifiableCredential"],
                         "issuer": \"""" + issuer + """
-                        ",
-                        "issuanceDate": "2022-10-19T18:48:09Z",
-                        "credentialSubject":\s""" + credentialSubjectJson + """
+                ",
+                "issuanceDate": "2022-10-19T18:48:09Z",
+                "credentialSubject":\s""" + credentialSubjectJson + """
                     }
                 }
                 """;

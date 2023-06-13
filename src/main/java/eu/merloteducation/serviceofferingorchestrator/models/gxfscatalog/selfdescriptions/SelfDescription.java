@@ -11,7 +11,7 @@ import java.util.Map;
 
 @Getter
 @Setter
-public class SelfDescription<T extends ServiceOfferingCredentialSubject> {
+public class SelfDescription {
 
     @NotNull
     @JsonProperty("@id")
@@ -24,6 +24,6 @@ public class SelfDescription<T extends ServiceOfferingCredentialSubject> {
 
     private Map<String, String> proof;
 
-    private SelfDescriptionVerifiableCredential<T> verifiableCredential;
+    private SelfDescriptionVerifiableCredential verifiableCredential;
 
 }

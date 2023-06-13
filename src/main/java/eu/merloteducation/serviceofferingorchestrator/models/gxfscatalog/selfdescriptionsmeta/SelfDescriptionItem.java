@@ -7,6 +7,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class SelfDescriptionItem<T extends ServiceOfferingCredentialSubject> {
-    private SelfDescriptionMeta<T> meta;
+public class SelfDescriptionItem {
+    private SelfDescriptionMeta meta;
 }
