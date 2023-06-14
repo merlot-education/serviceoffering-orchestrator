@@ -107,10 +107,6 @@ public abstract class ServiceOfferingCredentialSubject {
     @JsonProperty("merlot:creationDate")
     private StringTypeValue creationDate;
 
-    @NotNull
-    @JsonProperty("merlot:dataAccessType")
-    private StringTypeValue dataAccessType;
-
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("merlot:attachments")
     private List<StringTypeValue> attachments;

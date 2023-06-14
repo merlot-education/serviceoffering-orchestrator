@@ -14,6 +14,9 @@ import java.util.List;
 @Setter
 public class DataDeliveryServiceOfferingDetailedModel extends ServiceOfferingDetailedModel {
 
+    private String dataAccessType;
+    private String dataTransferType;
+
     private List<DataExchangeCount> exchangeCountOption;
 
     public DataDeliveryServiceOfferingDetailedModel(SelfDescriptionItem sdItem,
@@ -33,6 +36,8 @@ public class DataDeliveryServiceOfferingDetailedModel extends ServiceOfferingDet
                     this.exchangeCountOption.add(decEntry);
                 }
             }
+            this.dataAccessType = sub.getDataAccessType().getValue();
+            this.dataTransferType = sub.getDataTransferType().getValue();
         }
     }
 }

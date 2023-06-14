@@ -20,7 +20,6 @@ public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
 
     private String description;
     private String modifiedDate;
-    private String dataAccessType;
     private String exampleCosts;
     private List<String> attachments;
     private List<TermsAndConditions> termsAndConditions;
@@ -40,7 +39,6 @@ public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
 
         if (credentialSubject.getDescription() != null)
             this.description = credentialSubject.getDescription().getValue();
-        this.dataAccessType = credentialSubject.getDataAccessType().getValue();
         if (credentialSubject.getExampleCosts() != null)
             this.exampleCosts = credentialSubject.getExampleCosts().getValue();
         if (credentialSubject.getAttachments() != null)
