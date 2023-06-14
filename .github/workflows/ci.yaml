@@ -56,6 +56,9 @@ jobs:
         with:
           push: true
           tags: ghcr.io/${{ env.repository }}:${{ env.tag }},ghcr.io/${{ env.repository }}:latest
+          secrets: |
+            GITHUB_USER=${{ env.GITHUB_ACTOR }}
+            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
       - name: Dispatch update
         run: |
