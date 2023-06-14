@@ -4,12 +4,6 @@ import eu.merloteducation.serviceofferingorchestrator.controller.ServiceOffering
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-
 @WebMvcTest(ServiceOfferingsController.class)
 public class ServiceOfferingsControllerTest {
 

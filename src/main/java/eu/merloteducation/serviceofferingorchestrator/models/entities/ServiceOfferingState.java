@@ -13,6 +13,7 @@ public enum ServiceOfferingState {
     private final int numVal;
     private final int stateBit;
     private final int allowedStatesBits;
+
     ServiceOfferingState(int numVal, int stateBit, int allowedStatesBits) {
         this.numVal = numVal;
         this.stateBit = stateBit;
