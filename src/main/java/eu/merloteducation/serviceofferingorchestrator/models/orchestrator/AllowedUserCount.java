@@ -6,7 +6,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@EqualsAndHashCode
 public class AllowedUserCount {
     private int userCountUpTo;
     private boolean userCountUnlimited;

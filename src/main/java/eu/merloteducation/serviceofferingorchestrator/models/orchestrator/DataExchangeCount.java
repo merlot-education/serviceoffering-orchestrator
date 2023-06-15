@@ -9,7 +9,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@EqualsAndHashCode
 public class DataExchangeCount {
     private int exchangeCountUpTo;
     private boolean exchangeCountUnlimited;

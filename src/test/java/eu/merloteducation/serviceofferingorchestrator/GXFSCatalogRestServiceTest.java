@@ -414,12 +414,7 @@ class GXFSCatalogRestServiceTest {
 
         SaasServiceOfferingDetailedModel saasModel = (SaasServiceOfferingDetailedModel) model;
         assertNull(saasModel.getHardwareRequirements());
-        List<eu.merloteducation.serviceofferingorchestrator.models.orchestrator.AllowedUserCount> userCounts = new ArrayList<>();
-        eu.merloteducation.serviceofferingorchestrator.models.orchestrator.AllowedUserCount allowedUserCount =
-                new eu.merloteducation.serviceofferingorchestrator.models.orchestrator.AllowedUserCount();
-        allowedUserCount.setUserCountUnlimited(true);
-        userCounts.add(allowedUserCount);
-        assertEquals(userCounts, saasModel.getUserCountOption());
+        assertTrue(saasModel.getUserCountOption().get(0).isUserCountUnlimited());
     }
 
     @Test
@@ -432,12 +427,7 @@ class GXFSCatalogRestServiceTest {
         DataDeliveryServiceOfferingDetailedModel dataDeliveryModel = (DataDeliveryServiceOfferingDetailedModel) model;
         assertEquals("Download", dataDeliveryModel.getDataAccessType());
         assertEquals("Push", dataDeliveryModel.getDataTransferType());
-        List<eu.merloteducation.serviceofferingorchestrator.models.orchestrator.DataExchangeCount> exchangeCounts = new ArrayList<>();
-        eu.merloteducation.serviceofferingorchestrator.models.orchestrator.DataExchangeCount exchangeCount =
-                new eu.merloteducation.serviceofferingorchestrator.models.orchestrator.DataExchangeCount();
-        exchangeCount.setExchangeCountUnlimited(true);
-        exchangeCounts.add(exchangeCount);
-        assertEquals(exchangeCounts, dataDeliveryModel.getExchangeCountOption());
+        assertTrue(dataDeliveryModel.getExchangeCountOption().get(0).isExchangeCountUnlimited());
     }
 
     @Test
