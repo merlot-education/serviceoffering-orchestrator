@@ -5,8 +5,11 @@ import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOff
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
+import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.DataDeliveryServiceOfferingDetailedModel;
+import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.SaasServiceOfferingDetailedModel;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
@@ -402,18 +405,39 @@ class GXFSCatalogRestServiceTest {
     void getServiceOfferingDetailsSaasExistent() throws Exception {
         ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(extension1.getId());
         assertNotNull(model);
+        assertInstanceOf(SaasServiceOfferingDetailedModel.class, model);
         assertEquals("merlot:MerlotServiceOfferingSaaS", model.getType());
         assertEquals(extension1.getId(), model.getId());
         assertEquals(extension1.getState().name(), model.getMerlotState());
         assertEquals(extension1.getIssuer(), model.getOfferedBy());
         assertEquals(extension1.getCurrentSdHash(), model.getSdHash());
+
+        SaasServiceOfferingDetailedModel saasModel = (SaasServiceOfferingDetailedModel) model;
+        assertNull(saasModel.getHardwareRequirements());
+        List<eu.merloteducation.serviceofferingorchestrator.models.orchestrator.AllowedUserCount> userCounts = new ArrayList<>();
+        eu.merloteducation.serviceofferingorchestrator.models.orchestrator.AllowedUserCount allowedUserCount =
+                new eu.merloteducation.serviceofferingorchestrator.models.orchestrator.AllowedUserCount();
+        allowedUserCount.setUserCountUnlimited(true);
+        userCounts.add(allowedUserCount);
+        assertEquals(userCounts, saasModel.getUserCountOption());
     }
 
     @Test
     void getServiceOfferingDetailsDataDeliveryExistent() throws Exception {
         ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(extension2.getId());
         assertNotNull(model);
+        assertInstanceOf(DataDeliveryServiceOfferingDetailedModel.class, model);
         assertEquals("merlot:MerlotServiceOfferingDataDelivery", model.getType());
+
+        DataDeliveryServiceOfferingDetailedModel dataDeliveryModel = (DataDeliveryServiceOfferingDetailedModel) model;
+        assertEquals("Download", dataDeliveryModel.getDataAccessType());
+        assertEquals("Push", dataDeliveryModel.getDataTransferType());
+        List<eu.merloteducation.serviceofferingorchestrator.models.orchestrator.DataExchangeCount> exchangeCounts = new ArrayList<>();
+        eu.merloteducation.serviceofferingorchestrator.models.orchestrator.DataExchangeCount exchangeCount =
+                new eu.merloteducation.serviceofferingorchestrator.models.orchestrator.DataExchangeCount();
+        exchangeCount.setExchangeCountUnlimited(true);
+        exchangeCounts.add(exchangeCount);
+        assertEquals(exchangeCounts, dataDeliveryModel.getExchangeCountOption());
     }
 
     @Test
