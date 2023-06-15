@@ -2,6 +2,8 @@ package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
@@ -21,14 +23,18 @@ public class ServiceOfferingBasicModel{
     private String merlotState;
     private String type;
 
-    public ServiceOfferingBasicModel(SelfDescriptionItem<ServiceOfferingCredentialSubject> sdItem, ServiceOfferingExtension serviceOfferingExtension) {
-        SelfDescriptionMeta<ServiceOfferingCredentialSubject> meta = sdItem.getMeta();
+    public ServiceOfferingBasicModel(SelfDescriptionItem sdItem, ServiceOfferingExtension serviceOfferingExtension) {
+        SelfDescriptionMeta meta = sdItem.getMeta();
         this.id = meta.getId();
         this.sdHash = meta.getSdHash();
 
         ServiceOfferingCredentialSubject credentialSubject = meta.getContent()
                 .getVerifiableCredential().getCredentialSubject();
-        this.type = credentialSubject.getType();
+        if (credentialSubject instanceof SaaSCredentialSubject) {
+            this.type = "merlot:MerlotServiceOfferingSaaS";
+        } else if (credentialSubject instanceof DataDeliveryCredentialSubject) {
+            this.type = "merlot:MerlotServiceOfferingDataDelivery";
+        }
         this.name = credentialSubject.getName().getValue();
         this.offeredBy = credentialSubject.getOfferedBy().getId();
 

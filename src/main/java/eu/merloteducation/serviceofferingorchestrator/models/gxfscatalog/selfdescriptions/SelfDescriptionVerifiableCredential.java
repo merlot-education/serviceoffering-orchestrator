@@ -10,6 +10,6 @@ import java.util.Map;
 
 @Getter
 @Setter
-public class SelfDescriptionVerifiableCredential<T extends ServiceOfferingCredentialSubject> {
-    private T credentialSubject;
+public class SelfDescriptionVerifiableCredential {
+    private ServiceOfferingCredentialSubject credentialSubject;
 }

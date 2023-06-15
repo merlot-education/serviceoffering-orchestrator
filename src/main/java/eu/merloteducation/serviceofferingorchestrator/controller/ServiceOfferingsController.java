@@ -3,6 +3,7 @@ package eu.merloteducation.serviceofferingorchestrator.controller;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
@@ -87,7 +88,7 @@ public class ServiceOfferingsController {
     public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(@RequestParam("page") int page,
                                                                            @RequestParam("size") int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
-                                                                            Principal principal,
+                                                                           Principal principal,
                                                                            @PathVariable(value = "orgaId") String orgaId,
                                                                            HttpServletResponse response) throws Exception {
 
@@ -110,14 +111,14 @@ public class ServiceOfferingsController {
 
     @GetMapping("/serviceoffering/{soId}")
     public ServiceOfferingDetailedModel getServiceOfferingById(Principal principal,
-                                                                  @PathVariable(value = "soId") String serviceofferingId,
-                                                                  HttpServletResponse response) throws Exception {
+                                                                                                 @PathVariable(value = "soId") String serviceofferingId,
+                                                                                                 HttpServletResponse response) throws Exception {
         return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
     }
 
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
     public SelfDescriptionsCreateResponse addServiceOfferingSaas(Principal principal, HttpServletResponse response,
-                                                             @Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
+                                                                 @Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
         // if the requested organization id is not in the roles of this user,
         // the user is not allowed to request this endpoint
         if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
@@ -129,7 +130,7 @@ public class ServiceOfferingsController {
 
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
     public SelfDescriptionsCreateResponse addServiceOfferingDataDelivery(Principal principal, HttpServletResponse response,
-                                                                 @Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
+                                                                         @Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
         // if the requested organization id is not in the roles of this user,
         // the user is not allowed to request this endpoint
         if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
@@ -141,22 +142,22 @@ public class ServiceOfferingsController {
 
     @PatchMapping("/serviceoffering/status/{soId}/{status}")
     public void patchStatusServiceOffering(Principal principal,
-                                                               @PathVariable(value = "soId") String serviceofferingId,
-                                                               @PathVariable(value = "status") ServiceOfferingState status,
-                                                               HttpServletResponse response) throws Exception {
+                                           @PathVariable(value = "soId") String serviceofferingId,
+                                           @PathVariable(value = "status") ServiceOfferingState status,
+                                           HttpServletResponse response) throws Exception {
         gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, status, getRepresentedOrgaIds(principal));
     }
 
     @GetMapping("/shapes/getAvailableShapesCategorized")
     public Map<String, List<String>> getAvailableShapes(Principal principal,
-                                                            HttpServletResponse response) throws Exception {
+                                                        HttpServletResponse response) throws Exception {
         return gxfsWizardRestService.getServiceOfferingShapes();
     }
 
     @GetMapping("/shapes/getJSON")
     public String getShapeJson(Principal principal,
-                                        @RequestParam String name,
-                                         HttpServletResponse response) throws Exception {
+                               @RequestParam String name,
+                               HttpServletResponse response) throws Exception {
         return gxfsWizardRestService.getShape(name);
     }
 
