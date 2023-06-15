@@ -255,7 +255,6 @@ class GXFSCatalogRestServiceTest {
 
         credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
         credentialSubject.setCreationDate(new StringTypeValue("1234"));
-        credentialSubject.setDataAccessType(new StringTypeValue("Download"));
 
         List<Runtime> runtimes = new ArrayList<>();
         Runtime runtime = new Runtime();
