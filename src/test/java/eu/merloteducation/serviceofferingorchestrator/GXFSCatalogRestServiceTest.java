@@ -403,6 +403,10 @@ class GXFSCatalogRestServiceTest {
         ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(extension1.getId());
         assertNotNull(model);
         assertEquals("merlot:MerlotServiceOfferingSaaS", model.getType());
+        assertEquals(extension1.getId(), model.getId());
+        assertEquals(extension1.getState().name(), model.getMerlotState());
+        assertEquals(extension1.getIssuer(), model.getOfferedBy());
+        assertEquals(extension1.getCurrentSdHash(), model.getSdHash());
     }
 
     @Test
