@@ -116,6 +116,21 @@ public class GXFSCatalogRestService {
         restTemplate.postForObject(keycloakLogoutUri, request, String.class);
     }
 
+    private void deleteOffering(ServiceOfferingExtension extension) throws Exception {
+        extension.delete();
+        restCallAuthenticated(gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash() + "/revoke",
+                null, null, HttpMethod.POST);
+    }
+
+    private void purgeOffering(ServiceOfferingExtension extension) throws Exception {
+        if (extension.getState() != ServiceOfferingState.DELETED) {
+            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
+        }
+        restCallAuthenticated(gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash(), null,
+                null, HttpMethod.DELETE);
+        serviceOfferingExtensionRepository.delete(extension);
+    }
+
     public void transitionServiceOfferingExtension(String id, ServiceOfferingState targetState, Set<String> representedOrgaIds) {
         if (!serviceOfferingExtensionRepository.existsById(id)) {
             throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
@@ -132,17 +147,20 @@ public class GXFSCatalogRestService {
                     case IN_DRAFT -> extension.inDraft();
                     case RELEASED -> extension.release();
                     case REVOKED -> extension.revoke();
-                    case DELETED, ARCHIVED -> extension.delete(); // TODO also set status to revoked in catalog
+                    case DELETED, ARCHIVED -> deleteOffering(extension);
+                    case PURGED -> purgeOffering(extension);
                 }
-                serviceOfferingExtensionRepository.save(extension);
-            } catch (IllegalStateException e) {
+                if (targetState != ServiceOfferingState.PURGED) {
+                    serviceOfferingExtensionRepository.save(extension);
+                }
+            } catch (Exception e) {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
             }
         }
 
     }
 
-    public ServiceOfferingDetailedModel getServiceOfferingById(String id) throws Exception {
+    public ServiceOfferingDetailedModel getServiceOfferingById(String id, Set<String> representedOrgaIds) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -153,8 +171,13 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
 
+        if (extension.getState() != ServiceOfferingState.RELEASED &&
+                !representedOrgaIds.contains(extension.getIssuer().replace(PARTICIPANT_START, ""))) {
+            throw new ResponseStatusException(FORBIDDEN, "Not authorized to access details to this offering");
+        }
+
         String response = restCallAuthenticated(
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&ids=" + id, null,
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + id, null,
                 null, HttpMethod.GET);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
@@ -224,7 +247,7 @@ public class GXFSCatalogRestService {
                         .collect(Collectors.toSet()));
 
         String response = restCallAuthenticated(
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&hashes=" + extensionHashes, null,
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + extensionHashes, null,
                 null, HttpMethod.GET);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
