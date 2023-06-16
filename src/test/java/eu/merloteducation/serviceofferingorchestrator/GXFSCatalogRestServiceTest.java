@@ -210,11 +210,11 @@ class GXFSCatalogRestServiceTest {
                         eq(HttpMethod.GET), any(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>(offeringQueryResponse, HttpStatus.OK));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&ids=" + extension1.getId()),
+        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + extension1.getId()),
                         eq(HttpMethod.GET), any(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleSaas, HttpStatus.OK));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&ids=" + extension2.getId()),
+        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + extension2.getId()),
                         eq(HttpMethod.GET), any(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleDataDelivery, HttpStatus.OK));
 
@@ -223,7 +223,7 @@ class GXFSCatalogRestServiceTest {
                 {"sdHash":"4321","id":"ServiceOffering:new","status":"active","issuer":"Participant:10","validatorDids":["did:web:compliance.lab.gaia-x.eu"],"uploadDatetime":"2023-05-24T13:32:22.712661Z","statusDatetime":"2023-05-24T13:32:22.712662Z"}
                 """;
         // for participant endpoint return a dummy list of one item
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri),
+        lenient().when(restTemplate.exchange(startsWith(gxfscatalogSelfdescriptionsUri),
                         eq(HttpMethod.POST), any(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>(mockOfferingCreatedResponse, HttpStatus.OK));
 
@@ -366,6 +366,11 @@ class GXFSCatalogRestServiceTest {
         result = serviceOfferingExtensionRepository.findById(extension1.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.DELETED, result.getState());
+
+        gxfsCatalogRestService.transitionServiceOfferingExtension(extension1.getId(),
+                ServiceOfferingState.PURGED, representedOrgaIds);
+        result = serviceOfferingExtensionRepository.findById(extension1.getId()).orElse(null);
+        assertNull(result);
     }
 
     @Test
@@ -403,7 +408,10 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsSaasExistent() throws Exception {
-        ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(extension1.getId());
+        Set<String> representedOrgaIds = new HashSet<>();
+        representedOrgaIds.add(extension1.getIssuer().replace("Participant:", ""));
+        ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(extension1.getId(),
+                representedOrgaIds);
         assertNotNull(model);
         assertInstanceOf(SaasServiceOfferingDetailedModel.class, model);
         assertEquals("merlot:MerlotServiceOfferingSaaS", model.getType());
@@ -419,7 +427,9 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsDataDeliveryExistent() throws Exception {
-        ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(extension2.getId());
+        Set<String> representedOrgaIds = new HashSet<>(); // empty set for public
+        ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(extension2.getId(),
+                representedOrgaIds);
         assertNotNull(model);
         assertInstanceOf(DataDeliveryServiceOfferingDetailedModel.class, model);
         assertEquals("merlot:MerlotServiceOfferingDataDelivery", model.getType());
@@ -432,9 +442,9 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsNonExistent() throws Exception {
-
+        Set<String> representedOrgaIds = new HashSet<>(); // empty set for public
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.getServiceOfferingById("garbage"));
+                () -> gxfsCatalogRestService.getServiceOfferingById("garbage", representedOrgaIds));
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 

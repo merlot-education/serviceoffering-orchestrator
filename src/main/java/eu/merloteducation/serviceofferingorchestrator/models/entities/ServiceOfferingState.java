@@ -8,7 +8,8 @@ public enum ServiceOfferingState {
     RELEASED(40, 2, 4),
     REVOKED(60, 4, 27),
     DELETED(70, 8, 0),
-    ARCHIVED(80, 16, 0);
+    ARCHIVED(80, 16, 0),
+    PURGED(90, 32, 0);
 
     private final int numVal;
     private final int stateBit;

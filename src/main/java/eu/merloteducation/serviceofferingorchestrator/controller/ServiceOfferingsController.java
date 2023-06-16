@@ -113,7 +113,7 @@ public class ServiceOfferingsController {
     public ServiceOfferingDetailedModel getServiceOfferingById(Principal principal,
                                                                                                  @PathVariable(value = "soId") String serviceofferingId,
                                                                                                  HttpServletResponse response) throws Exception {
-        return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
+        return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId, getRepresentedOrgaIds(principal));
     }
 
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
