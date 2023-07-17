@@ -13,7 +13,9 @@ public class MessageQueueConfig {
 
     public static final String ORCHESTRATOR_EXCHANGE = "orchestrator.exchange";
     public static final String CONTRACT_CREATED_KEY = "created.contract";
+    public static final String CONTRACT_PURGED_KEY = "purged.contract";
     public static final String CONTRACT_CREATED_QUEUE = "serviceoffering.create.contract.queue";
+    public static final String CONTRACT_PURGED_QUEUE = "serviceoffering.purge.contract.queue";
     @Bean
     DirectExchange orchestratorExchange() {
         return new DirectExchange(ORCHESTRATOR_EXCHANGE);
@@ -25,8 +27,18 @@ public class MessageQueueConfig {
     }
 
     @Bean
+    Binding purgedContractBinding(Queue contractPurgedQueue, DirectExchange orchestratorExchange) {
+        return BindingBuilder.bind(contractPurgedQueue).to(orchestratorExchange).with(CONTRACT_PURGED_KEY);
+    }
+
+    @Bean
     public Queue contractCreatedQueue() {
         return new Queue(CONTRACT_CREATED_QUEUE, false);
+    }
+
+    @Bean
+    public Queue contractPurgedQueue() {
+        return new Queue(CONTRACT_PURGED_QUEUE, false);
     }
 
     @Bean

@@ -8,7 +8,7 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString
-public class ContractTemplateCreated {
+public class ContractTemplateUpdated {
     @NotNull
     private String contractId;
 
