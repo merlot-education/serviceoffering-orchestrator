@@ -2,6 +2,7 @@ package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
@@ -34,6 +35,8 @@ public class ServiceOfferingBasicModel{
             this.type = "merlot:MerlotServiceOfferingSaaS";
         } else if (credentialSubject instanceof DataDeliveryCredentialSubject) {
             this.type = "merlot:MerlotServiceOfferingDataDelivery";
+        } else if (credentialSubject instanceof CooperationCredentialSubject) {
+            this.type = "merlot:MerlotServiceOfferingCooperation";
         }
         this.name = credentialSubject.getName().getValue();
         this.offeredBy = credentialSubject.getOfferedBy().getId();

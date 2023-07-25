@@ -1,6 +1,7 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
@@ -131,6 +132,18 @@ public class ServiceOfferingsController {
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
     public SelfDescriptionsCreateResponse addServiceOfferingDataDelivery(Principal principal, HttpServletResponse response,
                                                                          @Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
+        // if the requested organization id is not in the roles of this user,
+        // the user is not allowed to request this endpoint
+        if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return null;
+        }
+        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+    }
+
+    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
+    public SelfDescriptionsCreateResponse addServiceOfferingCooperation(Principal principal, HttpServletResponse response,
+                                                                         @Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
         // if the requested organization id is not in the roles of this user,
         // the user is not allowed to request this endpoint
         if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
