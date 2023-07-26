@@ -5,7 +5,6 @@ import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOff
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.DataDeliveryServiceOfferingDetailedModel;
@@ -23,7 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -35,7 +33,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
@@ -93,11 +90,13 @@ class GXFSCatalogRestServiceTest {
     @Autowired
     private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
-    private ServiceOfferingExtension extension1;
-    private ServiceOfferingExtension extension2;
+    private ServiceOfferingExtension saasOffering;
+    private ServiceOfferingExtension dateDeliveryOffering;
+    private ServiceOfferingExtension cooperationOffering;
 
     private String createCatalogItem(String id, String issuer, String sdHash, String type) {
         String contentSaas = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"http://example.edu/verifiablePresentation/self-description1\",\"type\":[\"VerifiablePresentation\"],\"verifiableCredential\":{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"https://www.example.org/ServiceOffering.json\",\"@type\":[\"VerifiableCredential\"],\"issuer\":\"Participant:10\",\"issuanceDate\":\"2022-10-19T18:48:09Z\",\"credentialSubject\":{\"@id\":\"${id}\",\"@type\":\"merlot:MerlotServiceOfferingSaaS\",\"@context\":{\"merlot\":\"http://w3id.org/gaia-x/merlot#\",\"dct\":\"http://purl.org/dc/terms/\",\"gax-trust-framework\":\"http://w3id.org/gaia-x/gax-trust-framework#\",\"rdf\":\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\"sh\":\"http://www.w3.org/ns/shacl#\",\"xsd\":\"http://www.w3.org/2001/XMLSchema#\",\"gax-validation\":\"http://w3id.org/gaia-x/validation#\",\"skos\":\"http://www.w3.org/2004/02/skos/core#\",\"dcat\":\"http://www.w3.org/ns/dcat#\",\"gax-core\":\"http://w3id.org/gaia-x/core#\"},\"gax-core:offeredBy\":{\"@id\":\"Participant:10\"},\"gax-trust-framework:name\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"gax-trust-framework:termsAndConditions\":[{\"gax-trust-framework:content\":{\"@type\":\"xsd:anyURI\",\"@value\":\"Test\"},\"gax-trust-framework:hash\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"@type\":\"gax-trust-framework:TermsAndConditions\"}],\"gax-trust-framework:policy\":[{\"@type\":\"xsd:string\",\"@value\":\"dummyPolicy\"}],\"gax-trust-framework:dataAccountExport\":[{\"gax-trust-framework:formatType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:accessType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:requestType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"@type\":\"gax-trust-framework:DataAccountExport\"}],\"gax-trust-framework:providedBy\":{\"@id\":\"Participant:10\"},\"merlot:creationDate\":{\"@type\":\"xsd:string\",\"@value\":\"2023-05-24T13:30:12.382871745Z\"},\"merlot:runtimeOption\":[{\"merlot:runtimeUnlimited\":true}],\"merlot:merlotTermsAndConditionsAccepted\":true,\"merlot:userCountOption\":[{\"merlot:userCountUnlimited\":true}]},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\"}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\"}}";
+        String contentCooperation = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"http://example.edu/verifiablePresentation/self-description1\",\"type\":[\"VerifiablePresentation\"],\"verifiableCredential\":{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"https://www.example.org/ServiceOffering.json\",\"@type\":[\"VerifiableCredential\"],\"issuer\":\"Participant:10\",\"issuanceDate\":\"2022-10-19T18:48:09Z\",\"credentialSubject\":{\"@id\":\"${id}\",\"@type\":\"merlot:MerlotServiceOfferingCooperation\",\"@context\":{\"merlot\":\"http://w3id.org/gaia-x/merlot#\",\"dct\":\"http://purl.org/dc/terms/\",\"gax-trust-framework\":\"http://w3id.org/gaia-x/gax-trust-framework#\",\"rdf\":\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\"sh\":\"http://www.w3.org/ns/shacl#\",\"xsd\":\"http://www.w3.org/2001/XMLSchema#\",\"gax-validation\":\"http://w3id.org/gaia-x/validation#\",\"skos\":\"http://www.w3.org/2004/02/skos/core#\",\"dcat\":\"http://www.w3.org/ns/dcat#\",\"gax-core\":\"http://w3id.org/gaia-x/core#\"},\"gax-core:offeredBy\":{\"@id\":\"Participant:10\"},\"gax-trust-framework:name\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"gax-trust-framework:termsAndConditions\":[{\"gax-trust-framework:content\":{\"@type\":\"xsd:anyURI\",\"@value\":\"Test\"},\"gax-trust-framework:hash\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"@type\":\"gax-trust-framework:TermsAndConditions\"}],\"gax-trust-framework:policy\":[{\"@type\":\"xsd:string\",\"@value\":\"dummyPolicy\"}],\"gax-trust-framework:dataAccountExport\":[{\"gax-trust-framework:formatType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:accessType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:requestType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"@type\":\"gax-trust-framework:DataAccountExport\"}],\"gax-trust-framework:providedBy\":{\"@id\":\"Participant:10\"},\"merlot:creationDate\":{\"@type\":\"xsd:string\",\"@value\":\"2023-05-24T13:30:12.382871745Z\"},\"merlot:runtimeOption\":[{\"merlot:runtimeUnlimited\":true}],\"merlot:merlotTermsAndConditionsAccepted\":true},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\"}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\"}}";
         String contentDataDelivery = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"http://example.edu/verifiablePresentation/self-description1\",\"type\":[\"VerifiablePresentation\"],\"verifiableCredential\":{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"https://www.example.org/ServiceOffering.json\",\"@type\":[\"VerifiableCredential\"],\"issuer\":\"Participant:10\",\"issuanceDate\":\"2022-10-19T18:48:09Z\",\"credentialSubject\":{\"@id\":\"${id}\",\"@type\":\"merlot:MerlotServiceOfferingDataDelivery\",\"@context\":{\"merlot\":\"http://w3id.org/gaia-x/merlot#\",\"dct\":\"http://purl.org/dc/terms/\",\"gax-trust-framework\":\"http://w3id.org/gaia-x/gax-trust-framework#\",\"rdf\":\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\"sh\":\"http://www.w3.org/ns/shacl#\",\"xsd\":\"http://www.w3.org/2001/XMLSchema#\",\"gax-validation\":\"http://w3id.org/gaia-x/validation#\",\"skos\":\"http://www.w3.org/2004/02/skos/core#\",\"dcat\":\"http://www.w3.org/ns/dcat#\",\"gax-core\":\"http://w3id.org/gaia-x/core#\"},\"gax-core:offeredBy\":{\"@id\":\"Participant:10\"},\"gax-trust-framework:name\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"gax-trust-framework:termsAndConditions\":[{\"gax-trust-framework:content\":{\"@type\":\"xsd:anyURI\",\"@value\":\"Test\"},\"gax-trust-framework:hash\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"@type\":\"gax-trust-framework:TermsAndConditions\"}],\"gax-trust-framework:policy\":[{\"@type\":\"xsd:string\",\"@value\":\"dummyPolicy\"}],\"gax-trust-framework:dataAccountExport\":[{\"gax-trust-framework:formatType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:accessType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:requestType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"@type\":\"gax-trust-framework:DataAccountExport\"}],\"gax-trust-framework:providedBy\":{\"@id\":\"Participant:10\"},\"merlot:creationDate\":{\"@type\":\"xsd:string\",\"@value\":\"2023-05-24T13:30:12.382871745Z\"},\"merlot:dataAccessType\":{\"@type\":\"xsd:string\",\"@value\":\"Download\"},\"merlot:dataTransferType\":{\"@type\":\"xsd:string\",\"@value\":\"Push\"},\"merlot:runtimeOption\":[{\"merlot:runtimeUnlimited\":true}],\"merlot:merlotTermsAndConditionsAccepted\":true,\"merlot:exchangeCountOption\":[{\"merlot:exchangeCountUnlimited\":true}]},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\"}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\"}}";
         String catalogItem = """
                         {
@@ -125,9 +124,13 @@ class GXFSCatalogRestServiceTest {
         params.put("id", id);
         params.put("issuer", issuer);
         params.put("sdHash", sdHash);
-        params.put("content", type.equals("saas")
-                ? StringSubstitutor.replace(contentSaas, params, "${", "}")
-                : StringSubstitutor.replace(contentDataDelivery, params, "${", "}"));
+        if (type.equals("saas")) {
+            params.put("content", StringSubstitutor.replace(contentSaas, params, "${", "}"));
+        } else if (type.equals("dataDelivery")) {
+            params.put("content", StringSubstitutor.replace(contentDataDelivery, params, "${", "}"));
+        } else if (type.equals("coop")) {
+            params.put("content", StringSubstitutor.replace(contentCooperation, params, "${", "}"));
+        }
         return StringSubstitutor.replace(catalogItem, params, "${", "}");
     }
 
@@ -163,18 +166,25 @@ class GXFSCatalogRestServiceTest {
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfsSignerService", new GXFSSignerService());
         ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
 
-        extension1 = new ServiceOfferingExtension();
-        extension1.setIssuer("Participant:10");
-        extension1.setCurrentSdHash("1234");
-        extension1.setId("ServiceOffering:exists");
-        serviceOfferingExtensionRepository.save(extension1);
+        saasOffering = new ServiceOfferingExtension();
+        saasOffering.setIssuer("Participant:10");
+        saasOffering.setCurrentSdHash("1234");
+        saasOffering.setId("ServiceOffering:exists");
+        serviceOfferingExtensionRepository.save(saasOffering);
 
-        extension2 = new ServiceOfferingExtension();
-        extension2.setIssuer("Participant:10");
-        extension2.setCurrentSdHash("12345");
-        extension2.setId("ServiceOffering:exists2");
-        extension2.release();
-        serviceOfferingExtensionRepository.save(extension2);
+        dateDeliveryOffering = new ServiceOfferingExtension();
+        dateDeliveryOffering.setIssuer("Participant:10");
+        dateDeliveryOffering.setCurrentSdHash("12345");
+        dateDeliveryOffering.setId("ServiceOffering:exists2");
+        dateDeliveryOffering.release();
+        serviceOfferingExtensionRepository.save(dateDeliveryOffering);
+
+        cooperationOffering = new ServiceOfferingExtension();
+        cooperationOffering.setIssuer("Participant:10");
+        cooperationOffering.setCurrentSdHash("123456");
+        cooperationOffering.setId("ServiceOffering:exists3");
+        cooperationOffering.release();
+        serviceOfferingExtensionRepository.save(cooperationOffering);
 
 
         lenient().when(restTemplate.postForObject(eq(keycloakTokenUri), any(), eq(String.class)))
@@ -188,20 +198,24 @@ class GXFSCatalogRestServiceTest {
                 .thenThrow(HttpClientErrorException.NotFound.class);
 
         List<String> catalogItems = new ArrayList<>();
-        catalogItems.add(createCatalogItem(extension1.getId(), extension1.getIssuer(), extension1.getCurrentSdHash(), "saas"));
-        catalogItems.add(createCatalogItem(extension2.getId(), extension2.getIssuer(), extension2.getCurrentSdHash(), "dataDelivery"));
+        catalogItems.add(createCatalogItem(saasOffering.getId(), saasOffering.getIssuer(), saasOffering.getCurrentSdHash(), "saas"));
+        catalogItems.add(createCatalogItem(dateDeliveryOffering.getId(), dateDeliveryOffering.getIssuer(), dateDeliveryOffering.getCurrentSdHash(), "dataDelivery"));
 
         String offeringQueryResponse = createCatalogResponse(catalogItems);
 
         List<String> catalogSingleItemSaas = new ArrayList<>();
-        catalogSingleItemSaas.add(createCatalogItem(extension1.getId(), extension1.getIssuer(), extension1.getCurrentSdHash(), "saas"));
+        catalogSingleItemSaas.add(createCatalogItem(saasOffering.getId(), saasOffering.getIssuer(), saasOffering.getCurrentSdHash(), "saas"));
         String offeringQueryResponseSingleSaas = createCatalogResponse(catalogSingleItemSaas);
 
         List<String> catalogSingleItemDataDelivery = new ArrayList<>();
-        catalogSingleItemDataDelivery.add(createCatalogItem(extension2.getId(), extension2.getIssuer(), extension2.getCurrentSdHash(), "dataDelivery"));
+        catalogSingleItemDataDelivery.add(createCatalogItem(dateDeliveryOffering.getId(), dateDeliveryOffering.getIssuer(), dateDeliveryOffering.getCurrentSdHash(), "dataDelivery"));
         String offeringQueryResponseSingleDataDelivery = createCatalogResponse(catalogSingleItemDataDelivery);
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "/" + extension1.getCurrentSdHash()),
+        List<String> catalogSingleItemCooperation = new ArrayList<>();
+        catalogSingleItemCooperation.add(createCatalogItem(cooperationOffering.getId(), cooperationOffering.getIssuer(), cooperationOffering.getCurrentSdHash(), "coop"));
+        String offeringQueryResponseSingleCooperation = createCatalogResponse(catalogSingleItemCooperation);
+
+        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "/" + saasOffering.getCurrentSdHash()),
                         eq(HttpMethod.DELETE), any(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleSaas, HttpStatus.OK));
 
@@ -210,13 +224,17 @@ class GXFSCatalogRestServiceTest {
                         eq(HttpMethod.GET), any(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>(offeringQueryResponse, HttpStatus.OK));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + extension1.getId()),
+        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + saasOffering.getId()),
                         eq(HttpMethod.GET), any(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleSaas, HttpStatus.OK));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + extension2.getId()),
+        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + dateDeliveryOffering.getId()),
                         eq(HttpMethod.GET), any(), eq(String.class)))
                 .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleDataDelivery, HttpStatus.OK));
+
+        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + cooperationOffering.getId()),
+                        eq(HttpMethod.GET), any(), eq(String.class)))
+                .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleCooperation, HttpStatus.OK));
 
 
         String mockOfferingCreatedResponse = """
@@ -294,7 +312,7 @@ class GXFSCatalogRestServiceTest {
     @Test
     void updateExistingWithValidServiceOffering() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setId(extension1.getId());
+        credentialSubject.setId(saasOffering.getId());
 
         SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
@@ -348,28 +366,28 @@ class GXFSCatalogRestServiceTest {
     @Transactional
     void transitionServiceOfferingValid() {
         Set<String> representedOrgaIds = new HashSet<>();
-        representedOrgaIds.add(extension1.getIssuer().replace("Participant:", ""));
-        gxfsCatalogRestService.transitionServiceOfferingExtension(extension1.getId(),
+        representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
+        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.RELEASED, representedOrgaIds);
-        ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(extension1.getId()).orElse(null);
+        ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.RELEASED, result.getState());
 
-        gxfsCatalogRestService.transitionServiceOfferingExtension(extension1.getId(),
+        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.REVOKED, representedOrgaIds);
-        result = serviceOfferingExtensionRepository.findById(extension1.getId()).orElse(null);
+        result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.REVOKED, result.getState());
 
-        gxfsCatalogRestService.transitionServiceOfferingExtension(extension1.getId(),
+        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.DELETED, representedOrgaIds);
-        result = serviceOfferingExtensionRepository.findById(extension1.getId()).orElse(null);
+        result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.DELETED, result.getState());
 
-        gxfsCatalogRestService.transitionServiceOfferingExtension(extension1.getId(),
+        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.PURGED, representedOrgaIds);
-        result = serviceOfferingExtensionRepository.findById(extension1.getId()).orElse(null);
+        result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNull(result);
     }
 
@@ -377,7 +395,7 @@ class GXFSCatalogRestServiceTest {
     @Transactional
     void transitionServiceOfferingNonExistent() {
         Set<String> representedOrgaIds = new HashSet<>();
-        representedOrgaIds.add(extension1.getIssuer().replace("Participant:", ""));
+        representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> gxfsCatalogRestService.transitionServiceOfferingExtension("garbage",
                         ServiceOfferingState.RELEASED, representedOrgaIds));
@@ -390,7 +408,7 @@ class GXFSCatalogRestServiceTest {
         Set<String> representedOrgaIds = new HashSet<>();
         representedOrgaIds.add("Participant:99");
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(extension1.getId(),
+                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
                         ServiceOfferingState.RELEASED, representedOrgaIds));
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
     }
@@ -399,9 +417,9 @@ class GXFSCatalogRestServiceTest {
     @Transactional
     void transitionServiceOfferingInvalid() {
         Set<String> representedOrgaIds = new HashSet<>();
-        representedOrgaIds.add(extension1.getIssuer().replace("Participant:", ""));
+        representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(extension1.getId(),
+                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
                         ServiceOfferingState.REVOKED, representedOrgaIds));
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
     }
@@ -409,16 +427,16 @@ class GXFSCatalogRestServiceTest {
     @Test
     void getServiceOfferingDetailsSaasExistent() throws Exception {
         Set<String> representedOrgaIds = new HashSet<>();
-        representedOrgaIds.add(extension1.getIssuer().replace("Participant:", ""));
-        ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(extension1.getId(),
+        representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
+        ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(saasOffering.getId(),
                 representedOrgaIds);
         assertNotNull(model);
         assertInstanceOf(SaasServiceOfferingDetailedModel.class, model);
         assertEquals("merlot:MerlotServiceOfferingSaaS", model.getType());
-        assertEquals(extension1.getId(), model.getId());
-        assertEquals(extension1.getState().name(), model.getMerlotState());
-        assertEquals(extension1.getIssuer(), model.getOfferedBy());
-        assertEquals(extension1.getCurrentSdHash(), model.getSdHash());
+        assertEquals(saasOffering.getId(), model.getId());
+        assertEquals(saasOffering.getState().name(), model.getMerlotState());
+        assertEquals(saasOffering.getIssuer(), model.getOfferedBy());
+        assertEquals(saasOffering.getCurrentSdHash(), model.getSdHash());
 
         SaasServiceOfferingDetailedModel saasModel = (SaasServiceOfferingDetailedModel) model;
         assertNull(saasModel.getHardwareRequirements());
@@ -428,7 +446,7 @@ class GXFSCatalogRestServiceTest {
     @Test
     void getServiceOfferingDetailsDataDeliveryExistent() throws Exception {
         Set<String> representedOrgaIds = new HashSet<>(); // empty set for public
-        ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(extension2.getId(),
+        ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(dateDeliveryOffering.getId(),
                 representedOrgaIds);
         assertNotNull(model);
         assertInstanceOf(DataDeliveryServiceOfferingDetailedModel.class, model);
@@ -438,6 +456,16 @@ class GXFSCatalogRestServiceTest {
         assertEquals("Download", dataDeliveryModel.getDataAccessType());
         assertEquals("Push", dataDeliveryModel.getDataTransferType());
         assertTrue(dataDeliveryModel.getExchangeCountOption().get(0).isExchangeCountUnlimited());
+    }
+
+    @Test
+    void getServiceOfferingDetailsCooperationExistent() throws Exception {
+        Set<String> representedOrgaIds = new HashSet<>(); // empty set for public
+        ServiceOfferingDetailedModel model = gxfsCatalogRestService.getServiceOfferingById(cooperationOffering.getId(),
+                representedOrgaIds);
+        assertNotNull(model);
+        assertInstanceOf(ServiceOfferingDetailedModel.class, model);
+        assertEquals("merlot:MerlotServiceOfferingCooperation", model.getType());
     }
 
     @Test

@@ -17,7 +17,8 @@ public class ServiceOfferingDetailedModelFactory {
                 instanceof DataDeliveryCredentialSubject) {
             return new DataDeliveryServiceOfferingDetailedModel(sdItem, serviceOfferingExtension);
         } else {
-            throw new IllegalArgumentException("Credential Subject is of no known type");
+            // TODO pass through type field instead of relying on that there are no special fields
+            return new ServiceOfferingDetailedModel(sdItem, serviceOfferingExtension);
         }
     }
 }
