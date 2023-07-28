@@ -281,13 +281,13 @@ class GXFSCatalogRestServiceTest {
         Runtime runtime = new Runtime();
         runtime.setRuntimeUnlimited(true);
         runtimes.add(runtime);
-        credentialSubject.setRuntimes(runtimes);
+        credentialSubject.setRuntimeOptions(runtimes);
 
         List<AllowedUserCount> userCounts = new ArrayList<>();
         AllowedUserCount userCount = new AllowedUserCount();
         userCount.setUserCountUnlimited(true);
         userCounts.add(userCount);
-        credentialSubject.setUserCountOption(userCounts);
+        credentialSubject.setUserCountOptions(userCounts);
 
         credentialSubject.setMerlotTermsAndConditionsAccepted(true);
         return credentialSubject;

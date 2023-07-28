@@ -115,10 +115,12 @@ public abstract class ServiceOfferingCredentialSubject {
     @JsonProperty("merlot:exampleCosts")
     private StringTypeValue exampleCosts;
 
-    @NotNull
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("merlot:runtimeOption")
-    private List<Runtime> runtimes;
+    private List<Runtime> runtimeOptions;
+
+    @JsonProperty("merlot:runtimeUnlimited")
+    private boolean runtimeUnlimited;
 
     @NotNull
     @JsonProperty("merlot:merlotTermsAndConditionsAccepted")

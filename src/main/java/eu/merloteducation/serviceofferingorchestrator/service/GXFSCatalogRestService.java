@@ -270,49 +270,25 @@ public class GXFSCatalogRestService {
     }
 
     private boolean validRuntimeOptions(ServiceOfferingCredentialSubject credentialSubject) {
-        // verify runtime options
-        if (credentialSubject.getRuntimes() == null
-                || credentialSubject.getRuntimes().isEmpty()) {
-            return false;
-        }
-
-        for (Runtime runtime : credentialSubject.getRuntimes()) {
-            if (!(runtime.isRuntimeUnlimited() || (runtime.getRuntimeMeasurement() != null && runtime.getRuntimeCount() != null))) {
-                return false;
-            }
-        }
-        return true;
+        return (credentialSubject.getRuntimeOptions() != null
+                && !credentialSubject.getRuntimeOptions().isEmpty())
+                || credentialSubject.isRuntimeUnlimited();
     }
 
     private boolean validUserCountOptions(SaaSCredentialSubject saaSCredentialSubject) {
-        if (saaSCredentialSubject.getUserCountOption() == null
-                || saaSCredentialSubject.getUserCountOption().isEmpty()) {
-            return false;
-        }
-
-        for (AllowedUserCount userCount : saaSCredentialSubject.getUserCountOption()) {
-            if (!(userCount.isUserCountUnlimited() || userCount.getUserCountUpTo() != null)) {
-                return false;
-            }
-        }
-        return true;
+        return (saaSCredentialSubject.getUserCountOptions() != null
+                && !saaSCredentialSubject.getUserCountOptions().isEmpty())
+                || saaSCredentialSubject.isUserCountUnlimited();
     }
 
     private boolean validDataExchangeCountOptions(DataDeliveryCredentialSubject dataDeliveryCredentialSubject) {
-        if (dataDeliveryCredentialSubject.getExchangeCountOption() == null
-                || dataDeliveryCredentialSubject.getExchangeCountOption().isEmpty()) {
-            return false;
-        }
-
-        for (DataExchangeCount exchangeCount : dataDeliveryCredentialSubject.getExchangeCountOption()) {
-            if (!(exchangeCount.isExchangeCountUnlimited() || exchangeCount.getExchangeCountUpTo() != null)) {
-                return false;
-            }
-        }
-        return true;
+        return (dataDeliveryCredentialSubject.getExchangeCountOptions() != null
+                && !dataDeliveryCredentialSubject.getExchangeCountOptions().isEmpty())
+                || dataDeliveryCredentialSubject.isExchangeCountUnlimited();
     }
 
     private boolean validSelfDescriptionFields(ServiceOfferingCredentialSubject credentialSubject) {
+        // TODO move logic of this function into catalog using SHACL
         if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
             return false;
         }

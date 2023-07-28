@@ -16,6 +16,7 @@ public class SaasServiceOfferingDetailedModel extends ServiceOfferingDetailedMod
 
     private String hardwareRequirements;
     private List<AllowedUserCount> userCountOption;
+    private boolean userCountUnlimited;
 
     public SaasServiceOfferingDetailedModel(SelfDescriptionItem sdItem,
                                             ServiceOfferingExtension serviceOfferingExtension) {
@@ -26,16 +27,16 @@ public class SaasServiceOfferingDetailedModel extends ServiceOfferingDetailedMod
             if (sub.getHardwareRequirements() != null)
                 this.hardwareRequirements = sub.getHardwareRequirements().getValue();
             this.userCountOption = new ArrayList<>();
-            if (sub.getUserCountOption() != null) {
+            if (sub.getUserCountOptions() != null) {
                 for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.AllowedUserCount uc
-                        : sub.getUserCountOption()) {
+                        : sub.getUserCountOptions()) {
                     AllowedUserCount ucEntry = new AllowedUserCount();
                     if (uc.getUserCountUpTo() != null)
                         ucEntry.setUserCountUpTo(uc.getUserCountUpTo().getValue());
-                    ucEntry.setUserCountUnlimited(uc.isUserCountUnlimited());
                     this.userCountOption.add(ucEntry);
                 }
             }
+            this.userCountUnlimited = sub.isUserCountUnlimited();
         }
     }
 }

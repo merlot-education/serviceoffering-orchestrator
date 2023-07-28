@@ -11,5 +11,4 @@ import lombok.Setter;
 @Setter
 public class DataExchangeCount {
     private int exchangeCountUpTo;
-    private boolean exchangeCountUnlimited;
 }

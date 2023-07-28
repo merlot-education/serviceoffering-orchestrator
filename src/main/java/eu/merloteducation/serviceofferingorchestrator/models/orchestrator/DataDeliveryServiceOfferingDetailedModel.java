@@ -18,6 +18,7 @@ public class DataDeliveryServiceOfferingDetailedModel extends ServiceOfferingDet
     private String dataTransferType;
 
     private List<DataExchangeCount> exchangeCountOption;
+    private boolean exchangeCountUnlimited;
 
     public DataDeliveryServiceOfferingDetailedModel(SelfDescriptionItem sdItem,
                                                     ServiceOfferingExtension serviceOfferingExtension) {
@@ -26,16 +27,16 @@ public class DataDeliveryServiceOfferingDetailedModel extends ServiceOfferingDet
                 .getVerifiableCredential().getCredentialSubject();
         if (credentialSubject instanceof DataDeliveryCredentialSubject sub) {
             this.exchangeCountOption = new ArrayList<>();
-            if (sub.getExchangeCountOption() != null) {
+            if (sub.getExchangeCountOptions() != null) {
                 for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataExchangeCount dec
-                        : sub.getExchangeCountOption()) {
+                        : sub.getExchangeCountOptions()) {
                     DataExchangeCount decEntry = new DataExchangeCount();
                     if (dec.getExchangeCountUpTo() != null)
                         decEntry.setExchangeCountUpTo(dec.getExchangeCountUpTo().getValue());
-                    decEntry.setExchangeCountUnlimited(dec.isExchangeCountUnlimited());
                     this.exchangeCountOption.add(decEntry);
                 }
             }
+            this.exchangeCountUnlimited = sub.isExchangeCountUnlimited();
             this.dataAccessType = sub.getDataAccessType().getValue();
             this.dataTransferType = sub.getDataTransferType().getValue();
         }

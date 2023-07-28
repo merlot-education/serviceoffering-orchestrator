@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.AllowedUserCount;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -20,5 +19,8 @@ public class SaaSCredentialSubject extends ServiceOfferingCredentialSubject {
 
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("merlot:userCountOption")
-    private List<AllowedUserCount> userCountOption;
+    private List<AllowedUserCount> userCountOptions;
+
+    @JsonProperty("merlot:userCountUnlimited")
+    private boolean userCountUnlimited;
 }

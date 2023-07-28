@@ -8,5 +8,4 @@ import lombok.Setter;
 @Setter
 public class AllowedUserCount {
     private int userCountUpTo;
-    private boolean userCountUnlimited;
 }
