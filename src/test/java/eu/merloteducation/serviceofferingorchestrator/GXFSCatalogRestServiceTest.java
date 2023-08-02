@@ -293,14 +293,6 @@ class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    void addNewInvalidServiceOfferingTncNotAccepted() throws Exception {
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setMerlotTermsAndConditionsAccepted(false);
-
-        assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
-    }
-
-    @Test
     void updateExistingWithValidServiceOffering() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId(saasOffering.getId());

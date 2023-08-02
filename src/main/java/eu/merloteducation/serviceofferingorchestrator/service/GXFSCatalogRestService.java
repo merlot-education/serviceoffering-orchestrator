@@ -11,6 +11,7 @@ import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Allowed
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataExchangeCount;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
@@ -33,13 +34,11 @@ import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -269,52 +268,8 @@ public class GXFSCatalogRestService {
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
-    private boolean validRuntimeOptions(ServiceOfferingCredentialSubject credentialSubject) {
-        return (credentialSubject.getRuntimeOptions() != null
-                && !credentialSubject.getRuntimeOptions().isEmpty())
-                || credentialSubject.isRuntimeUnlimited();
-    }
-
-    private boolean validUserCountOptions(SaaSCredentialSubject saaSCredentialSubject) {
-        return (saaSCredentialSubject.getUserCountOptions() != null
-                && !saaSCredentialSubject.getUserCountOptions().isEmpty())
-                || saaSCredentialSubject.isUserCountUnlimited();
-    }
-
-    private boolean validDataExchangeCountOptions(DataDeliveryCredentialSubject dataDeliveryCredentialSubject) {
-        return (dataDeliveryCredentialSubject.getExchangeCountOptions() != null
-                && !dataDeliveryCredentialSubject.getExchangeCountOptions().isEmpty())
-                || dataDeliveryCredentialSubject.isExchangeCountUnlimited();
-    }
-
-    private boolean validSelfDescriptionFields(ServiceOfferingCredentialSubject credentialSubject) {
-        // TODO move logic of this function into catalog using SHACL
-        if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
-            return false;
-        }
-
-        if (!validRuntimeOptions(credentialSubject)) {
-            return false;
-        }
-
-        if (credentialSubject instanceof SaaSCredentialSubject saaSCredentialSubject
-                && !validUserCountOptions(saaSCredentialSubject)) {
-            return false;
-        }
-
-        if (credentialSubject instanceof DataDeliveryCredentialSubject dataDeliveryCredentialSubject
-                && !validDataExchangeCountOptions(dataDeliveryCredentialSubject)) {
-            return false;
-        }
-        return true;
-    }
-
     @Transactional
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
-
-        if (!validSelfDescriptionFields(credentialSubject)) {
-            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Self-Description contains invalid fields.");
-        }
 
         ServiceOfferingExtension extension;
         String previousSdHash = null;
@@ -357,8 +312,30 @@ public class GXFSCatalogRestService {
 
         String signedVp = presentAndSign(credentialSubjectJson, credentialSubject.getOfferedBy().getId());
 
-        String response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
-                MediaType.APPLICATION_JSON, HttpMethod.POST);
+        String response;
+        try {
+            response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
+                    MediaType.APPLICATION_JSON, HttpMethod.POST);
+        } catch (HttpClientErrorException e) {
+            e.printStackTrace();
+            // TODO extract error message from error blob
+            if (e.getStatusCode() == UNPROCESSABLE_ENTITY &&
+                    e.toString().contains("@sh:sourceConstraintComponent sh:OrConstraintComponent;")) {
+                // TODO check if there is a better way to provide a readable error message
+                if (credentialSubject instanceof SaaSCredentialSubject) {
+                    throw new ResponseStatusException(e.getStatusCode(), "Missing/invalid runtime or user count options.");
+                } else if (credentialSubject instanceof DataDeliveryCredentialSubject) {
+                    throw new ResponseStatusException(e.getStatusCode(), "Missing/invalid runtime or data exchange count options.");
+                } else if (credentialSubject instanceof CooperationCredentialSubject) {
+                    throw new ResponseStatusException(e.getStatusCode(), "Missing/invalid runtime options.");
+                } else {
+                    throw new ResponseStatusException(e.getStatusCode(), "Missing offering options.");
+                }
+            } else {
+                throw new ResponseStatusException(e.getStatusCode(), "Unknown error when communicating with catalog.");
+            }
+        }
+
 
         // delete previous entry if it exists
         if (previousSdHash != null) {
