@@ -268,6 +268,35 @@ public class GXFSCatalogRestService {
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
+    private void handleCatalogError(HttpClientErrorException e, ServiceOfferingCredentialSubject credentialSubject)
+            throws ResponseStatusException {
+        logger.warn("Error in communication with catalog: {}", e.getMessage());
+
+        if (e.getStatusCode() == UNPROCESSABLE_ENTITY) {
+            if (e.getMessage().contains("@sh:sourceConstraintComponent sh:OrConstraintComponent;")) {
+                // TODO check if there is a better way to provide a readable error message
+                if (credentialSubject instanceof SaaSCredentialSubject) {
+                    throw new ResponseStatusException(e.getStatusCode(), "Missing/invalid runtime or user count options.");
+                } else if (credentialSubject instanceof DataDeliveryCredentialSubject) {
+                    throw new ResponseStatusException(e.getStatusCode(), "Missing/invalid runtime or data exchange count options.");
+                } else if (credentialSubject instanceof CooperationCredentialSubject) {
+                    throw new ResponseStatusException(e.getStatusCode(), "Missing/invalid runtime options.");
+                } else {
+                    throw new ResponseStatusException(e.getStatusCode(), "Missing offering options.");
+                }
+            } else {
+                String resultMessageStartTag = "@sh:resultMessage \\\"";
+                int resultMessageStart = e.getMessage().indexOf(resultMessageStartTag) + resultMessageStartTag.length();
+                int resultMessageEnd = e.getMessage().indexOf("\\\";", resultMessageStart);
+                String resultMessage = e.getMessage().substring(
+                        resultMessageStart, Math.min(resultMessageEnd, resultMessageStart + 100));
+                throw new ResponseStatusException(e.getStatusCode(), resultMessage);
+            }
+        } else {
+            throw new ResponseStatusException(e.getStatusCode(), "Unknown error when communicating with catalog.");
+        }
+    }
+
     @Transactional
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
@@ -312,30 +341,13 @@ public class GXFSCatalogRestService {
 
         String signedVp = presentAndSign(credentialSubjectJson, credentialSubject.getOfferedBy().getId());
 
-        String response;
+        String response = "";
         try {
             response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
                     MediaType.APPLICATION_JSON, HttpMethod.POST);
         } catch (HttpClientErrorException e) {
-            e.printStackTrace();
-            // TODO extract error message from error blob
-            if (e.getStatusCode() == UNPROCESSABLE_ENTITY &&
-                    e.toString().contains("@sh:sourceConstraintComponent sh:OrConstraintComponent;")) {
-                // TODO check if there is a better way to provide a readable error message
-                if (credentialSubject instanceof SaaSCredentialSubject) {
-                    throw new ResponseStatusException(e.getStatusCode(), "Missing/invalid runtime or user count options.");
-                } else if (credentialSubject instanceof DataDeliveryCredentialSubject) {
-                    throw new ResponseStatusException(e.getStatusCode(), "Missing/invalid runtime or data exchange count options.");
-                } else if (credentialSubject instanceof CooperationCredentialSubject) {
-                    throw new ResponseStatusException(e.getStatusCode(), "Missing/invalid runtime options.");
-                } else {
-                    throw new ResponseStatusException(e.getStatusCode(), "Missing offering options.");
-                }
-            } else {
-                throw new ResponseStatusException(e.getStatusCode(), "Unknown error when communicating with catalog.");
-            }
+            handleCatalogError(e, credentialSubject);
         }
-
 
         // delete previous entry if it exists
         if (previousSdHash != null) {
