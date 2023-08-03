@@ -119,9 +119,6 @@ public abstract class ServiceOfferingCredentialSubject {
     @JsonProperty("merlot:runtimeOption")
     private List<Runtime> runtimeOptions;
 
-    @JsonProperty("merlot:runtimeUnlimited")
-    private boolean runtimeUnlimited;
-
     @NotNull
     @JsonProperty("merlot:merlotTermsAndConditionsAccepted")
     private boolean merlotTermsAndConditionsAccepted;

@@ -26,7 +26,4 @@ public class DataDeliveryCredentialSubject extends ServiceOfferingCredentialSubj
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("merlot:exchangeCountOption")
     private List<DataExchangeCount> exchangeCountOptions;
-
-    @JsonProperty("merlot:exchangeCountUnlimited")
-    private boolean exchangeCountUnlimited;
 }

@@ -22,7 +22,6 @@ public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
     private List<String> attachments;
     private List<TermsAndConditions> termsAndConditions;
     private List<Runtime> runtimeOption;
-    private boolean runtimeUnlimited;
     private boolean merlotTermsAndConditionsAccepted;
 
 
@@ -62,7 +61,6 @@ public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
                 this.runtimeOption.add(rtEntry);
             }
         }
-        this.runtimeUnlimited = credentialSubject.isRuntimeUnlimited();
         this.merlotTermsAndConditionsAccepted = credentialSubject.isMerlotTermsAndConditionsAccepted();
     }
 }

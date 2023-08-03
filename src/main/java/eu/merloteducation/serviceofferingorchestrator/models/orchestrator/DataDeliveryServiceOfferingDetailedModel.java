@@ -18,7 +18,6 @@ public class DataDeliveryServiceOfferingDetailedModel extends ServiceOfferingDet
     private String dataTransferType;
 
     private List<DataExchangeCount> exchangeCountOption;
-    private boolean exchangeCountUnlimited;
 
     public DataDeliveryServiceOfferingDetailedModel(SelfDescriptionItem sdItem,
                                                     ServiceOfferingExtension serviceOfferingExtension) {
@@ -36,7 +35,6 @@ public class DataDeliveryServiceOfferingDetailedModel extends ServiceOfferingDet
                     this.exchangeCountOption.add(decEntry);
                 }
             }
-            this.exchangeCountUnlimited = sub.isExchangeCountUnlimited();
             this.dataAccessType = sub.getDataAccessType().getValue();
             this.dataTransferType = sub.getDataTransferType().getValue();
         }

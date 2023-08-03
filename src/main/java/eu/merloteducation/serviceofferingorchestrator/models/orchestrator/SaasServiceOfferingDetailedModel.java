@@ -16,7 +16,6 @@ public class SaasServiceOfferingDetailedModel extends ServiceOfferingDetailedMod
 
     private String hardwareRequirements;
     private List<AllowedUserCount> userCountOption;
-    private boolean userCountUnlimited;
 
     public SaasServiceOfferingDetailedModel(SelfDescriptionItem sdItem,
                                             ServiceOfferingExtension serviceOfferingExtension) {
@@ -36,7 +35,6 @@ public class SaasServiceOfferingDetailedModel extends ServiceOfferingDetailedMod
                     this.userCountOption.add(ucEntry);
                 }
             }
-            this.userCountUnlimited = sub.isUserCountUnlimited();
         }
     }
 }

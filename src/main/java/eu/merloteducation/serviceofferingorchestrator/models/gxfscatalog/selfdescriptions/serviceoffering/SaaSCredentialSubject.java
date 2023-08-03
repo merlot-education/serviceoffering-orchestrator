@@ -20,7 +20,4 @@ public class SaaSCredentialSubject extends ServiceOfferingCredentialSubject {
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     @JsonProperty("merlot:userCountOption")
     private List<AllowedUserCount> userCountOptions;
-
-    @JsonProperty("merlot:userCountUnlimited")
-    private boolean userCountUnlimited;
 }
