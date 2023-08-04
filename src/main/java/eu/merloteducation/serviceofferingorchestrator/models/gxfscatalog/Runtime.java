@@ -14,7 +14,4 @@ public class Runtime {
     @JsonProperty("merlot:runtimeMeasurement")
     private StringTypeValue runtimeMeasurement;
 
-    @JsonProperty("merlot:runtimeUnlimited")
-    private boolean runtimeUnlimited;
-
 }

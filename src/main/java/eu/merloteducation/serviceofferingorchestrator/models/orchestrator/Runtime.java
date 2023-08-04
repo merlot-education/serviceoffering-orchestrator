@@ -8,5 +8,4 @@ import lombok.Setter;
 public class Runtime {
     private int runtimeCount;
     private String runtimeMeasurement; // TODO enum instead?
-    private boolean runtimeUnlimited;
 }

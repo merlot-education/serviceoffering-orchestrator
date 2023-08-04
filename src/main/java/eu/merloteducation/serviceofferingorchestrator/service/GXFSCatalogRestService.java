@@ -11,6 +11,7 @@ import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Allowed
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataExchangeCount;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
@@ -33,13 +34,11 @@ import org.springframework.boot.json.JsonParserFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -274,68 +273,20 @@ public class GXFSCatalogRestService {
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
-    private boolean validRuntimeOptions(ServiceOfferingCredentialSubject credentialSubject) {
-        // verify runtime options
-        if (credentialSubject.getRuntimes() == null
-                || credentialSubject.getRuntimes().isEmpty()) {
-            return false;
-        }
+    private void handleCatalogError(HttpClientErrorException e)
+            throws ResponseStatusException {
+        logger.warn("Error in communication with catalog: {}", e.getMessage());
 
-        for (Runtime runtime : credentialSubject.getRuntimes()) {
-            if (!(runtime.isRuntimeUnlimited() || (runtime.getRuntimeMeasurement() != null && runtime.getRuntimeCount() != null))) {
-                return false;
-            }
+        if (e.getStatusCode() == UNPROCESSABLE_ENTITY) {
+            String resultMessageStartTag = "@sh:resultMessage \\\"";
+            int resultMessageStart = e.getMessage().indexOf(resultMessageStartTag) + resultMessageStartTag.length();
+            int resultMessageEnd = e.getMessage().indexOf("\\\";", resultMessageStart);
+            String resultMessage = e.getMessage().substring(
+                    resultMessageStart, Math.min(resultMessageEnd, resultMessageStart + 100));
+            throw new ResponseStatusException(e.getStatusCode(), resultMessage);
+        } else {
+            throw new ResponseStatusException(e.getStatusCode(), "Unknown error when communicating with catalog.");
         }
-        return true;
-    }
-
-    private boolean validUserCountOptions(SaaSCredentialSubject saaSCredentialSubject) {
-        if (saaSCredentialSubject.getUserCountOption() == null
-                || saaSCredentialSubject.getUserCountOption().isEmpty()) {
-            return false;
-        }
-
-        for (AllowedUserCount userCount : saaSCredentialSubject.getUserCountOption()) {
-            if (!(userCount.isUserCountUnlimited() || userCount.getUserCountUpTo() != null)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean validDataExchangeCountOptions(DataDeliveryCredentialSubject dataDeliveryCredentialSubject) {
-        if (dataDeliveryCredentialSubject.getExchangeCountOption() == null
-                || dataDeliveryCredentialSubject.getExchangeCountOption().isEmpty()) {
-            return false;
-        }
-
-        for (DataExchangeCount exchangeCount : dataDeliveryCredentialSubject.getExchangeCountOption()) {
-            if (!(exchangeCount.isExchangeCountUnlimited() || exchangeCount.getExchangeCountUpTo() != null)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean validSelfDescriptionFields(ServiceOfferingCredentialSubject credentialSubject) {
-        if (!credentialSubject.isMerlotTermsAndConditionsAccepted()) {
-            return false;
-        }
-
-        if (!validRuntimeOptions(credentialSubject)) {
-            return false;
-        }
-
-        if (credentialSubject instanceof SaaSCredentialSubject saaSCredentialSubject
-                && !validUserCountOptions(saaSCredentialSubject)) {
-            return false;
-        }
-
-        if (credentialSubject instanceof DataDeliveryCredentialSubject dataDeliveryCredentialSubject
-                && !validDataExchangeCountOptions(dataDeliveryCredentialSubject)) {
-            return false;
-        }
-        return true;
     }
 
     /**
@@ -380,14 +331,10 @@ public class GXFSCatalogRestService {
     @Transactional
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
-        if (!validSelfDescriptionFields(credentialSubject)) {
-            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Self-Description contains invalid fields.");
-        }
-
         ServiceOfferingExtension extension;
         String previousSdHash = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
-            // override creation time time to correspond to the current time and generate an ID
+            // override creation time to correspond to the current time and generate an ID
             extension = new ServiceOfferingExtension();
             credentialSubject.setCreationDate(new StringTypeValue(
                     extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT)));
@@ -425,8 +372,13 @@ public class GXFSCatalogRestService {
 
         String signedVp = presentAndSign(credentialSubjectJson, credentialSubject.getOfferedBy().getId());
 
-        String response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
-                MediaType.APPLICATION_JSON, HttpMethod.POST);
+        String response = "";
+        try {
+            response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
+                    MediaType.APPLICATION_JSON, HttpMethod.POST);
+        } catch (HttpClientErrorException e) {
+            handleCatalogError(e);
+        }
 
         // delete previous entry if it exists
         if (previousSdHash != null) {
