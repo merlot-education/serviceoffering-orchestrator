@@ -290,7 +290,7 @@ public class GXFSCatalogRestService {
         ServiceOfferingExtension extension;
         String previousSdHash = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
-            // override creation time time to correspond to the current time and generate an ID
+            // override creation time to correspond to the current time and generate an ID
             extension = new ServiceOfferingExtension();
             credentialSubject.setCreationDate(new StringTypeValue(
                     extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT)));
