@@ -160,6 +160,18 @@ public class GXFSCatalogRestService {
 
     }
 
+    private SelfDescriptionsResponse<ServiceOfferingCredentialSubject> getSelfDescriptionByOfferingExtension
+            (ServiceOfferingExtension extension) throws Exception {
+        String response = restCallAuthenticated(
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + extension.getId(),
+                null,null, HttpMethod.GET);
+
+        // create a mapper to map the response to the SelfDescriptionResponse class
+        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+        return mapper.readValue(response, new TypeReference<>() {});
+    }
+
     public ServiceOfferingDetailedModel getServiceOfferingById(String id, Set<String> representedOrgaIds) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
@@ -176,15 +188,8 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(FORBIDDEN, "Not authorized to access details to this offering");
         }
 
-        String response = restCallAuthenticated(
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + id, null,
-                null, HttpMethod.GET);
-
-        // create a mapper to map the response to the SelfDescriptionResponse class
-        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, new TypeReference<>() {
-        });
-
+        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse =
+                getSelfDescriptionByOfferingExtension(extension);
         // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
@@ -331,6 +336,45 @@ public class GXFSCatalogRestService {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Given an id of a service offering, this method attempts to copy all fields to a new offering and give it a new
+     * id, making it a separate catalog entry.
+     * @param id id of the offering to regenerate
+     * @param representedOrgaIds ids of represented organizations for access control
+     * @return creation response from catalog
+     * @throws Exception communication or mapping exception
+     */
+    public SelfDescriptionsCreateResponse regenerateOffering(String id, Set<String> representedOrgaIds) throws Exception {
+        // basic input sanitization
+        id = Jsoup.clean(id, Safelist.basic());
+
+        ServiceOfferingExtension extension = serviceOfferingExtensionRepository.findById(id).orElse(null);
+
+        if (extension == null) {
+            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
+        }
+
+        if (!representedOrgaIds.contains(extension.getIssuer().replace(PARTICIPANT_START, "")) ||
+                        !(extension.getState() == ServiceOfferingState.RELEASED ||
+                                extension.getState() == ServiceOfferingState.DELETED ||
+                                extension.getState() == ServiceOfferingState.ARCHIVED)) {
+            throw new ResponseStatusException(FORBIDDEN, "Not authorized to regenerate this offering");
+        }
+
+        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse =
+                getSelfDescriptionByOfferingExtension(extension);
+        // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
+        if (selfDescriptionsResponse.getTotalCount() != 1
+                || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
+            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
+        }
+        ServiceOfferingCredentialSubject subject = selfDescriptionsResponse.getItems().get(0).getMeta()
+                .getContent().getVerifiableCredential().getCredentialSubject();
+        subject.setId(OFFERING_START + "TBR");
+
+        return addServiceOffering(subject);
     }
 
     @Transactional
