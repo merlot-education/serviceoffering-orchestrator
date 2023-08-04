@@ -268,7 +268,7 @@ public class GXFSCatalogRestService {
         return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
-    private void handleCatalogError(HttpClientErrorException e, ServiceOfferingCredentialSubject credentialSubject)
+    private void handleCatalogError(HttpClientErrorException e)
             throws ResponseStatusException {
         logger.warn("Error in communication with catalog: {}", e.getMessage());
 
@@ -333,7 +333,7 @@ public class GXFSCatalogRestService {
             response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
                     MediaType.APPLICATION_JSON, HttpMethod.POST);
         } catch (HttpClientErrorException e) {
-            handleCatalogError(e, credentialSubject);
+            handleCatalogError(e);
         }
 
         // delete previous entry if it exists
