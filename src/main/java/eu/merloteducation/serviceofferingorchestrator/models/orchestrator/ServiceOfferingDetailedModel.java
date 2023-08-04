@@ -2,8 +2,6 @@ package eu.merloteducation.serviceofferingorchestrator.models.orchestrator;
 
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionItem;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
@@ -52,15 +50,16 @@ public class ServiceOfferingDetailedModel extends ServiceOfferingBasicModel {
             this.termsAndConditions.add(tncEntry);
         }
         this.runtimeOption = new ArrayList<>();
-        for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime rt
-                : credentialSubject.getRuntimes()) {
-            Runtime rtEntry = new Runtime();
-            if (rt.getRuntimeCount() != null)
-                rtEntry.setRuntimeCount(rt.getRuntimeCount().getValue());
-            if (rt.getRuntimeMeasurement() != null)
-                rtEntry.setRuntimeMeasurement(rt.getRuntimeMeasurement().getValue());
-            rtEntry.setRuntimeUnlimited(rt.isRuntimeUnlimited());
-            this.runtimeOption.add(rtEntry);
+        if (credentialSubject.getRuntimeOptions() != null) {
+            for (eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime rt
+                    : credentialSubject.getRuntimeOptions()) {
+                Runtime rtEntry = new Runtime();
+                if (rt.getRuntimeCount() != null)
+                    rtEntry.setRuntimeCount(rt.getRuntimeCount().getValue());
+                if (rt.getRuntimeMeasurement() != null)
+                    rtEntry.setRuntimeMeasurement(rt.getRuntimeMeasurement().getValue());
+                this.runtimeOption.add(rtEntry);
+            }
         }
         this.merlotTermsAndConditionsAccepted = credentialSubject.isMerlotTermsAndConditionsAccepted();
     }

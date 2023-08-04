@@ -10,8 +10,4 @@ public class DataExchangeCount {
 
     @JsonProperty("merlot:exchangeCountUpTo")
     private NumberTypeValue exchangeCountUpTo;
-
-    @JsonProperty("merlot:exchangeCountUnlimited")
-    private boolean exchangeCountUnlimited;
-
 }
