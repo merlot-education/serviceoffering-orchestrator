@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: default
   application:
     name: serviceofferings-orchestrator
   security:
@@ -70,3 +72,9 @@ keycloak:
   client-secret: "NnyjZISWVHa9zamW8XEGsSuH6pbtXLmg"
   gxfscatalog-user: "gxfscatalog"
   gxfscatalog-pass: "gxfscatalog"
+
+cors:
+  global:
+    origins: >
+      http://localhost:4200
+    patterns:
