@@ -350,7 +350,7 @@ class GXFSCatalogRestServiceTest {
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> gxfsCatalogRestService.regenerateOffering(offeringId, representedOrgaIds));
-        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        assertEquals(HttpStatus.PRECONDITION_FAILED, exception.getStatusCode());
     }
 
     @Test

@@ -307,11 +307,14 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
 
-        if (!representedOrgaIds.contains(extension.getIssuer().replace(PARTICIPANT_START, "")) ||
-                        !(extension.getState() == ServiceOfferingState.RELEASED ||
-                                extension.getState() == ServiceOfferingState.DELETED ||
-                                extension.getState() == ServiceOfferingState.ARCHIVED)) {
+        if (!representedOrgaIds.contains(extension.getIssuer().replace(PARTICIPANT_START, ""))) {
             throw new ResponseStatusException(FORBIDDEN, "Not authorized to regenerate this offering");
+        }
+
+        if (!(extension.getState() == ServiceOfferingState.RELEASED ||
+            extension.getState() == ServiceOfferingState.DELETED ||
+            extension.getState() == ServiceOfferingState.ARCHIVED)) {
+            throw new ResponseStatusException(PRECONDITION_FAILED, "Invalid state for regenerating this offering");
         }
 
         SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse =
