@@ -329,6 +329,55 @@ class GXFSCatalogRestServiceTest {
     }
 
     @Test
+    @Transactional
+    void regenerateExistingServiceOfferingValid() throws Exception {
+        Set<String> representedOrgaIds = new HashSet<>();
+        representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
+        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                ServiceOfferingState.RELEASED, representedOrgaIds);
+
+        SelfDescriptionsCreateResponse response = gxfsCatalogRestService.regenerateOffering(saasOffering.getId(), representedOrgaIds);
+        assertNotNull(response.getId());
+    }
+
+    @Test
+    @Transactional
+    void regenerateExistingServiceOfferingWrongState() throws Exception {
+        Set<String> representedOrgaIds = new HashSet<>();
+        representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> gxfsCatalogRestService.regenerateOffering(saasOffering.getId(), representedOrgaIds));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+    }
+
+    @Test
+    @Transactional
+    void regenerateExistingServiceOfferingWrongIssuer() throws Exception {
+        Set<String> representedOrgaIds = new HashSet<>();
+        representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
+        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                ServiceOfferingState.RELEASED, representedOrgaIds);
+
+        Set<String> invalidRepresentedOrgaIds = new HashSet<>();
+        invalidRepresentedOrgaIds.add("garbage");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> gxfsCatalogRestService.regenerateOffering(saasOffering.getId(), invalidRepresentedOrgaIds));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+    }
+
+    @Test
+    @Transactional
+    void regenerateExistingServiceOfferingNonExistent() throws Exception {
+        Set<String> representedOrgaIds = new HashSet<>();
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> gxfsCatalogRestService.regenerateOffering("garbage", representedOrgaIds));
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
     void getAllPublicOfferings() throws Exception {
         Page<ServiceOfferingBasicModel> offerings = gxfsCatalogRestService
                 .getAllPublicServiceOfferings(
