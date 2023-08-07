@@ -112,8 +112,8 @@ public class ServiceOfferingsController {
 
     @GetMapping("/serviceoffering/{soId}")
     public ServiceOfferingDetailedModel getServiceOfferingById(Principal principal,
-                                                                                                 @PathVariable(value = "soId") String serviceofferingId,
-                                                                                                 HttpServletResponse response) throws Exception {
+                                                               @PathVariable(value = "soId") String serviceofferingId,
+                                                               HttpServletResponse response) throws Exception {
         return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId, getRepresentedOrgaIds(principal));
     }
 
@@ -143,7 +143,7 @@ public class ServiceOfferingsController {
 
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
     public SelfDescriptionsCreateResponse addServiceOfferingCooperation(Principal principal, HttpServletResponse response,
-                                                                         @Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
+                                                                        @Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
         // if the requested organization id is not in the roles of this user,
         // the user is not allowed to request this endpoint
         if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
@@ -151,6 +151,20 @@ public class ServiceOfferingsController {
             return null;
         }
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+    }
+
+    /**
+     * Given an offering id, attempt to copy all fields to a new offering with a new id.
+     * @param principal authentication principal
+     * @param serviceofferingId id of the offering to regenerate
+     * @return creation response of catalog
+     * @throws Exception communication or mapping exception
+     */
+    @PostMapping("/serviceoffering/regenerate/{soId}")
+    public SelfDescriptionsCreateResponse regenerateServiceOfferingById(Principal principal,
+                                                                      @PathVariable(value = "soId") String serviceofferingId)
+            throws Exception {
+        return gxfsCatalogRestService.regenerateOffering(serviceofferingId, getRepresentedOrgaIds(principal));
     }
 
     @PatchMapping("/serviceoffering/status/{soId}/{status}")
