@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>eu.merlot-education</groupId>
 	<artifactId>serviceoffering-orchestrator</artifactId>
-	<version>1.1.1</version>
+	<version>1.2.0</version>
 	<name>serviceoffering-orchestrator</name>
 	<description>Orchestrator for Service Offerings in the GXFS catalog</description>
 	<parent>
