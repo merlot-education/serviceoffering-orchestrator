@@ -69,8 +69,8 @@ public class ServiceOfferingsController {
 
 
     @GetMapping("")
-    public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(@RequestParam("page") int page,
-                                                                        @RequestParam("size") int size,
+    public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
+                                                                        @RequestParam(value = "size", defaultValue = "9") int size,
                                                                         Principal principal,
                                                                         HttpServletResponse response) throws Exception {
 
