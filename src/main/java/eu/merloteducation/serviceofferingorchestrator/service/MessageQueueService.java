@@ -13,50 +13,62 @@ import org.springframework.stereotype.Service;
 @Service
 public class MessageQueueService {
 
-	@Autowired
-	ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
+    @Autowired
+    ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
-	private final Logger logger = LoggerFactory.getLogger(MessageQueueService.class);
+    private final Logger logger = LoggerFactory.getLogger(MessageQueueService.class);
 
+    /**
+     * Listen for the event that a contract was created on the message bus.
+     * In that case, update the corresponding offering to be linked to the contract.
+     *
+     * @param contractTemplateUpdated contract created event details
+     */
     @RabbitListener(queues = MessageQueueConfig.CONTRACT_CREATED_QUEUE)
-	private void contractCreatedListener(ContractTemplateUpdated contractTemplateUpdated) {
-		logger.info("Contract created message: {}", contractTemplateUpdated);
+    private void contractCreatedListener(ContractTemplateUpdated contractTemplateUpdated) {
+        logger.info("Contract created message: {}", contractTemplateUpdated);
 
-		ServiceOfferingExtension extension = serviceOfferingExtensionRepository
-				.findById(contractTemplateUpdated.getServiceOfferingId()).orElse(null);
+        ServiceOfferingExtension extension = serviceOfferingExtensionRepository
+                .findById(contractTemplateUpdated.getServiceOfferingId()).orElse(null);
 
-		if (extension != null) {
-			extension.addAssociatedContract(contractTemplateUpdated.getContractId());
-		} else {
-			logger.error("No Service Offering with ID {} was found, hence associated contracts are not updated.",
-					contractTemplateUpdated.getServiceOfferingId());
-			return;
-		}
+        if (extension != null) {
+            extension.addAssociatedContract(contractTemplateUpdated.getContractId());
+        } else {
+            logger.error("No Service Offering with ID {} was found, hence associated contracts are not updated.",
+                    contractTemplateUpdated.getServiceOfferingId());
+            return;
+        }
 
-		serviceOfferingExtensionRepository.save(extension);
-	}
+        serviceOfferingExtensionRepository.save(extension);
+    }
 
-	@RabbitListener(queues = MessageQueueConfig.CONTRACT_PURGED_QUEUE)
-	private void contractPurgedListener(ContractTemplateUpdated contractTemplateUpdated) {
-		logger.info("Contract deleted message: {}", contractTemplateUpdated);
+    /**
+     * Listen for the event that a contract was purged on the message bus.
+     * In that case, update the corresponding offering to be no longer linked to the contract.
+     *
+     * @param contractTemplateUpdated contract purged event details
+     */
+    @RabbitListener(queues = MessageQueueConfig.CONTRACT_PURGED_QUEUE)
+    private void contractPurgedListener(ContractTemplateUpdated contractTemplateUpdated) {
+        logger.info("Contract deleted message: {}", contractTemplateUpdated);
 
-		ServiceOfferingExtension extension = serviceOfferingExtensionRepository
-				.findById(contractTemplateUpdated.getServiceOfferingId()).orElse(null);
+        ServiceOfferingExtension extension = serviceOfferingExtensionRepository
+                .findById(contractTemplateUpdated.getServiceOfferingId()).orElse(null);
 
-		if (extension != null) {
-			if (extension.getAssociatedContractIds().contains(contractTemplateUpdated.getContractId())) {
-				extension.getAssociatedContractIds().remove(contractTemplateUpdated.getContractId());
-			} else {
-				logger.error("No Contract with ID {} was found in service offering {}.",
-						contractTemplateUpdated.getContractId(), contractTemplateUpdated.getServiceOfferingId());
-				return;
-			}
-		} else {
-			logger.error("No Service Offering with ID {} was found, hence associated contracts are not updated.",
-					contractTemplateUpdated.getServiceOfferingId());
-			return;
-		}
+        if (extension != null) {
+            if (extension.getAssociatedContractIds().contains(contractTemplateUpdated.getContractId())) {
+                extension.getAssociatedContractIds().remove(contractTemplateUpdated.getContractId());
+            } else {
+                logger.error("No Contract with ID {} was found in service offering {}.",
+                        contractTemplateUpdated.getContractId(), contractTemplateUpdated.getServiceOfferingId());
+                return;
+            }
+        } else {
+            logger.error("No Service Offering with ID {} was found, hence associated contracts are not updated.",
+                    contractTemplateUpdated.getServiceOfferingId());
+            return;
+        }
 
-		serviceOfferingExtensionRepository.save(extension);
-	}
+        serviceOfferingExtensionRepository.save(extension);
+    }
 }
