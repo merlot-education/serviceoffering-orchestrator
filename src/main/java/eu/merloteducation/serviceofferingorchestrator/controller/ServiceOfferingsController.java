@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,6 +41,9 @@ public class ServiceOfferingsController {
     @Autowired
     private GXFSWizardRestService gxfsWizardRestService;
 
+    /**
+     * Health endpoint.
+     */
     @GetMapping("health")
     public void getHealth() {
         // always return code 200
@@ -67,12 +71,17 @@ public class ServiceOfferingsController {
                 .collect(Collectors.toSet());
     }
 
-
+    /**
+     * GET request for getting a page of all public service offerings.
+     *
+     * @param page page number
+     * @param size number of items
+     * @return page of offerings
+     * @throws Exception exception during offering fetching
+     */
     @GetMapping("")
     public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
-                                                                        @RequestParam(value = "size", defaultValue = "9") int size,
-                                                                        Principal principal,
-                                                                        HttpServletResponse response) throws Exception {
+                                                                        @RequestParam(value = "size", defaultValue = "9") int size) throws Exception {
 
         Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService
                 .getAllPublicServiceOfferings(
@@ -84,19 +93,29 @@ public class ServiceOfferingsController {
         return resultPage;
     }
 
+    /**
+     * GET request for getting a page of all offerings of an organization.
+     * Optionally also filter by a specific offering state.
+     *
+     * @param page      page number
+     * @param size      number of items
+     * @param state     optional offering state filter
+     * @param principal user auth info
+     * @param orgaId    organization to fetch the offerings for
+     * @return page of organization offerings
+     * @throws Exception exception during offering fetching
+     */
     @GetMapping("/organization/{orgaId}")
     public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(@RequestParam("page") int page,
                                                                            @RequestParam("size") int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
-                                                                           Principal principal,
                                                                            @PathVariable(value = "orgaId") String orgaId,
-                                                                           HttpServletResponse response) throws Exception {
+                                                                           Principal principal) throws Exception {
 
         // if the requested organization id is not in the roles of this user,
         // the user is not allowed to request this endpoint
         if (!getRepresentedOrgaIds(principal).contains(orgaId)) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return null;
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
         Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService
@@ -109,77 +128,124 @@ public class ServiceOfferingsController {
         return resultPage;
     }
 
+    /**
+     * GET request for accessing details to a specific offering.
+     *
+     * @param principal         user auth info
+     * @param serviceofferingId id of the offering to fetch data about
+     * @return details to the offering
+     * @throws Exception exception during offering fetching
+     */
     @GetMapping("/serviceoffering/{soId}")
     public ServiceOfferingDetailedModel getServiceOfferingById(Principal principal,
-                                                               @PathVariable(value = "soId") String serviceofferingId,
-                                                               HttpServletResponse response) throws Exception {
+                                                               @PathVariable(value = "soId") String serviceofferingId) throws Exception {
         return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId, getRepresentedOrgaIds(principal));
     }
 
+    /**
+     * POST request for publishing a Software as a Service offering.
+     *
+     * @param principal         user auth info
+     * @param credentialSubject SaaS self description
+     * @return creation response for this offering
+     * @throws Exception exception during offering creation
+     */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
-    public SelfDescriptionsCreateResponse addServiceOfferingSaas(Principal principal, HttpServletResponse response,
+    public SelfDescriptionsCreateResponse addServiceOfferingSaas(Principal principal,
                                                                  @Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
         // if the requested organization id is not in the roles of this user,
         // the user is not allowed to request this endpoint
         if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return null;
-        }
-        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
-    }
-
-    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
-    public SelfDescriptionsCreateResponse addServiceOfferingDataDelivery(Principal principal, HttpServletResponse response,
-                                                                         @Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
-        // if the requested organization id is not in the roles of this user,
-        // the user is not allowed to request this endpoint
-        if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return null;
-        }
-        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
-    }
-
-    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
-    public SelfDescriptionsCreateResponse addServiceOfferingCooperation(Principal principal, HttpServletResponse response,
-                                                                        @Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
-        // if the requested organization id is not in the roles of this user,
-        // the user is not allowed to request this endpoint
-        if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return null;
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
     /**
-     * Given an offering id, attempt to copy all fields to a new offering with a new id.
-     * @param principal authentication principal
+     * POST request for publishing a Data Delivery offering.
+     *
+     * @param principal         user auth info
+     * @param credentialSubject SaaS self description
+     * @return creation response for this offering
+     * @throws Exception exception during offering creation
+     */
+    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
+    public SelfDescriptionsCreateResponse addServiceOfferingDataDelivery(Principal principal,
+                                                                         @Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
+        // if the requested organization id is not in the roles of this user,
+        // the user is not allowed to request this endpoint
+        if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+    }
+
+    /**
+     * POST request for publishing a Cooperation Contract offering.
+     *
+     * @param principal         user auth info
+     * @param credentialSubject SaaS self description
+     * @return creation response for this offering
+     * @throws Exception exception during offering creation
+     */
+    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
+    public SelfDescriptionsCreateResponse addServiceOfferingCooperation(Principal principal,
+                                                                        @Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
+        // if the requested organization id is not in the roles of this user,
+        // the user is not allowed to request this endpoint
+        if (!getRepresentedOrgaIds(principal).contains(credentialSubject.getOfferedBy().getId().replace("Participant:", ""))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+    }
+
+    /**
+     * POST request for given an offering id, attempt to copy all fields to a new offering with a new id.
+     *
+     * @param principal         user auth info
      * @param serviceofferingId id of the offering to regenerate
      * @return creation response of catalog
      * @throws Exception communication or mapping exception
      */
     @PostMapping("/serviceoffering/regenerate/{soId}")
     public SelfDescriptionsCreateResponse regenerateServiceOfferingById(Principal principal,
-                                                                      @PathVariable(value = "soId") String serviceofferingId)
+                                                                        @PathVariable(value = "soId") String serviceofferingId)
             throws Exception {
         return gxfsCatalogRestService.regenerateOffering(serviceofferingId, getRepresentedOrgaIds(principal));
     }
 
+    /**
+     * PATCH request for transitioning an offering with the given id to a given offering state.
+     *
+     * @param principal user auth info
+     * @param serviceofferingId id of the offering to transition
+     * @param status target offering state
+     * @throws Exception exception during transitioning
+     */
     @PatchMapping("/serviceoffering/status/{soId}/{status}")
     public void patchStatusServiceOffering(Principal principal,
                                            @PathVariable(value = "soId") String serviceofferingId,
-                                           @PathVariable(value = "status") ServiceOfferingState status,
-                                           HttpServletResponse response) throws Exception {
+                                           @PathVariable(value = "status") ServiceOfferingState status) {
         gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, status, getRepresentedOrgaIds(principal));
     }
 
+    /**
+     * GET request for retrieving all available MERLOT shapes for the catalog.
+     *
+     * @return Map of shape types to shape files
+     * @throws Exception exception during shape fetching
+     */
     @GetMapping("/shapes/getAvailableShapesCategorized")
-    public Map<String, List<String>> getAvailableShapes(Principal principal,
-                                                        HttpServletResponse response) throws Exception {
+    public Map<String, List<String>> getAvailableShapes() throws Exception {
         return gxfsWizardRestService.getServiceOfferingShapes();
     }
 
+    /**
+     * GET request for retrieving a specific MERLOT shapes for the catalog.
+     *
+     * @return catalog shape
+     * @throws Exception exception during shape fetching
+     */
     @GetMapping("/shapes/getJSON")
     public String getShapeJson(Principal principal,
                                @RequestParam String name,

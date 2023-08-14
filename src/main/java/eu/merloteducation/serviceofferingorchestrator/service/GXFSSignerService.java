@@ -37,6 +37,13 @@ import org.springframework.stereotype.Service;
 public class GXFSSignerService {
 
 
+    /**
+     * Given a verifiable presentation, sign and return it.
+     *
+     * @param verifiablePresentationJson presentation to sign
+     * @return signed presentation
+     * @throws Exception signature/check exception
+     */
     public String signVerifiablePresentation(String verifiablePresentationJson) throws Exception {
         Security.addProvider(new BouncyCastleProvider());
 
@@ -62,7 +69,7 @@ public class GXFSSignerService {
         return vp.toString();
     }
 
-    private static LdProof sign (JsonLDObject credential) throws IOException, GeneralSecurityException, JsonLDException {
+    private static LdProof sign(JsonLDObject credential) throws IOException, GeneralSecurityException, JsonLDException {
         InputStream privateKeyStream = GXFSSignerService.class.getClassLoader().getResourceAsStream("prk.ss.pem");
 
         PEMParser pemParser = new PEMParser(new InputStreamReader(privateKeyStream));
@@ -85,15 +92,24 @@ public class GXFSSignerService {
         return ldProof;
     }
 
-    public static void check (JsonLDObject credential, LdProof proof) throws IOException, GeneralSecurityException, JsonLDException {
+    /**
+     * Given a credential and proof, check if the signature is valid.
+     *
+     * @param credential credential to check
+     * @param proof      proof
+     * @throws IOException              IOException
+     * @throws GeneralSecurityException GeneralSecurityException
+     * @throws JsonLDException          JsonLDException
+     */
+    public static void check(JsonLDObject credential, LdProof proof) throws IOException, GeneralSecurityException, JsonLDException {
         //---extract Expiration Date--- https://stackoverflow.com/a/11621488
         InputStream publicKeyStream = GXFSSignerService.class.getClassLoader().getResourceAsStream("cert.ss.pem");
         String certString = new String(publicKeyStream.readAllBytes(), StandardCharsets.UTF_8);
-        ByteArrayInputStream certStream  =  new ByteArrayInputStream(certString.getBytes(StandardCharsets.UTF_8));
+        ByteArrayInputStream certStream = new ByteArrayInputStream(certString.getBytes(StandardCharsets.UTF_8));
         CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
         List<X509Certificate> certs = (List<X509Certificate>) certFactory.generateCertificates(certStream);
 
-        for(X509Certificate cert : certs) {
+        for (X509Certificate cert : certs) {
 
             PublicKey puk = cert.getPublicKey();
             PublicKeyVerifier<?> pkVerifier = new RSA_PS256_PublicKeyVerifier((RSAPublicKey) puk);

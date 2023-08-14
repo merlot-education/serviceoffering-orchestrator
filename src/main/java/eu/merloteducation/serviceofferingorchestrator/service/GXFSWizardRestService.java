@@ -30,6 +30,13 @@ public class GXFSWizardRestService {
     private String gxfswizardBaseUri;
 
 
+    /**
+     * Pass through shapes of service offerings from the GXFS Wizard API backend.
+     * Since we are currently only interested in Service shapes, this will be the only key in the response.
+     *
+     * @return Map of offering types to shape file names
+     * @throws Exception mapping exception
+     */
     public Map<String, List<String>> getServiceOfferingShapes() throws Exception {
         String response =
                 restTemplate.exchange(gxfswizardBaseUri + "/getAvailableShapesCategorized?ecoSystem=merlot",
@@ -42,7 +49,14 @@ public class GXFSWizardRestService {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    public String getShape(String jsonName) throws Exception {
+    /**
+     * Given a json filename previously acquired using getServiceOfferingShapes(),
+     * pass through the file content from the GXFS Wizard API backend.
+     *
+     * @param jsonName name of the json file
+     * @return shape file
+     */
+    public String getShape(String jsonName) {
         if (!jsonName.matches("[A-Za-z ]*.json")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file name.");
         }
