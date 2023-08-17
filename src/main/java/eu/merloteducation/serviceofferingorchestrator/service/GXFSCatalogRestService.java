@@ -115,13 +115,13 @@ public class GXFSCatalogRestService {
         restTemplate.postForObject(keycloakLogoutUri, request, String.class);
     }
 
-    private void deleteOffering(ServiceOfferingExtension extension) throws Exception {
+    private void deleteOffering(ServiceOfferingExtension extension) {
         extension.delete();
         restCallAuthenticated(gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash() + "/revoke",
                 null, null, HttpMethod.POST);
     }
 
-    private void purgeOffering(ServiceOfferingExtension extension) throws Exception {
+    private void purgeOffering(ServiceOfferingExtension extension) {
         if (extension.getState() != ServiceOfferingState.DELETED) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
         }
@@ -245,24 +245,17 @@ public class GXFSCatalogRestService {
      * Attempt to find an offering by the given id.
      *
      * @param id                 id of the offering to search for
-     * @param representedOrgaIds ids of the represented organizations
      * @return found offering
      * @throws Exception mapping exception
      */
-    public ServiceOfferingDetailedModel getServiceOfferingById(String id, Set<String> representedOrgaIds) throws Exception {
+    public ServiceOfferingDetailedModel getServiceOfferingById(String id) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
-
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository.findById(id).orElse(null);
 
         if (extension == null) {
-            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
-        }
-
-        if (extension.getState() != ServiceOfferingState.RELEASED &&
-                !representedOrgaIds.contains(extension.getIssuer().replace(PARTICIPANT_START, ""))) {
-            throw new ResponseStatusException(FORBIDDEN, "Not authorized to access details to this offering");
+            throw new NoSuchElementException(OFFERING_NOT_FOUND);
         }
 
         SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse =
@@ -270,7 +263,7 @@ public class GXFSCatalogRestService {
         // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
-            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
+            throw new NoSuchElementException(OFFERING_NOT_FOUND);
         }
 
         return ServiceOfferingDetailedModelFactory.createServiceOfferingDetailedModel(

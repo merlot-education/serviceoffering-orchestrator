@@ -26,9 +26,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @RestController
@@ -40,6 +42,8 @@ public class ServiceOfferingsController {
 
     @Autowired
     private GXFSWizardRestService gxfsWizardRestService;
+
+    private static final String PARTICIPANT_START = "Participant:";
 
     /**
      * Health endpoint.
@@ -139,7 +143,22 @@ public class ServiceOfferingsController {
     @GetMapping("/serviceoffering/{soId}")
     public ServiceOfferingDetailedModel getServiceOfferingById(Principal principal,
                                                                @PathVariable(value = "soId") String serviceofferingId) throws Exception {
-        return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId, getRepresentedOrgaIds(principal));
+
+        Set<String> representedOrgaIds = getRepresentedOrgaIds(principal);
+
+        try {
+            ServiceOfferingDetailedModel offering =
+                    gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
+
+            if (!offering.getMerlotState().equals(ServiceOfferingState.RELEASED.name()) &&
+                    !representedOrgaIds.contains(offering.getOfferedBy().replace(PARTICIPANT_START, ""))) {
+                throw new ResponseStatusException(FORBIDDEN, "Not authorized to access details to this offering");
+            }
+
+            return offering;
+        } catch (NoSuchElementException e) {
+            throw new ResponseStatusException(NOT_FOUND, e.getMessage());
+        }
     }
 
     /**
