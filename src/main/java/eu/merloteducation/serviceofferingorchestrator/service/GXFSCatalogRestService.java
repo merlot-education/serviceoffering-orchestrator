@@ -9,20 +9,10 @@ import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMap
 import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.AllowedUserCount;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.DataExchangeCount;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsResponse;
-import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
-import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
-import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModelFactory;
-import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationDetails;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import jakarta.transaction.Transactional;
 import org.apache.commons.text.StringEscapeUtils;
@@ -142,7 +132,7 @@ public class GXFSCatalogRestService {
         serviceOfferingExtensionRepository.delete(extension);
     }
 
-    private SelfDescriptionsResponse<ServiceOfferingCredentialSubject> getSelfDescriptionByOfferingExtension
+    private SelfDescriptionsResponse getSelfDescriptionByOfferingExtension
             (ServiceOfferingExtension extension) throws Exception {
         String response = restCallAuthenticated(
                 gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + extension.getId(),
@@ -270,8 +260,7 @@ public class GXFSCatalogRestService {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
         }
 
-        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse =
-                getSelfDescriptionByOfferingExtension(extension);
+        SelfDescriptionsResponse selfDescriptionsResponse = getSelfDescriptionByOfferingExtension(extension);
         // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
@@ -310,7 +299,7 @@ public class GXFSCatalogRestService {
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
+        SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
@@ -365,7 +354,7 @@ public class GXFSCatalogRestService {
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
+        SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
@@ -416,9 +405,9 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(PRECONDITION_FAILED, "Invalid state for regenerating this offering");
         }
 
-        SelfDescriptionsResponse<ServiceOfferingCredentialSubject> selfDescriptionsResponse =
+        SelfDescriptionsResponse selfDescriptionsResponse =
                 getSelfDescriptionByOfferingExtension(extension);
-        // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
+        // if we do not get exactly one item or the id doesn't start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
             throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
