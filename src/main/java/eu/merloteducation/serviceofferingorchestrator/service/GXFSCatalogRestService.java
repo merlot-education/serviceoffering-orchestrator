@@ -22,6 +22,7 @@ import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdes
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModelFactory;
+import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationDetails;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import jakarta.transaction.Transactional;
 import org.apache.commons.text.StringEscapeUtils;
@@ -56,6 +57,9 @@ import static org.springframework.http.HttpStatus.*;
 
 @Service
 public class GXFSCatalogRestService {
+
+    @Autowired
+    OrganizationOrchestratorClient organizationOrchestratorClient;
 
     @Autowired
     ServiceOfferingMapper serviceOfferingMapper;
@@ -251,11 +255,12 @@ public class GXFSCatalogRestService {
     /**
      * Attempt to find an offering by the given id.
      *
-     * @param id                 id of the offering to search for
+     * @param id        id of the offering to search for
+     * @param authToken the OAuth2 Token from the user requesting this action
      * @return found offering
      * @throws Exception mapping exception
      */
-    public ServiceOfferingDto getServiceOfferingById(String id) throws Exception {
+    public ServiceOfferingDto getServiceOfferingById(String id, String authToken) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -275,17 +280,20 @@ public class GXFSCatalogRestService {
 
         return serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
                 selfDescriptionsResponse.getItems().get(0).getMeta(),
-                extension);
+                extension,
+                authToken != null ? organizationOrchestratorClient
+                        .getOrganizationDetails(extension.getIssuer(), Map.of("Authorization", authToken)) : null);
     }
 
     /**
      * Given the paging parameters, find all offerings that are publicly visible (released).
      *
-     * @param pageable paging parameters
+     * @param pageable  paging parameters
+     * @param authToken the OAuth2 Token from the user requesting this action
      * @return page of public offerings
      * @throws Exception mapping exception
      */
-    public Page<ServiceOfferingDto> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
+    public Page<ServiceOfferingDto> getAllPublicServiceOfferings(Pageable pageable, String authToken) throws Exception {
 
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
@@ -312,7 +320,10 @@ public class GXFSCatalogRestService {
         List<ServiceOfferingDto> models = selfDescriptionsResponse.getItems().stream()
                 .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
                         item.getMeta(),
-                        extensionMap.get(item.getMeta().getSdHash())))
+                        extensionMap.get(item.getMeta().getSdHash()),
+                        organizationOrchestratorClient
+                                .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
+                                        .getIssuer(), Map.of("Authorization", authToken))))
                 .sorted(Comparator.comparing(offer -> offer.getMetadata().getCreationDate() != null
                                 ? (LocalDateTime.parse(offer.getMetadata().getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,
@@ -326,13 +337,14 @@ public class GXFSCatalogRestService {
      * Given an organization id and paging parameters, find all offerings that belong to this organization.
      * Optionally, also specify an offering state to filter for a specific state.
      *
-     * @param orgaId   id of the organization to fetch the offerings for
-     * @param state    optional offering state for filtering
-     * @param pageable paging parameters
+     * @param orgaId    id of the organization to fetch the offerings for
+     * @param state     optional offering state for filtering
+     * @param pageable  paging parameters
+     * @param authToken the OAuth2 Token from the user requesting this action
      * @return page of organization offerings
      * @throws Exception mapping exception
      */
-    public Page<ServiceOfferingDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable) throws Exception {
+    public Page<ServiceOfferingDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable, String authToken) throws Exception {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository
@@ -362,7 +374,10 @@ public class GXFSCatalogRestService {
         List<ServiceOfferingDto> models = selfDescriptionsResponse.getItems().stream()
                 .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
                         item.getMeta(),
-                        extensionMap.get(item.getMeta().getSdHash())))
+                        extensionMap.get(item.getMeta().getSdHash()),
+                        organizationOrchestratorClient
+                                .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
+                                        .getIssuer(), Map.of("Authorization", authToken))))
                 .sorted(Comparator.comparing(offer -> offer.getMetadata().getCreationDate() != null
                                 ? (LocalDateTime.parse(offer.getMetadata().getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,

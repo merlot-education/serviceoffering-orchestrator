@@ -4,6 +4,7 @@ import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOffering
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
+import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationDetails;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -18,5 +19,9 @@ public interface ServiceOfferingMapper {
     @Mapping(target = "metadata.state", source = "extension.state")
     @Mapping(target = "metadata.creationDate", source = "extension.creationDate")
     @Mapping(target = "selfDescription", source = "selfDescriptionMeta.content")
-    ServiceOfferingDto selfDescriptionMetaToServiceOfferingDto(SelfDescriptionMeta selfDescriptionMeta, ServiceOfferingExtension extension);
+    @Mapping(target = "providerDetails.providerId", source = "providerDetails.id")
+    @Mapping(target = "providerDetails.providerLegalName", source = "providerDetails.organizationLegalName")
+    ServiceOfferingDto selfDescriptionMetaToServiceOfferingDto(SelfDescriptionMeta selfDescriptionMeta,
+                                                               ServiceOfferingExtension extension,
+                                                               OrganizationDetails providerDetails);
 }

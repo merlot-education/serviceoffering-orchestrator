@@ -81,16 +81,18 @@ public class ServiceOfferingsController {
      *
      * @param page page number
      * @param size number of items
+     * @param authToken active OAuth2 token of this user
      * @return page of offerings
      * @throws Exception exception during offering fetching
      */
     @GetMapping("")
     public Page<ServiceOfferingDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
-                                                                 @RequestParam(value = "size", defaultValue = "9") int size) throws Exception {
+                                                                 @RequestParam(value = "size", defaultValue = "9") int size,
+                                                                 @RequestHeader(name = "Authorization") String authToken) throws Exception {
 
         Page<ServiceOfferingDto> resultPage = gxfsCatalogRestService
                 .getAllPublicServiceOfferings(
-                        PageRequest.of(page, size, Sort.by("creationDate").descending()));
+                        PageRequest.of(page, size, Sort.by("creationDate").descending()), authToken);
         if (page > resultPage.getTotalPages()) {
             throw new ResponseStatusException(NOT_FOUND, "Requested page exceeds available entries.");
         }
@@ -107,6 +109,7 @@ public class ServiceOfferingsController {
      * @param state     optional offering state filter
      * @param principal user auth info
      * @param orgaId    organization to fetch the offerings for
+     * @param authToken active OAuth2 token of this user
      * @return page of organization offerings
      * @throws Exception exception during offering fetching
      */
@@ -115,7 +118,8 @@ public class ServiceOfferingsController {
                                                                            @RequestParam("size") int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
                                                                            @PathVariable(value = "orgaId") String orgaId,
-                                                                           Principal principal) throws Exception {
+                                                                           Principal principal,
+                                                                    @RequestHeader(name = "Authorization") String authToken) throws Exception {
 
         // if the requested organization id is not in the roles of this user,
         // the user is not allowed to request this endpoint
@@ -125,7 +129,7 @@ public class ServiceOfferingsController {
 
         Page<ServiceOfferingDto> resultPage = gxfsCatalogRestService
                 .getOrganizationServiceOfferings(
-                        orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()));
+                        orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()), authToken);
         if (page > resultPage.getTotalPages()) {
             throw new ResponseStatusException(NOT_FOUND, "Requested page exceeds available entries.");
         }
@@ -138,18 +142,20 @@ public class ServiceOfferingsController {
      *
      * @param principal         user auth info
      * @param serviceofferingId id of the offering to fetch data about
+     * @param authToken active OAuth2 token of this user
      * @return details to the offering
      * @throws Exception exception during offering fetching
      */
     @GetMapping("/serviceoffering/{soId}")
     public ServiceOfferingDto getServiceOfferingById(Principal principal,
-                                                               @PathVariable(value = "soId") String serviceofferingId) throws Exception {
+                                                               @PathVariable(value = "soId") String serviceofferingId,
+                                                     @RequestHeader(name = "Authorization") String authToken) throws Exception {
 
         Set<String> representedOrgaIds = getRepresentedOrgaIds(principal);
 
         try {
             ServiceOfferingDto offering =
-                    gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
+                    gxfsCatalogRestService.getServiceOfferingById(serviceofferingId, authToken);
 
             if (!offering.getMetadata().getState().equals(ServiceOfferingState.RELEASED.name()) &&
                     !representedOrgaIds.contains(offering.getSelfDescription().getVerifiableCredential()

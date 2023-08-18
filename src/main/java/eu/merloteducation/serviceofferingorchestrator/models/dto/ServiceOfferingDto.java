@@ -8,5 +8,6 @@ import lombok.Setter;
 @Setter
 public class ServiceOfferingDto {
     private OfferingMetaDto metadata;
+    private ProviderDetailsDto providerDetails;
     private SelfDescription selfDescription;
 }
