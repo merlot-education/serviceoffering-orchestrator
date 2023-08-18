@@ -19,8 +19,10 @@ public interface ServiceOfferingMapper {
     @Mapping(target = "metadata.state", source = "extension.state")
     @Mapping(target = "metadata.creationDate", source = "extension.creationDate")
     @Mapping(target = "selfDescription", source = "selfDescriptionMeta.content")
-    @Mapping(target = "providerDetails.providerId", source = "providerDetails.id")
-    @Mapping(target = "providerDetails.providerLegalName", source = "providerDetails.organizationLegalName")
+    @Mapping(target = "providerDetails.providerId",
+            source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.id")
+    @Mapping(target = "providerDetails.providerLegalName",
+            source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.legalName.value")
     ServiceOfferingDto selfDescriptionMetaToServiceOfferingDto(SelfDescriptionMeta selfDescriptionMeta,
                                                                ServiceOfferingExtension extension,
                                                                OrganizationDetails providerDetails);

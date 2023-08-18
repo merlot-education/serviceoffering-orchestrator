@@ -5,6 +5,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrganizationDetails {
-    private OrganizationSelfDescription selfDescription;
+public class OrganizationSelfDescription {
+    private OrganizationVerifiableCredential verifiableCredential;
 }
