@@ -1,6 +1,7 @@
 package eu.merloteducation.serviceofferingorchestrator.service;
 
 import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
+import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.messagequeue.ContractTemplateUpdated;
 import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
@@ -82,7 +83,7 @@ public class MessageQueueService {
      * @param offeringId id of the offering
      */
     @RabbitListener(queues = MessageQueueConfig.OFFERING_REQUEST_QUEUE)
-    private ServiceOfferingDetailedModel offeringDetailsRequestListener(String offeringId) throws Exception {
+    private ServiceOfferingDto offeringDetailsRequestListener(String offeringId) throws Exception {
         logger.info("Offering request message: offering ID {}", offeringId);
         return gxfsCatalogRestService.getServiceOfferingById(offeringId);
     }

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
+import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
+import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.AllowedUserCount;
@@ -43,6 +45,8 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
@@ -52,6 +56,10 @@ import static org.springframework.http.HttpStatus.*;
 
 @Service
 public class GXFSCatalogRestService {
+
+    @Autowired
+    ServiceOfferingMapper serviceOfferingMapper;
+
     @Autowired
     private RestTemplate restTemplate;
 
@@ -137,9 +145,7 @@ public class GXFSCatalogRestService {
                 null, null, HttpMethod.GET);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
-        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-        return mapper.readValue(response, new TypeReference<>() {
+        return new ObjectMapper().readValue(response, new TypeReference<>() {
         });
     }
 
@@ -196,7 +202,8 @@ public class GXFSCatalogRestService {
                         "@type": ["VerifiableCredential"],
                         "issuer": \"""" + issuer + """
                 ",
-                "issuanceDate": "2022-10-19T18:48:09Z",
+                "issuanceDate": \"""" + OffsetDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT) + """
+                ",
                 "credentialSubject":\s""" + credentialSubjectJson + """
                     }
                 }
@@ -248,7 +255,7 @@ public class GXFSCatalogRestService {
      * @return found offering
      * @throws Exception mapping exception
      */
-    public ServiceOfferingDetailedModel getServiceOfferingById(String id) throws Exception {
+    public ServiceOfferingDto getServiceOfferingById(String id) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -266,8 +273,8 @@ public class GXFSCatalogRestService {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
         }
 
-        return ServiceOfferingDetailedModelFactory.createServiceOfferingDetailedModel(
-                selfDescriptionsResponse.getItems().get(0),
+        return serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
+                selfDescriptionsResponse.getItems().get(0).getMeta(),
                 extension);
     }
 
@@ -278,7 +285,7 @@ public class GXFSCatalogRestService {
      * @return page of public offerings
      * @throws Exception mapping exception
      */
-    public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
+    public Page<ServiceOfferingDto> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
 
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
@@ -301,11 +308,13 @@ public class GXFSCatalogRestService {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
-        // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
-        List<ServiceOfferingBasicModel> models = selfDescriptionsResponse.getItems().stream()
-                .map(item -> new ServiceOfferingBasicModel(item, extensionMap.get(item.getMeta().getSdHash())))
-                .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
-                                ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
+        // extract the items from the SelfDescriptionsResponse and map them to Dto instances
+        List<ServiceOfferingDto> models = selfDescriptionsResponse.getItems().stream()
+                .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
+                        item.getMeta(),
+                        extensionMap.get(item.getMeta().getSdHash())))
+                .sorted(Comparator.comparing(offer -> offer.getMetadata().getCreationDate() != null
+                                ? (LocalDateTime.parse(offer.getMetadata().getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
@@ -323,7 +332,7 @@ public class GXFSCatalogRestService {
      * @return page of organization offerings
      * @throws Exception mapping exception
      */
-    public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable) throws Exception {
+    public Page<ServiceOfferingDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable) throws Exception {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository
@@ -349,11 +358,13 @@ public class GXFSCatalogRestService {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
-        // extract the items from the SelfDescriptionsResponse and map them to ServiceOfferingBasicModel instances
-        List<ServiceOfferingBasicModel> models = selfDescriptionsResponse.getItems().stream()
-                .map(item -> new ServiceOfferingBasicModel(item, extensionMap.get(item.getMeta().getSdHash())))
-                .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
-                                ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
+        // extract the items from the SelfDescriptionsResponse and map them to Dto instances
+        List<ServiceOfferingDto> models = selfDescriptionsResponse.getItems().stream()
+                .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
+                        item.getMeta(),
+                        extensionMap.get(item.getMeta().getSdHash())))
+                .sorted(Comparator.comparing(offer -> offer.getMetadata().getCreationDate() != null
+                                ? (LocalDateTime.parse(offer.getMetadata().getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
@@ -471,7 +482,7 @@ public class GXFSCatalogRestService {
                     null, HttpMethod.DELETE);
         }
 
-        mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper = new ObjectMapper();
         SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self description

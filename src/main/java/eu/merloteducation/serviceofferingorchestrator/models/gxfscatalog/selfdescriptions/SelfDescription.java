@@ -1,6 +1,8 @@
 package eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.SDProof;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -22,7 +24,7 @@ public class SelfDescription {
     @JsonProperty("@context")
     private List<String> context;
 
-    private Map<String, String> proof;
+    private SDProof proof;
 
     private SelfDescriptionVerifiableCredential verifiableCredential;
 

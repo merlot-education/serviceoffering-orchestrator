@@ -1,6 +1,7 @@
 package eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.AllowedUserCount;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
@@ -11,6 +12,7 @@ import java.util.List;
 
 @Getter
 @Setter
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class SaaSCredentialSubject extends ServiceOfferingCredentialSubject {
     // inherited from merlot:MerlotServiceOfferingSaaS
 

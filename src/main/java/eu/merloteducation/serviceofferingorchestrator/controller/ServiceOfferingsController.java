@@ -1,5 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
+import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
@@ -84,10 +85,10 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("")
-    public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
-                                                                        @RequestParam(value = "size", defaultValue = "9") int size) throws Exception {
+    public Page<ServiceOfferingDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
+                                                                 @RequestParam(value = "size", defaultValue = "9") int size) throws Exception {
 
-        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService
+        Page<ServiceOfferingDto> resultPage = gxfsCatalogRestService
                 .getAllPublicServiceOfferings(
                         PageRequest.of(page, size, Sort.by("creationDate").descending()));
         if (page > resultPage.getTotalPages()) {
@@ -110,7 +111,7 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("/organization/{orgaId}")
-    public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(@RequestParam("page") int page,
+    public Page<ServiceOfferingDto> getOrganizationServiceOfferings(@RequestParam("page") int page,
                                                                            @RequestParam("size") int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
                                                                            @PathVariable(value = "orgaId") String orgaId,
@@ -122,7 +123,7 @@ public class ServiceOfferingsController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService
+        Page<ServiceOfferingDto> resultPage = gxfsCatalogRestService
                 .getOrganizationServiceOfferings(
                         orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()));
         if (page > resultPage.getTotalPages()) {
@@ -141,17 +142,18 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("/serviceoffering/{soId}")
-    public ServiceOfferingDetailedModel getServiceOfferingById(Principal principal,
+    public ServiceOfferingDto getServiceOfferingById(Principal principal,
                                                                @PathVariable(value = "soId") String serviceofferingId) throws Exception {
 
         Set<String> representedOrgaIds = getRepresentedOrgaIds(principal);
 
         try {
-            ServiceOfferingDetailedModel offering =
+            ServiceOfferingDto offering =
                     gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
 
-            if (!offering.getMerlotState().equals(ServiceOfferingState.RELEASED.name()) &&
-                    !representedOrgaIds.contains(offering.getOfferedBy().replace(PARTICIPANT_START, ""))) {
+            if (!offering.getMetadata().getState().equals(ServiceOfferingState.RELEASED.name()) &&
+                    !representedOrgaIds.contains(offering.getSelfDescription().getVerifiableCredential()
+                            .getIssuer().replace(PARTICIPANT_START, ""))) {
                 throw new ResponseStatusException(FORBIDDEN, "Not authorized to access details to this offering");
             }
 

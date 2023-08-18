@@ -10,9 +10,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class NodeKindIRITypeId {
-    @NotNull
-    @JsonProperty("@type")
-    private String type;
 
     @NotNull
     @JsonProperty("@id")
