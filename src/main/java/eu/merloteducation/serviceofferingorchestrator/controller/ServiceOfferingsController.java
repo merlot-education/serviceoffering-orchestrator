@@ -10,6 +10,7 @@ import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestSer
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -84,7 +85,7 @@ public class ServiceOfferingsController {
      */
     @GetMapping("")
     public Page<ServiceOfferingDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
-                                                                 @RequestParam(value = "size", defaultValue = "9") int size,
+                                                                 @RequestParam(value = "size", defaultValue = "9") @Max(15) int size,
                                                                  @RequestHeader(name = "Authorization") String authToken) throws Exception {
 
         Page<ServiceOfferingDto> resultPage = gxfsCatalogRestService
@@ -112,7 +113,7 @@ public class ServiceOfferingsController {
      */
     @GetMapping("/organization/{orgaId}")
     public Page<ServiceOfferingDto> getOrganizationServiceOfferings(@RequestParam("page") int page,
-                                                                           @RequestParam("size") int size,
+                                                                           @RequestParam("size") @Max(15) int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
                                                                            @PathVariable(value = "orgaId") String orgaId,
                                                                            Principal principal,
