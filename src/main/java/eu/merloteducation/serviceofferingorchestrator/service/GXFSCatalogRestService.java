@@ -299,7 +299,7 @@ public class GXFSCatalogRestService {
 
 
         // create a mapper to map the response to the SelfDescriptionResponse class
-        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        ObjectMapper mapper = new ObjectMapper();
         SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
 
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
@@ -354,7 +354,7 @@ public class GXFSCatalogRestService {
                 null, HttpMethod.GET);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
-        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        ObjectMapper mapper = new ObjectMapper();
         SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
