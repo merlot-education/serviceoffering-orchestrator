@@ -12,7 +12,7 @@ import java.util.Map;
 
 @Getter
 @Setter
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, visible = true)
 @JsonSubTypes({
         @JsonSubTypes.Type(value = DataDeliveryCredentialSubject.class, name = "merlot:MerlotServiceOfferingDataDelivery"),
         @JsonSubTypes.Type(value = SaaSCredentialSubject.class, name = "merlot:MerlotServiceOfferingSaaS"),
@@ -26,6 +26,10 @@ public abstract class ServiceOfferingCredentialSubject {
     @NotNull
     @JsonProperty("@id")
     private String id;
+
+    @NotNull
+    @JsonProperty("@type")
+    private String type;
 
     @NotNull
     @JsonProperty("@context")

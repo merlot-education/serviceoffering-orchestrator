@@ -1,5 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
+import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
@@ -84,11 +85,11 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("")
-    public Page<ServiceOfferingDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
-                                                                 @RequestParam(value = "size", defaultValue = "9") @Max(15) int size,
-                                                                 @RequestHeader(name = "Authorization") String authToken) throws Exception {
+    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
+                                                                      @RequestParam(value = "size", defaultValue = "9") @Max(15) int size,
+                                                                      @RequestHeader(name = "Authorization") String authToken) throws Exception {
 
-        Page<ServiceOfferingDto> resultPage = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> resultPage = gxfsCatalogRestService
                 .getAllPublicServiceOfferings(
                         PageRequest.of(page, size, Sort.by("creationDate").descending()), authToken);
         if (page > resultPage.getTotalPages()) {
@@ -112,7 +113,7 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("/organization/{orgaId}")
-    public Page<ServiceOfferingDto> getOrganizationServiceOfferings(@RequestParam("page") int page,
+    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(@RequestParam("page") int page,
                                                                            @RequestParam("size") @Max(15) int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
                                                                            @PathVariable(value = "orgaId") String orgaId,
@@ -125,7 +126,7 @@ public class ServiceOfferingsController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        Page<ServiceOfferingDto> resultPage = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> resultPage = gxfsCatalogRestService
                 .getOrganizationServiceOfferings(
                         orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()), authToken);
         if (page > resultPage.getTotalPages()) {

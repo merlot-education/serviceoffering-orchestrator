@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
+import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
@@ -283,7 +284,7 @@ public class GXFSCatalogRestService {
      * @return page of public offerings
      * @throws Exception mapping exception
      */
-    public Page<ServiceOfferingDto> getAllPublicServiceOfferings(Pageable pageable, String authToken) throws Exception {
+    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable, String authToken) throws Exception {
 
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
@@ -307,15 +308,15 @@ public class GXFSCatalogRestService {
         }
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
-        List<ServiceOfferingDto> models = selfDescriptionsResponse.getItems().stream()
-                .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
+        List<ServiceOfferingBasicDto> models = selfDescriptionsResponse.getItems().stream()
+                .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingBasicDto(
                         item.getMeta(),
                         extensionMap.get(item.getMeta().getSdHash()),
                         organizationOrchestratorClient
                                 .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
                                         .getIssuer(), Map.of("Authorization", authToken))))
-                .sorted(Comparator.comparing(offer -> offer.getMetadata().getCreationDate() != null
-                                ? (LocalDateTime.parse(offer.getMetadata().getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
+                .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
+                                ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
@@ -334,7 +335,7 @@ public class GXFSCatalogRestService {
      * @return page of organization offerings
      * @throws Exception mapping exception
      */
-    public Page<ServiceOfferingDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable, String authToken) throws Exception {
+    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable, String authToken) throws Exception {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository
@@ -361,15 +362,15 @@ public class GXFSCatalogRestService {
         }
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
-        List<ServiceOfferingDto> models = selfDescriptionsResponse.getItems().stream()
-                .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
+        List<ServiceOfferingBasicDto> models = selfDescriptionsResponse.getItems().stream()
+                .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingBasicDto(
                         item.getMeta(),
                         extensionMap.get(item.getMeta().getSdHash()),
                         organizationOrchestratorClient
                                 .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
                                         .getIssuer(), Map.of("Authorization", authToken))))
-                .sorted(Comparator.comparing(offer -> offer.getMetadata().getCreationDate() != null
-                                ? (LocalDateTime.parse(offer.getMetadata().getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
+                .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
+                                ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
