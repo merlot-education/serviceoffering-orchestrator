@@ -18,6 +18,7 @@ public interface ServiceOfferingMapper {
     }
     @Mapping(target = "metadata.state", source = "extension.state")
     @Mapping(target = "metadata.creationDate", source = "extension.creationDate")
+    @Mapping(target = "metadata.modifiedDate", source = "selfDescriptionMeta.statusDatetime")
     @Mapping(target = "selfDescription", source = "selfDescriptionMeta.content")
     @Mapping(target = "providerDetails.providerId",
             source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.id")

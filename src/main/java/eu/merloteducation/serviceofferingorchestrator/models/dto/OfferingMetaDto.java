@@ -8,4 +8,5 @@ import lombok.Setter;
 public class OfferingMetaDto {
     String state;
     String creationDate;
+    String modifiedDate;
 }
