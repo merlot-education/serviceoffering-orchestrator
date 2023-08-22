@@ -28,6 +28,7 @@ public interface ServiceOfferingMapper {
                                                                          ServiceOfferingExtension extension,
                                                                          OrganizationDetails providerDetails);
     @Mapping(target = "metadata.state", source = "extension.state")
+    @Mapping(target = "metadata.hash", source = "extension.currentSdHash")
     @Mapping(target = "metadata.creationDate", source = "extension.creationDate")
     @Mapping(target = "metadata.modifiedDate", source = "selfDescriptionMeta.statusDatetime")
     @Mapping(target = "selfDescription", source = "selfDescriptionMeta.content")
