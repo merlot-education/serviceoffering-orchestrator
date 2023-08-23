@@ -249,11 +249,10 @@ public class GXFSCatalogRestService {
      * Attempt to find an offering by the given id.
      *
      * @param id        id of the offering to search for
-     * @param authToken the OAuth2 Token from the user requesting this action
      * @return found offering
      * @throws Exception mapping exception
      */
-    public ServiceOfferingDto getServiceOfferingById(String id, String authToken) throws Exception {
+    public ServiceOfferingDto getServiceOfferingById(String id) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -273,19 +272,17 @@ public class GXFSCatalogRestService {
         return serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
                 selfDescriptionsResponse.getItems().get(0).getMeta(),
                 extension,
-                authToken != null ? organizationOrchestratorClient
-                        .getOrganizationDetails(extension.getIssuer(), Map.of(AUTHORIZATION, authToken)) : null);
+                organizationOrchestratorClient.getOrganizationDetails(extension.getIssuer()));
     }
 
     /**
      * Given the paging parameters, find all offerings that are publicly visible (released).
      *
      * @param pageable  paging parameters
-     * @param authToken the OAuth2 Token from the user requesting this action
      * @return page of public offerings
      * @throws Exception mapping exception
      */
-    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable, String authToken) throws Exception {
+    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
 
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
@@ -315,7 +312,7 @@ public class GXFSCatalogRestService {
                         extensionMap.get(item.getMeta().getSdHash()),
                         organizationOrchestratorClient
                                 .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
-                                        .getIssuer(), Map.of(AUTHORIZATION, authToken))))
+                                        .getIssuer())))
                 .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
                                 ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,
@@ -332,11 +329,10 @@ public class GXFSCatalogRestService {
      * @param orgaId    id of the organization to fetch the offerings for
      * @param state     optional offering state for filtering
      * @param pageable  paging parameters
-     * @param authToken the OAuth2 Token from the user requesting this action
      * @return page of organization offerings
      * @throws Exception mapping exception
      */
-    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable, String authToken) throws Exception {
+    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable) throws Exception {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository
@@ -369,7 +365,7 @@ public class GXFSCatalogRestService {
                         extensionMap.get(item.getMeta().getSdHash()),
                         organizationOrchestratorClient
                                 .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
-                                        .getIssuer(), Map.of(AUTHORIZATION, authToken))))
+                                        .getIssuer())))
                 .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
                                 ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,

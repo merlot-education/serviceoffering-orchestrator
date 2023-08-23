@@ -84,6 +84,6 @@ public class MessageQueueService {
     @RabbitListener(queues = MessageQueueConfig.OFFERING_REQUEST_QUEUE)
     private ServiceOfferingDto offeringDetailsRequestListener(String offeringId) throws Exception {
         logger.info("Offering request message: offering ID {}", offeringId);
-        return gxfsCatalogRestService.getServiceOfferingById(offeringId, null);
+        return gxfsCatalogRestService.getServiceOfferingById(offeringId);
     }
 }

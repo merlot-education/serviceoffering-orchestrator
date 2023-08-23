@@ -9,5 +9,5 @@ import java.util.Map;
 
 public interface OrganizationOrchestratorClient {
     @GetExchange("/organization/{orgaId}")
-    OrganizationDetails getOrganizationDetails(@PathVariable String orgaId, @RequestHeader Map<String, String> headers);
+    OrganizationDetails getOrganizationDetails(@PathVariable String orgaId);
 }
