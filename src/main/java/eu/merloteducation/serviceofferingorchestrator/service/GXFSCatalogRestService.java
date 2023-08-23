@@ -283,6 +283,7 @@ public class GXFSCatalogRestService {
      * @throws Exception mapping exception
      */
     public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
+        // TODO measure time
 
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
@@ -358,14 +359,14 @@ public class GXFSCatalogRestService {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
+        OrganizationDetails providerOrga = organizationOrchestratorClient.getOrganizationDetails(orgaId);
+
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
         List<ServiceOfferingBasicDto> models = selfDescriptionsResponse.getItems().stream()
                 .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingBasicDto(
                         item.getMeta(),
                         extensionMap.get(item.getMeta().getSdHash()),
-                        organizationOrchestratorClient
-                                .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
-                                        .getIssuer())))
+                        providerOrga))
                 .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
                                 ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,
