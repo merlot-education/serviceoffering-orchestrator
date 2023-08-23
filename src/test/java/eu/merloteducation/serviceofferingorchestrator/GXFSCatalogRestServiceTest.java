@@ -276,7 +276,7 @@ class GXFSCatalogRestServiceTest {
         organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
 
     }
@@ -418,7 +418,7 @@ class GXFSCatalogRestServiceTest {
     void getAllPublicOfferings() throws Exception {
         Page<ServiceOfferingBasicDto> offerings = gxfsCatalogRestService
                 .getAllPublicServiceOfferings(
-                        PageRequest.of(0, 9, Sort.by("creationDate").descending()), "authToken");
+                        PageRequest.of(0, 9, Sort.by("creationDate").descending()));
 
         assertTrue(offerings.getNumberOfElements() > 0 && offerings.getNumberOfElements() <= 9);
     }
@@ -427,7 +427,7 @@ class GXFSCatalogRestServiceTest {
     void getOrganizationOfferingsNoState() throws Exception {
         Page<ServiceOfferingBasicDto> offerings = gxfsCatalogRestService
                 .getOrganizationServiceOfferings("10", null,
-                        PageRequest.of(0, 9, Sort.by("creationDate").descending()), "authToken");
+                        PageRequest.of(0, 9, Sort.by("creationDate").descending()));
 
         assertTrue(offerings.getNumberOfElements() > 0 && offerings.getNumberOfElements() <= 9);
     }
@@ -436,7 +436,7 @@ class GXFSCatalogRestServiceTest {
     void getOrganizationOfferingsByState() throws Exception {
         Page<ServiceOfferingBasicDto> offerings = gxfsCatalogRestService
                 .getOrganizationServiceOfferings("10", ServiceOfferingState.IN_DRAFT,
-                        PageRequest.of(0, 9, Sort.by("creationDate").descending()), "authToken");
+                        PageRequest.of(0, 9, Sort.by("creationDate").descending()));
 
         assertTrue(offerings.getNumberOfElements() > 0 && offerings.getNumberOfElements() <= 9);
     }
@@ -505,7 +505,7 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsSaasExistent() throws Exception {
-        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(saasOffering.getId(), "authToken");
+        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(saasOffering.getId());
         assertNotNull(model);
 
         assertInstanceOf(SaaSCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
@@ -524,7 +524,7 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsDataDeliveryExistent() throws Exception {
-        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(dateDeliveryOffering.getId(), "authToken");
+        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(dateDeliveryOffering.getId());
         assertNotNull(model);
         assertInstanceOf(DataDeliveryCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
                 .getCredentialSubject());
@@ -539,7 +539,7 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsCooperationExistent() throws Exception {
-        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(cooperationOffering.getId(), "authToken");
+        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(cooperationOffering.getId());
         assertNotNull(model);
         assertInstanceOf(CooperationCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
                 .getCredentialSubject());
@@ -551,7 +551,7 @@ class GXFSCatalogRestServiceTest {
     @Test
     void getServiceOfferingDetailsNonExistent() {
         NoSuchElementException exception = assertThrows(NoSuchElementException.class,
-                () -> gxfsCatalogRestService.getServiceOfferingById("garbage", "authToken"));
+                () -> gxfsCatalogRestService.getServiceOfferingById("garbage"));
     }
 
 }
