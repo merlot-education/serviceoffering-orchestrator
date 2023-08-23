@@ -91,6 +91,7 @@ public class GXFSCatalogRestService {
 
     private final Logger logger = LoggerFactory.getLogger(GXFSCatalogRestService.class);
 
+    private static final String AUTHORIZATION = "Authorization";
     private static final String PARTICIPANT_START = "Participant:";
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
@@ -165,7 +166,7 @@ public class GXFSCatalogRestService {
         // log in as the gxfscatalog user and add the token to the header
         Map<String, Object> gxfscatalogLoginResponse = loginGXFScatalog();
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer " + gxfscatalogLoginResponse.get("access_token"));
+        headers.add(AUTHORIZATION, "Bearer " + gxfscatalogLoginResponse.get("access_token"));
         if (mediaType != null)
             headers.setContentType(mediaType);
         HttpEntity<String> request = new HttpEntity<>(body, headers);
@@ -273,7 +274,7 @@ public class GXFSCatalogRestService {
                 selfDescriptionsResponse.getItems().get(0).getMeta(),
                 extension,
                 authToken != null ? organizationOrchestratorClient
-                        .getOrganizationDetails(extension.getIssuer(), Map.of("Authorization", authToken)) : null);
+                        .getOrganizationDetails(extension.getIssuer(), Map.of(AUTHORIZATION, authToken)) : null);
     }
 
     /**
@@ -314,7 +315,7 @@ public class GXFSCatalogRestService {
                         extensionMap.get(item.getMeta().getSdHash()),
                         organizationOrchestratorClient
                                 .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
-                                        .getIssuer(), Map.of("Authorization", authToken))))
+                                        .getIssuer(), Map.of(AUTHORIZATION, authToken))))
                 .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
                                 ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,
@@ -368,7 +369,7 @@ public class GXFSCatalogRestService {
                         extensionMap.get(item.getMeta().getSdHash()),
                         organizationOrchestratorClient
                                 .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
-                                        .getIssuer(), Map.of("Authorization", authToken))))
+                                        .getIssuer(), Map.of(AUTHORIZATION, authToken))))
                 .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
                                 ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
                                 : LocalDateTime.MIN,
