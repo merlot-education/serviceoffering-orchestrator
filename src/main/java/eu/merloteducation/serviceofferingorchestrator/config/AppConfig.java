@@ -25,4 +25,9 @@ public class AppConfig {
                 .build();
         return httpServiceProxyFactory.createClient(OrganizationOrchestratorClient.class);
     }
+
+    @Bean
+    public WebClient webClient(WebClient.Builder webClientBuilder) {
+        return webClientBuilder.build();
+    }
 }
