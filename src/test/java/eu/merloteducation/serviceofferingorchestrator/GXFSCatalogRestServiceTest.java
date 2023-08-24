@@ -17,10 +17,8 @@ import eu.merloteducation.serviceofferingorchestrator.models.organisationsorches
 import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationSelfDescription;
 import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationVerifiableCredential;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
-import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
-import eu.merloteducation.serviceofferingorchestrator.service.GXFSSignerService;
-import eu.merloteducation.serviceofferingorchestrator.service.MessageQueueService;
-import eu.merloteducation.serviceofferingorchestrator.service.OrganizationOrchestratorClient;
+import eu.merloteducation.serviceofferingorchestrator.service.*;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.text.StringSubstitutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,9 +57,6 @@ import static org.mockito.Mockito.lenient;
 class GXFSCatalogRestServiceTest {
 
     @Mock
-    private RestTemplate restTemplate;
-
-    @Mock
     private OrganizationOrchestratorClient organizationOrchestratorClient;
 
     @MockBean
@@ -69,6 +64,9 @@ class GXFSCatalogRestServiceTest {
 
     @Mock
     MessageQueueConfig messageQueueConfig;
+
+    @MockBean
+    private KeycloakAuthService keycloakAuthService;
 
     @Autowired
     ServiceOfferingMapper serviceOfferingMapper;
@@ -165,6 +163,13 @@ class GXFSCatalogRestServiceTest {
         return offeringQueryResponseBuilder.toString();
     }
 
+    private String unescapeJson(String jsonString) {
+        jsonString = StringEscapeUtils.unescapeJson(jsonString);
+        if (jsonString != null)
+            jsonString = jsonString.replace("\"{", "{").replace("}\"", "}");
+        return jsonString;
+    }
+
     @BeforeEach
     public void setUp() {
         ReflectionTestUtils.setField(gxfsCatalogRestService, "keycloakTokenUri", keycloakTokenUri);
@@ -199,15 +204,8 @@ class GXFSCatalogRestServiceTest {
         cooperationOffering.release();
         serviceOfferingExtensionRepository.save(cooperationOffering);
 
-
-        lenient().when(restTemplate.postForObject(eq(keycloakTokenUri), any(), eq(String.class)))
-                .thenReturn("{\"access_token\": \"1234\", \"refresh_token\": \"5678\"}");
-
-        lenient().when(restTemplate.postForObject(eq(keycloakLogoutUri), any(), eq(String.class)))
-                .thenReturn("");
-
-        lenient().when(restTemplate.exchange(any(URI.class),
-                        eq(HttpMethod.GET), any(), eq(String.class)))
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
+                        any(), any(), any()))
                 .thenThrow(HttpClientErrorException.NotFound.class);
 
         List<String> catalogItems = new ArrayList<>();
@@ -229,46 +227,45 @@ class GXFSCatalogRestServiceTest {
         catalogSingleItemCooperation.add(createCatalogItem(cooperationOffering.getId(), cooperationOffering.getIssuer(), cooperationOffering.getCurrentSdHash(), "coop"));
         String offeringQueryResponseSingleCooperation = createCatalogResponse(catalogSingleItemCooperation);
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "/" + saasOffering.getCurrentSdHash()),
-                        eq(HttpMethod.DELETE), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleSaas, HttpStatus.OK));
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.DELETE),
+                        eq(gxfscatalogSelfdescriptionsUri + "/" + saasOffering.getCurrentSdHash()), any(), any()))
+                .thenReturn(unescapeJson(offeringQueryResponseSingleSaas));
 
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
+                        startsWith(gxfscatalogSelfdescriptionsUri + "?"), any(), any()))
+                .thenReturn(unescapeJson(offeringQueryResponse));
 
-        lenient().when(restTemplate.exchange(startsWith(gxfscatalogSelfdescriptionsUri + "?"),
-                        eq(HttpMethod.GET), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(offeringQueryResponse, HttpStatus.OK));
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
+                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + saasOffering.getId()), any(), any()))
+                .thenReturn(unescapeJson(offeringQueryResponseSingleSaas));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + saasOffering.getId()),
-                        eq(HttpMethod.GET), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleSaas, HttpStatus.OK));
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
+                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + saasOffering.getCurrentSdHash()), any(), any()))
+                .thenReturn(unescapeJson(offeringQueryResponseSingleSaas));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + saasOffering.getCurrentSdHash()),
-                        eq(HttpMethod.GET), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleSaas, HttpStatus.OK));
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
+                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + dateDeliveryOffering.getId()), any(), any()))
+                .thenReturn(unescapeJson(offeringQueryResponseSingleDataDelivery));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + dateDeliveryOffering.getId()),
-                        eq(HttpMethod.GET), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleDataDelivery, HttpStatus.OK));
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
+                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + dateDeliveryOffering.getCurrentSdHash()), any(), any()))
+                .thenReturn(unescapeJson(offeringQueryResponseSingleDataDelivery));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + dateDeliveryOffering.getCurrentSdHash()),
-                        eq(HttpMethod.GET), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleDataDelivery, HttpStatus.OK));
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
+                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + cooperationOffering.getId()), any(), any()))
+                .thenReturn(unescapeJson(offeringQueryResponseSingleCooperation));
 
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + cooperationOffering.getId()),
-                        eq(HttpMethod.GET), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleCooperation, HttpStatus.OK));
-
-        lenient().when(restTemplate.exchange(eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + cooperationOffering.getCurrentSdHash()),
-                        eq(HttpMethod.GET), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(offeringQueryResponseSingleCooperation, HttpStatus.OK));
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
+                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + cooperationOffering.getCurrentSdHash()), any(), any()))
+                .thenReturn(unescapeJson(offeringQueryResponseSingleCooperation));
 
         String mockOfferingCreatedResponse = """
                 {"sdHash":"4321","id":"ServiceOffering:new","status":"active","issuer":"Participant:10","validatorDids":["did:web:compliance.lab.gaia-x.eu"],"uploadDatetime":"2023-05-24T13:32:22.712661Z","statusDatetime":"2023-05-24T13:32:22.712662Z"}
                 """;
         // for participant endpoint return a dummy list of one item
-        lenient().when(restTemplate.exchange(startsWith(gxfscatalogSelfdescriptionsUri),
-                        eq(HttpMethod.POST), any(), eq(String.class)))
-                .thenReturn(new ResponseEntity<>(mockOfferingCreatedResponse, HttpStatus.OK));
+        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.POST),
+                        startsWith(gxfscatalogSelfdescriptionsUri), any(), any()))
+                .thenReturn(unescapeJson(mockOfferingCreatedResponse));
 
         OrganizationDetails organizationDetails = new OrganizationDetails();
         organizationDetails.setSelfDescription(new OrganizationSelfDescription());

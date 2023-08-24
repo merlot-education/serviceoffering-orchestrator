@@ -14,6 +14,7 @@ import eu.merloteducation.serviceofferingorchestrator.security.JwtAuthConverterP
 import eu.merloteducation.serviceofferingorchestrator.security.WebSecurityConfig;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
+import eu.merloteducation.serviceofferingorchestrator.service.KeycloakAuthService;
 import eu.merloteducation.serviceofferingorchestrator.service.MessageQueueService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,9 @@ public class ServiceOfferingsControllerTest {
 
     @MockBean
     private GXFSWizardRestService gxfsWizardRestService;
+
+    @MockBean
+    private KeycloakAuthService keycloakAuthService;
 
     @Autowired
     private JwtAuthConverter jwtAuthConverter;
