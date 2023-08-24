@@ -51,13 +51,13 @@ import static org.springframework.http.HttpStatus.*;
 public class GXFSCatalogRestService {
 
     @Autowired
-    OrganizationOrchestratorClient organizationOrchestratorClient;
+    private OrganizationOrchestratorClient organizationOrchestratorClient;
 
     @Autowired
-    ServiceOfferingMapper serviceOfferingMapper;
+    private ServiceOfferingMapper serviceOfferingMapper;
 
     @Autowired
-    private RestTemplate restTemplate;
+    private KeycloakAuthService keycloakAuthService;
 
     @Autowired
     private GXFSSignerService gxfsSignerService;
@@ -96,50 +96,34 @@ public class GXFSCatalogRestService {
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
 
-    private Map<String, Object> loginGXFScatalog() {
-        MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
-        map.add("username", keycloakGXFScatalogUser);
-        map.add("password", keycloakGXFScatalogPass);
-        map.add("client_id", clientId);
-        map.add("client_secret", clientSecret);
-        map.add("grant_type", grantType);
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, new HttpHeaders());
-        String response = restTemplate.postForObject(keycloakTokenUri, request, String.class);
-
-        JsonParser parser = JsonParserFactory.getJsonParser();
-        return parser.parseMap(response);
-    }
-
-    private void logoutGXFScatalog(String refreshToken) {
-        MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
-        map.add("client_id", clientId);
-        map.add("client_secret", clientSecret);
-        map.add("refresh_token", refreshToken);
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, null);
-        restTemplate.postForObject(keycloakLogoutUri, request, String.class);
-    }
-
     private void deleteOffering(ServiceOfferingExtension extension) {
         extension.delete();
-        restCallAuthenticated(gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash() + "/revoke",
-                null, null, HttpMethod.POST);
+        keycloakAuthService.webCallAuthenticated(
+                HttpMethod.POST,
+                gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash() + "/revoke",
+                "",
+                null);
     }
 
     private void purgeOffering(ServiceOfferingExtension extension) {
         if (extension.getState() != ServiceOfferingState.DELETED) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
         }
-        restCallAuthenticated(gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash(), null,
-                null, HttpMethod.DELETE);
+        keycloakAuthService.webCallAuthenticated(
+                HttpMethod.DELETE,
+                gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash(),
+                "",
+                null);
         serviceOfferingExtensionRepository.delete(extension);
     }
 
     private SelfDescriptionsResponse getSelfDescriptionByOfferingExtension
             (ServiceOfferingExtension extension) throws Exception {
-        String response = restCallAuthenticated(
+        String response = keycloakAuthService.webCallAuthenticated(
+                HttpMethod.GET,
                 gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + extension.getId(),
-                null, null, HttpMethod.GET);
+                "",
+                null);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         return new ObjectMapper().readValue(response, new TypeReference<>() {
@@ -160,31 +144,6 @@ public class GXFSCatalogRestService {
         } else {
             throw new ResponseStatusException(e.getStatusCode(), "Unknown error when communicating with catalog.");
         }
-    }
-
-    private String restCallAuthenticated(String url, String body, MediaType mediaType, HttpMethod method) {
-        // log in as the gxfscatalog user and add the token to the header
-        Map<String, Object> gxfscatalogLoginResponse = loginGXFScatalog();
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(AUTHORIZATION, "Bearer " + gxfscatalogLoginResponse.get("access_token"));
-        if (mediaType != null)
-            headers.setContentType(mediaType);
-        HttpEntity<String> request = new HttpEntity<>(body, headers);
-
-        String response =
-                restTemplate.exchange(url,
-                        method, request, String.class).getBody();
-
-        // as the catalog returns nested but escaped jsons, we need to manually unescape to properly use it
-
-        response = StringEscapeUtils.unescapeJson(response);
-        if (response != null)
-            response = response.replace("\"{", "{").replace("}\"", "}");
-
-        // log out with the gxfscatalog user
-        this.logoutGXFScatalog((String) gxfscatalogLoginResponse.get("refresh_token"));
-
-        return response;
     }
 
     private String presentAndSign(String credentialSubjectJson, String issuer) throws Exception {
@@ -283,8 +242,6 @@ public class GXFSCatalogRestService {
      * @throws Exception mapping exception
      */
     public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
-        // TODO measure time
-
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
@@ -293,9 +250,11 @@ public class GXFSCatalogRestService {
                 .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                         .collect(Collectors.toSet()));
 
-        String response = restCallAuthenticated(
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE&hashes=" + extensionHashes, null,
-                null, HttpMethod.GET);
+        String response = keycloakAuthService.webCallAuthenticated(
+                HttpMethod.GET,
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE&hashes=" + extensionHashes,
+                "",
+                null);
 
 
         // create a mapper to map the response to the SelfDescriptionResponse class
@@ -348,9 +307,11 @@ public class GXFSCatalogRestService {
                 .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                         .collect(Collectors.toSet()));
 
-        String response = restCallAuthenticated(
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + extensionHashes, null,
-                null, HttpMethod.GET);
+        String response = keycloakAuthService.webCallAuthenticated(
+                HttpMethod.GET,
+                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + extensionHashes,
+                "",
+                null);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         ObjectMapper mapper = new ObjectMapper();
@@ -474,16 +435,22 @@ public class GXFSCatalogRestService {
 
         String response = "";
         try {
-            response = restCallAuthenticated(gxfscatalogSelfdescriptionsUri, signedVp,
-                    MediaType.APPLICATION_JSON, HttpMethod.POST);
+            response = keycloakAuthService.webCallAuthenticated(
+                    HttpMethod.POST,
+                    gxfscatalogSelfdescriptionsUri,
+                    signedVp,
+                    List.of(MediaType.APPLICATION_JSON));
         } catch (HttpClientErrorException e) {
             handleCatalogError(e);
         }
 
         // delete previous entry if it exists
         if (previousSdHash != null) {
-            restCallAuthenticated(gxfscatalogSelfdescriptionsUri + "/" + previousSdHash, null,
-                    null, HttpMethod.DELETE);
+            keycloakAuthService.webCallAuthenticated(
+                    HttpMethod.DELETE,
+                    gxfscatalogSelfdescriptionsUri + "/" + previousSdHash,
+                    "",
+                    null);
         }
 
         mapper = new ObjectMapper();
