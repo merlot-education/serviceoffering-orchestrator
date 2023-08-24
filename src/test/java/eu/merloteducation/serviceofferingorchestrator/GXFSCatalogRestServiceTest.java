@@ -71,27 +71,6 @@ class GXFSCatalogRestServiceTest {
     @Autowired
     ServiceOfferingMapper serviceOfferingMapper;
 
-    @Value("${keycloak.token-uri}")
-    private String keycloakTokenUri;
-
-    @Value("${keycloak.logout-uri}")
-    private String keycloakLogoutUri;
-
-    @Value("${keycloak.client-id}")
-    private String clientId;
-
-    @Value("${keycloak.client-secret}")
-    private String clientSecret;
-
-    @Value("${keycloak.authorization-grant-type}")
-    private String grantType;
-
-    @Value("${keycloak.gxfscatalog-user}")
-    private String keycloakGXFScatalogUser;
-
-    @Value("${keycloak.gxfscatalog-pass}")
-    private String keycloakGXFScatalogPass;
-
     @Value("${gxfscatalog.selfdescriptions-uri}")
     private String gxfscatalogSelfdescriptionsUri;
     @InjectMocks
@@ -172,13 +151,6 @@ class GXFSCatalogRestServiceTest {
 
     @BeforeEach
     public void setUp() {
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "keycloakTokenUri", keycloakTokenUri);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "keycloakLogoutUri", keycloakLogoutUri);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "clientId", clientId);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "clientSecret", clientSecret);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "grantType", grantType);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "keycloakGXFScatalogUser", keycloakGXFScatalogUser);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "keycloakGXFScatalogPass", keycloakGXFScatalogPass);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingMapper", serviceOfferingMapper);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfscatalogSelfdescriptionsUri", gxfscatalogSelfdescriptionsUri);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfsSignerService", new GXFSSignerService());
