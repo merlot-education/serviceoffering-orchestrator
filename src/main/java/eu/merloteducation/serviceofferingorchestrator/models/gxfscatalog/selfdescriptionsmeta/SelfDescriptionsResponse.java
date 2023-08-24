@@ -8,7 +8,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class SelfDescriptionsResponse<T extends ServiceOfferingCredentialSubject> {
+public class SelfDescriptionsResponse {
     private int totalCount;
     private List<SelfDescriptionItem> items;
 }

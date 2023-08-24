@@ -1,17 +1,17 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
+import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
+import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
-import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingBasicModel;
-import eu.merloteducation.serviceofferingorchestrator.models.orchestrator.ServiceOfferingDetailedModel;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,9 +26,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @RestController
@@ -40,6 +42,8 @@ public class ServiceOfferingsController {
 
     @Autowired
     private GXFSWizardRestService gxfsWizardRestService;
+
+    private static final String PARTICIPANT_START = "Participant:";
 
     /**
      * Health endpoint.
@@ -80,10 +84,10 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("")
-    public Page<ServiceOfferingBasicModel> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
-                                                                        @RequestParam(value = "size", defaultValue = "9") int size) throws Exception {
+    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
+                                                                      @RequestParam(value = "size", defaultValue = "9") @Max(15) int size) throws Exception {
 
-        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> resultPage = gxfsCatalogRestService
                 .getAllPublicServiceOfferings(
                         PageRequest.of(page, size, Sort.by("creationDate").descending()));
         if (page > resultPage.getTotalPages()) {
@@ -106,8 +110,8 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("/organization/{orgaId}")
-    public Page<ServiceOfferingBasicModel> getOrganizationServiceOfferings(@RequestParam("page") int page,
-                                                                           @RequestParam("size") int size,
+    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
+                                                                           @RequestParam(value = "size", defaultValue = "9") @Max(15) int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
                                                                            @PathVariable(value = "orgaId") String orgaId,
                                                                            Principal principal) throws Exception {
@@ -118,7 +122,7 @@ public class ServiceOfferingsController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        Page<ServiceOfferingBasicModel> resultPage = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> resultPage = gxfsCatalogRestService
                 .getOrganizationServiceOfferings(
                         orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()));
         if (page > resultPage.getTotalPages()) {
@@ -137,9 +141,25 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("/serviceoffering/{soId}")
-    public ServiceOfferingDetailedModel getServiceOfferingById(Principal principal,
+    public ServiceOfferingDto getServiceOfferingById(Principal principal,
                                                                @PathVariable(value = "soId") String serviceofferingId) throws Exception {
-        return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId, getRepresentedOrgaIds(principal));
+
+        Set<String> representedOrgaIds = getRepresentedOrgaIds(principal);
+
+        try {
+            ServiceOfferingDto offering =
+                    gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
+
+            if (!offering.getMetadata().getState().equals(ServiceOfferingState.RELEASED.name()) &&
+                    !representedOrgaIds.contains(offering.getSelfDescription().getVerifiableCredential()
+                            .getIssuer().replace(PARTICIPANT_START, ""))) {
+                throw new ResponseStatusException(FORBIDDEN, "Not authorized to access details to this offering");
+            }
+
+            return offering;
+        } catch (NoSuchElementException e) {
+            throw new ResponseStatusException(NOT_FOUND, e.getMessage());
+        }
     }
 
     /**

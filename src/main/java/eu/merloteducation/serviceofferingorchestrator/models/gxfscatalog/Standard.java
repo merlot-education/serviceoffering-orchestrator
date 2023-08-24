@@ -12,6 +12,9 @@ import java.util.List;
 @Setter
 public class Standard {
 
+    @JsonProperty("@type")
+    private String type;
+
     @NotNull
     @JsonProperty("gax-trust-framework:title")
     private StringTypeValue title;

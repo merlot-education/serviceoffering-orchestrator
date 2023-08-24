@@ -41,7 +41,7 @@ public class GXFSWizardRestService {
         String response =
                 restTemplate.exchange(gxfswizardBaseUri + "/getAvailableShapesCategorized?ecoSystem=merlot",
                         HttpMethod.GET, null, String.class).getBody();
-        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        ObjectMapper mapper = new ObjectMapper();
         Map<String, List<String>> shapesResponse = mapper.readValue(response, Map.class);
         // as this list also contains organization and other shapes, we need to filter before returning it
         return shapesResponse.entrySet().stream()

@@ -1,6 +1,7 @@
 package eu.merloteducation.serviceofferingorchestrator.service;
 
 import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
+import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.messagequeue.ContractTemplateUpdated;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
@@ -15,6 +16,9 @@ public class MessageQueueService {
 
     @Autowired
     ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
+
+    @Autowired
+    GXFSCatalogRestService gxfsCatalogRestService;
 
     private final Logger logger = LoggerFactory.getLogger(MessageQueueService.class);
 
@@ -70,5 +74,16 @@ public class MessageQueueService {
         }
 
         serviceOfferingExtensionRepository.save(extension);
+    }
+
+    /**
+     * Listen for request of offering details on the message bus.
+     *
+     * @param offeringId id of the offering
+     */
+    @RabbitListener(queues = MessageQueueConfig.OFFERING_REQUEST_QUEUE)
+    private ServiceOfferingDto offeringDetailsRequestListener(String offeringId) throws Exception {
+        logger.info("Offering request message: offering ID {}", offeringId);
+        return gxfsCatalogRestService.getServiceOfferingById(offeringId);
     }
 }

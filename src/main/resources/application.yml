@@ -60,6 +60,9 @@ gxfscatalog:
 gxfswizard:
   base-uri: "http://localhost:8085"
 
+organizations-orchestrator:
+  base-uri: http://localhost:8082/api
+
 keycloak:
   client-id: "federated-catalogue"
   authorization-grant-type: "password"

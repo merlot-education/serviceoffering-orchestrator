@@ -8,6 +8,9 @@ import lombok.Setter;
 @Setter
 public class DataExchangeCount {
 
+    @JsonProperty("@type")
+    private String type;
+
     @JsonProperty("merlot:exchangeCountUpTo")
     private NumberTypeValue exchangeCountUpTo;
 }
