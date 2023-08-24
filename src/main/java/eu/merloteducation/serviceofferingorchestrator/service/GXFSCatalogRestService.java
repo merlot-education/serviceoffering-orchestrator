@@ -409,7 +409,7 @@ public class GXFSCatalogRestService {
                     HttpMethod.POST,
                     gxfscatalogSelfdescriptionsUri,
                     signedVp,
-                    List.of(MediaType.APPLICATION_JSON));
+                    MediaType.APPLICATION_JSON);
         } catch (HttpClientErrorException e) {
             handleCatalogError(e);
         }
