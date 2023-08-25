@@ -1,7 +1,9 @@
 package eu.merloteducation.serviceofferingorchestrator.service;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
@@ -27,7 +29,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -100,20 +102,12 @@ public class GXFSCatalogRestService {
         });
     }
 
-    private void handleCatalogError(HttpClientErrorException e)
-            throws ResponseStatusException {
-        logger.warn("Error in communication with catalog: {}", e.getMessage());
-
-        if (e.getStatusCode() == UNPROCESSABLE_ENTITY) {
-            String resultMessageStartTag = "@sh:resultMessage \\\"";
-            int resultMessageStart = e.getMessage().indexOf(resultMessageStartTag) + resultMessageStartTag.length();
-            int resultMessageEnd = e.getMessage().indexOf("\\\";", resultMessageStart);
-            String resultMessage = e.getMessage().substring(
-                    resultMessageStart, Math.min(resultMessageEnd, resultMessageStart + 100));
-            throw new ResponseStatusException(e.getStatusCode(), resultMessage);
-        } else {
-            throw new ResponseStatusException(e.getStatusCode(), "Unknown error when communicating with catalog.");
-        }
+    private void handleCatalogError(WebClientResponseException e)
+            throws ResponseStatusException, JsonProcessingException {
+        logger.warn("Error in communication with catalog: {}", e.getResponseBodyAsString());
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode errorMessage = objectMapper.readTree(e.getResponseBodyAsString());
+        throw new ResponseStatusException(e.getStatusCode(), errorMessage.get("message").asText());
     }
 
     private String presentAndSign(String credentialSubjectJson, String issuer) throws Exception {
@@ -410,7 +404,7 @@ public class GXFSCatalogRestService {
                     gxfscatalogSelfdescriptionsUri,
                     signedVp,
                     MediaType.APPLICATION_JSON);
-        } catch (HttpClientErrorException e) {
+        } catch (WebClientResponseException e) {
             handleCatalogError(e);
         }
 
