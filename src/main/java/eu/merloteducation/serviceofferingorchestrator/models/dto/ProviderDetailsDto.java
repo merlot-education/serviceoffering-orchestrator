@@ -8,4 +8,7 @@ import lombok.Setter;
 public class ProviderDetailsDto {
     private String providerId;
     private String providerLegalName;
+
+    private String providerTncContent;
+    private String providerTncHash;
 }

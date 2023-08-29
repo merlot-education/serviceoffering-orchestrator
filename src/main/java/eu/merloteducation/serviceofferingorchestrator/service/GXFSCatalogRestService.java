@@ -12,11 +12,13 @@ import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOffering
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationDetails;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
+import io.netty.util.internal.StringUtil;
 import jakarta.transaction.Transactional;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
@@ -388,6 +390,14 @@ public class GXFSCatalogRestService {
             } else {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
             }
+        }
+
+        OrganizationDetails providerDetails = organizationOrchestratorClient.getOrganizationDetails(extension.getIssuer());
+        TermsAndConditions providerTnc = providerDetails.getSelfDescription().getVerifiableCredential()
+                .getCredentialSubject().getTermsAndConditions();
+        if (StringUtil.isNullOrEmpty(providerTnc.getContent().getValue())
+                || StringUtil.isNullOrEmpty(providerTnc.getHash().getValue())) {
+            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as provider has no TnC in dataset.");
         }
 
         // prepare a json to send to the gxfs catalog, sign it and read the response

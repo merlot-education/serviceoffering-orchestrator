@@ -35,6 +35,10 @@ public interface ServiceOfferingMapper {
             source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.id")
     @Mapping(target = "providerDetails.providerLegalName",
             source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.legalName.value")
+    @Mapping(target = "providerDetails.providerTncContent",
+            source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.termsAndConditions.content.value")
+    @Mapping(target = "providerDetails.providerTncHash",
+            source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.termsAndConditions.hash.value")
     ServiceOfferingDto selfDescriptionMetaToServiceOfferingDto(SelfDescriptionMeta selfDescriptionMeta,
                                                                ServiceOfferingExtension extension,
                                                                OrganizationDetails providerDetails);

@@ -2,6 +2,7 @@ package eu.merloteducation.serviceofferingorchestrator.models.organisationsorche
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,4 +13,6 @@ public class OrganizationCredentialSubject {
     private String id;
     @JsonProperty("gax-trust-framework:legalName")
     private StringTypeValue legalName;
+    @JsonProperty("gax-trust-framework:termsAndConditions")
+    private TermsAndConditions termsAndConditions;
 }
