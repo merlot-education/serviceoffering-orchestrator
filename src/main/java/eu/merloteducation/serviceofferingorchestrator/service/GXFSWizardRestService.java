@@ -1,6 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.service;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,9 +35,9 @@ public class GXFSWizardRestService {
      * Since we are currently only interested in Service shapes, this will be the only key in the response.
      *
      * @return Map of offering types to shape file names
-     * @throws Exception mapping exception
+     * @throws JsonProcessingException mapping exception
      */
-    public Map<String, List<String>> getServiceOfferingShapes() throws Exception {
+    public Map<String, List<String>> getServiceOfferingShapes() throws JsonProcessingException {
         String response =
                 restTemplate.exchange(gxfswizardBaseUri + "/getAvailableShapesCategorized?ecoSystem=merlot",
                         HttpMethod.GET, null, String.class).getBody();

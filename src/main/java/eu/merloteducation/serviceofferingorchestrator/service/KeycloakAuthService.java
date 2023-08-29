@@ -11,8 +11,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.List;
-
 @Service
 public class KeycloakAuthService {
     private final WebClient webClient;
@@ -97,14 +95,13 @@ public class KeycloakAuthService {
                 .uri(uri)
                 .contentType(mediaType)
                 .bodyValue(body)
-                .headers(h -> {
-                    h.setBearerAuth(this.authToken);
-                })
+                .headers(h -> h.setBearerAuth(this.authToken))
                 .retrieve()
                 .bodyToMono(String.class).block();
         response = StringEscapeUtils.unescapeJson(response);
-        if (response != null)
+        if (response != null) {
             response = response.replace("\"{", "{").replace("}\"", "}");
+        }
         return response;
     }
 

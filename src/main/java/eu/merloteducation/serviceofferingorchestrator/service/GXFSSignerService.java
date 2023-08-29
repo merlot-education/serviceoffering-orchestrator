@@ -22,8 +22,6 @@ import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import java.io.*;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.*;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;

@@ -27,7 +27,6 @@ public class WebSecurityConfig {
                 .jwtAuthenticationConverter(jwtAuthConverter);
         http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
         http.cors();
-        http.csrf().disable();
         http.headers().frameOptions().disable();
         return http.build();
     }

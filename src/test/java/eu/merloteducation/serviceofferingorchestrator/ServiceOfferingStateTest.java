@@ -1,17 +1,15 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
-import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ServiceOfferingStateTest {
+class ServiceOfferingStateTest {
 
     @Test
-    public void transitionFromInDraft() {
+    void transitionFromInDraft() {
         ServiceOfferingState state = ServiceOfferingState.IN_DRAFT;
 
         assertTrue(state.checkTransitionAllowed(ServiceOfferingState.RELEASED));
@@ -23,7 +21,7 @@ public class ServiceOfferingStateTest {
     }
 
     @Test
-    public void transitionFromReleased() {
+    void transitionFromReleased() {
         ServiceOfferingState state = ServiceOfferingState.RELEASED;
 
         assertTrue(state.checkTransitionAllowed(ServiceOfferingState.REVOKED));
@@ -35,7 +33,7 @@ public class ServiceOfferingStateTest {
     }
 
     @Test
-    public void transitionFromRevoked() {
+    void transitionFromRevoked() {
         ServiceOfferingState state = ServiceOfferingState.REVOKED;
 
         assertTrue(state.checkTransitionAllowed(ServiceOfferingState.RELEASED));
@@ -47,7 +45,7 @@ public class ServiceOfferingStateTest {
     }
 
     @Test
-    public void transitionFromDeleted() {
+    void transitionFromDeleted() {
         ServiceOfferingState state = ServiceOfferingState.DELETED;
 
         assertFalse(state.checkTransitionAllowed(ServiceOfferingState.IN_DRAFT));
@@ -58,7 +56,7 @@ public class ServiceOfferingStateTest {
     }
 
     @Test
-    public void transitionFromArchived() {
+    void transitionFromArchived() {
         ServiceOfferingState state = ServiceOfferingState.DELETED;
 
         assertFalse(state.checkTransitionAllowed(ServiceOfferingState.IN_DRAFT));

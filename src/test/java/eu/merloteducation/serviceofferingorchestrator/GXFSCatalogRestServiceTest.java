@@ -455,8 +455,9 @@ class GXFSCatalogRestServiceTest {
     void transitionServiceOfferingNotAuthorized() {
         Set<String> representedOrgaIds = new HashSet<>();
         representedOrgaIds.add("Participant:99");
+        String offeringId = saasOffering.getId();
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(offeringId,
                         ServiceOfferingState.RELEASED, representedOrgaIds));
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
     }
@@ -466,8 +467,9 @@ class GXFSCatalogRestServiceTest {
     void transitionServiceOfferingInvalid() {
         Set<String> representedOrgaIds = new HashSet<>();
         representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
+        String offeringId = saasOffering.getId();
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(offeringId,
                         ServiceOfferingState.REVOKED, representedOrgaIds));
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
     }

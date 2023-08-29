@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ServiceOfferingExtensionTest {
+class ServiceOfferingExtensionTest {
 
     private ServiceOfferingExtension getInDraftExtension() {
         ServiceOfferingExtension extension = new ServiceOfferingExtension();
@@ -47,7 +47,7 @@ public class ServiceOfferingExtensionTest {
     }
 
     @Test
-    public void checkFromInDraftTransitions() {
+    void checkFromInDraftTransitions() {
         ServiceOfferingExtension extension = getInDraftExtension();
 
         assertThrows(IllegalStateException.class, extension::inDraft);
@@ -63,7 +63,7 @@ public class ServiceOfferingExtensionTest {
     }
 
     @Test
-    public void checkFromReleasedTransitions() {
+    void checkFromReleasedTransitions() {
         ServiceOfferingExtension extension = getReleasedExtension();
 
         assertThrows(IllegalStateException.class, extension::inDraft);
@@ -75,7 +75,7 @@ public class ServiceOfferingExtensionTest {
     }
 
     @Test
-    public void checkFromRevokedTransitions() {
+    void checkFromRevokedTransitions() {
         ServiceOfferingExtension extension = getRevokedExtension();
 
         // without associated contracts
@@ -112,7 +112,7 @@ public class ServiceOfferingExtensionTest {
     }
 
     @Test
-    public void checkFromDeletedTransitions() {
+    void checkFromDeletedTransitions() {
         ServiceOfferingExtension extension = getDeletedExtension();
 
         assertThrows(IllegalStateException.class, extension::inDraft);
@@ -122,7 +122,7 @@ public class ServiceOfferingExtensionTest {
     }
 
     @Test
-    public void checkFromArchivedTransitions() {
+    void checkFromArchivedTransitions() {
         ServiceOfferingExtension extension = getArchivedExtension();
 
         assertThrows(IllegalStateException.class, extension::inDraft);
