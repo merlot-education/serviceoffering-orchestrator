@@ -251,6 +251,18 @@ class GXFSCatalogRestServiceTest {
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
 
+        OrganizationDetails incompleteOrganizationDetails = new OrganizationDetails();
+        incompleteOrganizationDetails.setSelfDescription(new OrganizationSelfDescription());
+        incompleteOrganizationDetails.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
+        incompleteOrganizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
+        incompleteOrganizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("incomplete");
+        incompleteOrganizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        incompleteOrganizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(new TermsAndConditions());
+        incompleteOrganizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions().setContent(new StringTypeValue(""));
+        incompleteOrganizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions().setHash(new StringTypeValue(""));
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("incomplete")))
+                .thenReturn(incompleteOrganizationDetails);
+
     }
 
     private SaaSCredentialSubject createValidSaasCredentialSubject() {
@@ -306,6 +318,15 @@ class GXFSCatalogRestServiceTest {
 
         SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
+    }
+
+    @Test
+    void addNewValidServiceOfferingButProviderHasNoTnC() {
+        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+        credentialSubject.setOfferedBy(new NodeKindIRITypeId("incomplete"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId("incomplete"));
+
+        assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
     }
 
     @Test

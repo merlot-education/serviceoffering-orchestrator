@@ -392,7 +392,7 @@ public class GXFSCatalogRestService {
             }
         }
 
-        OrganizationDetails providerDetails = organizationOrchestratorClient.getOrganizationDetails(extension.getIssuer());
+        OrganizationDetails providerDetails = organizationOrchestratorClient.getOrganizationDetails(credentialSubject.getOfferedBy().getId());
         TermsAndConditions providerTnc = providerDetails.getSelfDescription().getVerifiableCredential()
                 .getCredentialSubject().getTermsAndConditions();
         if (providerTnc == null
