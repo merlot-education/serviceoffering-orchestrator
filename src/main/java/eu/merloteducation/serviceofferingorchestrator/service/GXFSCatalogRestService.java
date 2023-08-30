@@ -395,8 +395,9 @@ public class GXFSCatalogRestService {
         OrganizationDetails providerDetails = organizationOrchestratorClient.getOrganizationDetails(extension.getIssuer());
         TermsAndConditions providerTnc = providerDetails.getSelfDescription().getVerifiableCredential()
                 .getCredentialSubject().getTermsAndConditions();
-        if (StringUtil.isNullOrEmpty(providerTnc.getContent().getValue())
-                || StringUtil.isNullOrEmpty(providerTnc.getHash().getValue())) {
+        if (providerTnc == null
+                || providerTnc.getContent() == null || StringUtil.isNullOrEmpty(providerTnc.getContent().getValue())
+                || providerTnc.getHash() == null || StringUtil.isNullOrEmpty(providerTnc.getHash().getValue())) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as provider has no TnC in dataset.");
         }
 

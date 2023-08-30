@@ -245,6 +245,9 @@ class GXFSCatalogRestServiceTest {
         organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(new TermsAndConditions());
+        organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions().setContent(new StringTypeValue("http://example.com"));
+        organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions().setHash(new StringTypeValue("1234"));
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
 
