@@ -44,14 +44,6 @@ public class ServiceOfferingsController {
 
     private static final String PARTICIPANT_START = "Participant:";
 
-    /**
-     * Health endpoint.
-     */
-    @GetMapping("health")
-    public void getHealth() {
-        // always return code 200
-    }
-
 
     // TODO refactor to library
     private Set<String> getMerlotRoles() {
