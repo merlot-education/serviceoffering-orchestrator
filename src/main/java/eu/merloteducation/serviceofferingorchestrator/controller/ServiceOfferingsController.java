@@ -78,14 +78,9 @@ public class ServiceOfferingsController {
     public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
                                                                       @RequestParam(value = "size", defaultValue = "9") @Max(15) int size) throws Exception {
 
-        Page<ServiceOfferingBasicDto> resultPage = gxfsCatalogRestService
+        return gxfsCatalogRestService
                 .getAllPublicServiceOfferings(
                         PageRequest.of(page, size, Sort.by("creationDate").descending()));
-        if (page > resultPage.getTotalPages()) {
-            throw new ResponseStatusException(NOT_FOUND, "Requested page exceeds available entries.");
-        }
-
-        return resultPage;
     }
 
     /**
@@ -111,14 +106,9 @@ public class ServiceOfferingsController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        Page<ServiceOfferingBasicDto> resultPage = gxfsCatalogRestService
+        return gxfsCatalogRestService
                 .getOrganizationServiceOfferings(
                         orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()));
-        if (page > resultPage.getTotalPages()) {
-            throw new ResponseStatusException(NOT_FOUND, "Requested page exceeds available entries.");
-        }
-
-        return resultPage;
     }
 
     /**

@@ -29,7 +29,7 @@ public class MessageQueueService {
      * @param contractTemplateUpdated contract created event details
      */
     @RabbitListener(queues = MessageQueueConfig.CONTRACT_CREATED_QUEUE)
-    private void contractCreatedListener(ContractTemplateUpdated contractTemplateUpdated) {
+    public void contractCreatedListener(ContractTemplateUpdated contractTemplateUpdated) {
         logger.info("Contract created message: {}", contractTemplateUpdated);
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository
@@ -53,7 +53,7 @@ public class MessageQueueService {
      * @param contractTemplateUpdated contract purged event details
      */
     @RabbitListener(queues = MessageQueueConfig.CONTRACT_PURGED_QUEUE)
-    private void contractPurgedListener(ContractTemplateUpdated contractTemplateUpdated) {
+    public void contractPurgedListener(ContractTemplateUpdated contractTemplateUpdated) {
         logger.info("Contract deleted message: {}", contractTemplateUpdated);
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository
@@ -82,7 +82,7 @@ public class MessageQueueService {
      * @param offeringId id of the offering
      */
     @RabbitListener(queues = MessageQueueConfig.OFFERING_REQUEST_QUEUE)
-    private ServiceOfferingDto offeringDetailsRequestListener(String offeringId) throws Exception {
+    public ServiceOfferingDto offeringDetailsRequestListener(String offeringId) throws Exception {
         logger.info("Offering request message: offering ID {}", offeringId);
         return gxfsCatalogRestService.getServiceOfferingById(offeringId);
     }
