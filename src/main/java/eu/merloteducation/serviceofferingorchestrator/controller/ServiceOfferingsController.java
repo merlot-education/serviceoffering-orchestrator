@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -95,17 +96,11 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("/organization/{orgaId}")
+    @PreAuthorize("@authorityChecker.representsOrganization(authentication, #orgaId)")
     public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
                                                                            @RequestParam(value = "size", defaultValue = "9") @Max(15) int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
                                                                            @PathVariable(value = "orgaId") String orgaId) throws Exception {
-
-        // if the requested organization id is not in the roles of this user,
-        // the user is not allowed to request this endpoint
-        if (!getRepresentedOrgaIds().contains(orgaId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-
         return gxfsCatalogRestService
                 .getOrganizationServiceOfferings(
                         orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()));
@@ -127,6 +122,7 @@ public class ServiceOfferingsController {
             ServiceOfferingDto offering =
                     gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
 
+            // TODO move to auth component
             if (!offering.getMetadata().getState().equals(ServiceOfferingState.RELEASED.name()) &&
                     !representedOrgaIds.contains(offering.getSelfDescription().getVerifiableCredential()
                             .getIssuer().replace(PARTICIPANT_START, ""))) {
@@ -147,12 +143,8 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering creation
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
+    @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
     public SelfDescriptionsCreateResponse addServiceOfferingSaas(@Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
-        // if the requested organization id is not in the roles of this user,
-        // the user is not allowed to request this endpoint
-        if (!getRepresentedOrgaIds().contains(credentialSubject.getOfferedBy().getId().replace(PARTICIPANT_START, ""))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
@@ -164,12 +156,8 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering creation
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
+    @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
     public SelfDescriptionsCreateResponse addServiceOfferingDataDelivery(@Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
-        // if the requested organization id is not in the roles of this user,
-        // the user is not allowed to request this endpoint
-        if (!getRepresentedOrgaIds().contains(credentialSubject.getOfferedBy().getId().replace(PARTICIPANT_START, ""))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
@@ -181,12 +169,8 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering creation
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
+    @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
     public SelfDescriptionsCreateResponse addServiceOfferingCooperation(@Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
-        // if the requested organization id is not in the roles of this user,
-        // the user is not allowed to request this endpoint
-        if (!getRepresentedOrgaIds().contains(credentialSubject.getOfferedBy().getId().replace(PARTICIPANT_START, ""))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
