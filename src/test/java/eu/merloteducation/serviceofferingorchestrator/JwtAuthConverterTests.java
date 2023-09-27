@@ -1,8 +1,8 @@
-package eu.merloteducation.contractorchestrator;
+package eu.merloteducation.serviceofferingorchestrator;
 
-import eu.merloteducation.contractorchestrator.auth.JwtAuthConverter;
-import eu.merloteducation.contractorchestrator.auth.JwtAuthConverterProperties;
-import eu.merloteducation.contractorchestrator.auth.OrganizationRoleGrantedAuthority;
+import eu.merloteducation.serviceofferingorchestrator.auth.JwtAuthConverter;
+import eu.merloteducation.serviceofferingorchestrator.auth.JwtAuthConverterProperties;
+import eu.merloteducation.serviceofferingorchestrator.auth.OrganizationRoleGrantedAuthority;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
