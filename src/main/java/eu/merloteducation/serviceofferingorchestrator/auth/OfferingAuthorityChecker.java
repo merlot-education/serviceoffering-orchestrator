@@ -30,7 +30,7 @@ public class OfferingAuthorityChecker {
      */
     public boolean canAccessOffering(Authentication authentication, String offeringId) {
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository.findById(offeringId).orElse(null);
-        return isOfferingPublic(extension) || isOfferingIssuedBy(authentication, extension);
+        return isOfferingPublic(extension) || isOfferingIssuer(authentication, extension);
     }
 
     private boolean isOfferingPublic(ServiceOfferingExtension extension) {
@@ -40,7 +40,7 @@ public class OfferingAuthorityChecker {
         return false;
     }
 
-    private boolean isOfferingIssuedBy(Authentication authentication, ServiceOfferingExtension extension) {
+    private boolean isOfferingIssuer(Authentication authentication, ServiceOfferingExtension extension) {
         Set<String> representedOrgaIds = authorityChecker.getRepresentedOrgaIds(authentication);
 
         if (extension != null) {
@@ -57,8 +57,8 @@ public class OfferingAuthorityChecker {
      * @param offeringId     id of the offering to request
      * @return offering was issued by represented role
      */
-    public boolean isOfferingIssuedBy(Authentication authentication, String offeringId) {
-        return isOfferingIssuedBy(authentication,
+    public boolean isOfferingIssuer(Authentication authentication, String offeringId) {
+        return isOfferingIssuer(authentication,
                 serviceOfferingExtensionRepository.findById(offeringId).orElse(null));
     }
 }
