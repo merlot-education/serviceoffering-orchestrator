@@ -137,19 +137,14 @@ public class GXFSCatalogRestService {
      *
      * @param id                 id of the offering
      * @param targetState        requested target state
-     * @param representedOrgaIds ids of the represented organizations
      */
-    public void transitionServiceOfferingExtension(String id, ServiceOfferingState targetState, Set<String> representedOrgaIds) {
+    public void transitionServiceOfferingExtension(String id, ServiceOfferingState targetState) {
         if (!serviceOfferingExtensionRepository.existsById(id)) {
             throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository.findById(id).orElse(null);
         if (extension != null) {
-            if (!representedOrgaIds.contains(extension.getIssuer().replace(PARTICIPANT_START, ""))) {
-                throw new ResponseStatusException(FORBIDDEN, "Missing permissions to change status of this offering.");
-            }
-
             try {
                 switch (targetState) {
                     case IN_DRAFT -> extension.inDraft();
@@ -306,11 +301,10 @@ public class GXFSCatalogRestService {
      * id, making it a separate catalog entry.
      *
      * @param id                 id of the offering to regenerate
-     * @param representedOrgaIds ids of represented organizations for access control
      * @return creation response from catalog
      * @throws Exception communication or mapping exception
      */
-    public SelfDescriptionsCreateResponse regenerateOffering(String id, Set<String> representedOrgaIds) throws Exception {
+    public SelfDescriptionsCreateResponse regenerateOffering(String id) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -318,10 +312,6 @@ public class GXFSCatalogRestService {
 
         if (extension == null) {
             throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
-        }
-
-        if (!representedOrgaIds.contains(extension.getIssuer().replace(PARTICIPANT_START, ""))) {
-            throw new ResponseStatusException(FORBIDDEN, "Not authorized to regenerate this offering");
         }
 
         if (!(extension.getState() == ServiceOfferingState.RELEASED ||

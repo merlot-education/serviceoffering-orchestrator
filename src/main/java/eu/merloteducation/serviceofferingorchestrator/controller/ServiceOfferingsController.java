@@ -16,19 +16,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -42,30 +36,6 @@ public class ServiceOfferingsController {
 
     @Autowired
     private GXFSWizardRestService gxfsWizardRestService;
-
-    private static final String PARTICIPANT_START = "Participant:";
-
-
-    // TODO refactor to library
-    private Set<String> getMerlotRoles() {
-        // get roles from the authenticated user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        return authentication.getAuthorities()
-                .stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toSet());
-    }
-
-    private Set<String> getRepresentedOrgaIds() {
-        Set<String> roles = getMerlotRoles();
-        // extract all orgaIds from the OrgRep and OrgLegRep Roles
-        return roles
-                .stream()
-                .filter(s -> s.startsWith("ROLE_OrgRep_") || s.startsWith("ROLE_OrgLegRep_"))
-                .map(s -> s.replace("ROLE_OrgRep_", "").replace("ROLE_OrgLegRep_", ""))
-                .collect(Collectors.toSet());
-    }
 
     /**
      * GET request for getting a page of all public service offerings.
@@ -114,18 +84,13 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("/serviceoffering/{soId}")
+    @PreAuthorize("@offeringAuthorityChecker.canAccessOffering(authentication, #serviceofferingId)")
     public ServiceOfferingDto getServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId) throws Exception {
-
-        Set<String> representedOrgaIds = getRepresentedOrgaIds();
-
         try {
             ServiceOfferingDto offering =
                     gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
 
-            // TODO move to auth component
-            if (!offering.getMetadata().getState().equals(ServiceOfferingState.RELEASED.name()) &&
-                    !representedOrgaIds.contains(offering.getSelfDescription().getVerifiableCredential()
-                            .getIssuer().replace(PARTICIPANT_START, ""))) {
+            if (!offering.getMetadata().getState().equals(ServiceOfferingState.RELEASED.name())) {
                 throw new ResponseStatusException(FORBIDDEN, "Not authorized to access details to this offering");
             }
 
@@ -182,9 +147,10 @@ public class ServiceOfferingsController {
      * @throws Exception communication or mapping exception
      */
     @PostMapping("/serviceoffering/regenerate/{soId}")
+    @PreAuthorize("@offeringAuthorityChecker.canAccessOffering(authentication, #serviceofferingId)")
     public SelfDescriptionsCreateResponse regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId)
             throws Exception {
-        return gxfsCatalogRestService.regenerateOffering(serviceofferingId, getRepresentedOrgaIds());
+        return gxfsCatalogRestService.regenerateOffering(serviceofferingId);
     }
 
     /**
@@ -195,9 +161,10 @@ public class ServiceOfferingsController {
      * @throws Exception exception during transitioning
      */
     @PatchMapping("/serviceoffering/status/{soId}/{status}")
+    @PreAuthorize("@offeringAuthorityChecker.canAccessOffering(authentication, #serviceofferingId)")
     public void patchStatusServiceOffering(@PathVariable(value = "soId") String serviceofferingId,
                                            @PathVariable(value = "status") ServiceOfferingState status) {
-        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, status, getRepresentedOrgaIds());
+        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, status);
     }
 
     /**
