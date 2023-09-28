@@ -147,7 +147,7 @@ public class ServiceOfferingsController {
      * @throws Exception communication or mapping exception
      */
     @PostMapping("/serviceoffering/regenerate/{soId}")
-    @PreAuthorize("@offeringAuthorityChecker.canAccessOffering(authentication, #serviceofferingId)")
+    @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuedBy(authentication, #serviceofferingId)")
     public SelfDescriptionsCreateResponse regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId)
             throws Exception {
         return gxfsCatalogRestService.regenerateOffering(serviceofferingId);
@@ -161,7 +161,7 @@ public class ServiceOfferingsController {
      * @throws Exception exception during transitioning
      */
     @PatchMapping("/serviceoffering/status/{soId}/{status}")
-    @PreAuthorize("@offeringAuthorityChecker.canAccessOffering(authentication, #serviceofferingId)")
+    @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuedBy(authentication, #serviceofferingId)")
     public void patchStatusServiceOffering(@PathVariable(value = "soId") String serviceofferingId,
                                            @PathVariable(value = "status") ServiceOfferingState status) {
         gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, status);
