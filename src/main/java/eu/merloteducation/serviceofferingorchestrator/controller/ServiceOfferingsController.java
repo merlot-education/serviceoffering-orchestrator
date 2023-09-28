@@ -87,14 +87,7 @@ public class ServiceOfferingsController {
     @PreAuthorize("@offeringAuthorityChecker.canAccessOffering(authentication, #serviceofferingId)")
     public ServiceOfferingDto getServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId) throws Exception {
         try {
-            ServiceOfferingDto offering =
-                    gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
-
-            if (!offering.getMetadata().getState().equals(ServiceOfferingState.RELEASED.name())) {
-                throw new ResponseStatusException(FORBIDDEN, "Not authorized to access details to this offering");
-            }
-
-            return offering;
+            return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
         } catch (NoSuchElementException e) {
             throw new ResponseStatusException(NOT_FOUND, e.getMessage());
         }

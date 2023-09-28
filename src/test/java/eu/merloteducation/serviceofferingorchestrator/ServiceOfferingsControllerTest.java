@@ -2,14 +2,12 @@ package eu.merloteducation.serviceofferingorchestrator;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import eu.merloteducation.serviceofferingorchestrator.auth.AuthorityChecker;
-import eu.merloteducation.serviceofferingorchestrator.auth.JwtAuthConverter;
-import eu.merloteducation.serviceofferingorchestrator.auth.JwtAuthConverterProperties;
-import eu.merloteducation.serviceofferingorchestrator.auth.OrganizationRoleGrantedAuthority;
+import eu.merloteducation.serviceofferingorchestrator.auth.*;
 import eu.merloteducation.serviceofferingorchestrator.controller.ServiceOfferingsController;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.OfferingMetaDto;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
+import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.SelfDescription;
@@ -19,6 +17,7 @@ import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdes
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
+import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import eu.merloteducation.serviceofferingorchestrator.security.WebSecurityConfig;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
@@ -30,17 +29,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -48,7 +43,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest({ServiceOfferingsController.class, WebSecurityConfig.class, AuthorityChecker.class})
+@WebMvcTest({ServiceOfferingsController.class, WebSecurityConfig.class, AuthorityChecker.class,
+        OfferingAuthorityChecker.class})
 @AutoConfigureMockMvc()
 class ServiceOfferingsControllerTest {
 
@@ -63,6 +59,9 @@ class ServiceOfferingsControllerTest {
 
     @MockBean
     private JwtAuthConverterProperties jwtAuthConverterProperties;
+
+    @MockBean
+    private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
     @Autowired
     private MockMvc mvc;
@@ -80,6 +79,15 @@ class ServiceOfferingsControllerTest {
 
     @BeforeEach
     public void setUp() throws Exception {
+
+        ServiceOfferingExtension extension = new ServiceOfferingExtension();
+        extension.setIssuer("Participant:10");
+        lenient().when(serviceOfferingExtensionRepository.findById("notreleased")).thenReturn(Optional.of(extension));
+
+        ServiceOfferingExtension extension2 = new ServiceOfferingExtension();
+        extension2.release();
+        extension2.setIssuer("Participant:10");
+        lenient().when(serviceOfferingExtensionRepository.findById("released")).thenReturn(Optional.of(extension2));
 
         ServiceOfferingDto serviceOfferingNotReleasedDto = new ServiceOfferingDto();
         serviceOfferingNotReleasedDto.setMetadata(new OfferingMetaDto());
@@ -119,7 +127,7 @@ class ServiceOfferingsControllerTest {
                 .addServiceOffering(any())).thenReturn(selfDescriptionsCreateResponse);
 
         lenient().when(gxfsCatalogRestService
-                .regenerateOffering(any(), any())).thenReturn(selfDescriptionsCreateResponse);
+                .regenerateOffering(any())).thenReturn(selfDescriptionsCreateResponse);
 
         lenient().when(gxfsWizardRestService.getServiceOfferingShapes()).thenReturn(new HashMap<>());
 
@@ -180,7 +188,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void getOfferingByIdUnauthorized() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .get("/serviceoffering/1234")
+                        .get("/serviceoffering/released")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "")
                         .accept(MediaType.APPLICATION_JSON)
@@ -222,7 +230,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void getOfferingByIdPublicReleased() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .get("/serviceoffering/1234")
+                        .get("/serviceoffering/released")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "")
                         .accept(MediaType.APPLICATION_JSON)
@@ -237,7 +245,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void getOfferingByIdCreatorReleased() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .get("/serviceoffering/1234")
+                        .get("/serviceoffering/released")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "")
                         .accept(MediaType.APPLICATION_JSON)
@@ -261,7 +269,7 @@ class ServiceOfferingsControllerTest {
                                 new OrganizationRoleGrantedAuthority("OrgLegRep_10")
                         )))
                 .andDo(print())
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     private void setValidCredentialSubjectFields(ServiceOfferingCredentialSubject credentialSubject) {
@@ -513,7 +521,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void regenerateOfferingAllowed() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .post("/serviceoffering/regenerate/1234")
+                        .post("/serviceoffering/regenerate/released")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "")
                         .accept(MediaType.APPLICATION_JSON)
@@ -528,7 +536,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void shiftOfferingUnauthenticated() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .patch("/serviceoffering/status/1234/RELEASED")
+                        .patch("/serviceoffering/status/released/REVOKED")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "")
                         .accept(MediaType.APPLICATION_JSON)
@@ -540,7 +548,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void shiftOfferingAllowed() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .patch("/serviceoffering/status/1234/RELEASED")
+                        .patch("/serviceoffering/status/released/REVOKED")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "")
                         .accept(MediaType.APPLICATION_JSON)
