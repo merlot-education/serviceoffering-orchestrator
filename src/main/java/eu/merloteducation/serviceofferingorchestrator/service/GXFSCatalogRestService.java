@@ -12,11 +12,13 @@ import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOffering
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationDetails;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
+import io.netty.util.internal.StringUtil;
 import jakarta.transaction.Transactional;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
@@ -346,6 +348,20 @@ public class GXFSCatalogRestService {
     @Transactional
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
+        TermsAndConditions providerTnC = organizationOrchestratorClient
+                .getOrganizationDetails(credentialSubject.getOfferedBy().getId())
+                .getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions();
+
+        if (StringUtil.isNullOrEmpty(providerTnC.getContent().getValue())
+                || StringUtil.isNullOrEmpty(providerTnC.getHash().getValue())) {
+            throw new ResponseStatusException(FORBIDDEN, "Cannot create/update self-description without valid provider TnC");
+        }
+
+        TermsAndConditions merlotTnC = new TermsAndConditions();
+        merlotTnC.setContent(new StringTypeValue("xsd:anyURI", "https://merlot-education.eu"));
+        merlotTnC.setHash(new StringTypeValue("hash1234"));
+        merlotTnC.setType("gax-trust-framework:TermsAndConditions");
+
         ServiceOfferingExtension extension;
         String previousSdHash = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
@@ -354,6 +370,11 @@ public class GXFSCatalogRestService {
             credentialSubject.setCreationDate(new StringTypeValue(
                     extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT)));
             credentialSubject.setId(OFFERING_START + UUID.randomUUID());
+            if (credentialSubject.getTermsAndConditions() == null) {
+                credentialSubject.setTermsAndConditions(new ArrayList<>());
+            }
+            credentialSubject.getTermsAndConditions().add(merlotTnC);
+            credentialSubject.getTermsAndConditions().add(providerTnC);
         } else {
             extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);

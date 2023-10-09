@@ -23,4 +23,9 @@ public class StringTypeValue {
         this.value = value;
     }
 
+    public StringTypeValue(String type, String value) {
+        this.type = type;
+        this.value = value;
+    }
+
 }
