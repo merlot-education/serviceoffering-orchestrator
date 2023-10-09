@@ -85,6 +85,10 @@ keycloak:
   gxfscatalog-user: "gxfscatalog"
   gxfscatalog-pass: "gxfscatalog"
 
+merlottnc:
+  content: "https://merlot-education.eu"
+  hash: "hash1234"
+
 cors:
   global:
     origins:

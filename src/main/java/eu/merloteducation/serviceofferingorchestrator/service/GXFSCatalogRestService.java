@@ -65,6 +65,12 @@ public class GXFSCatalogRestService {
     @Value("${gxfscatalog.selfdescriptions-uri}")
     private String gxfscatalogSelfdescriptionsUri;
 
+    @Value("${merlottnc.content}")
+    private String merlotTnCContent;
+
+    @Value("${merlottnc.hash}")
+    private String merlotTnCHash;
+
     private final Logger logger = LoggerFactory.getLogger(GXFSCatalogRestService.class);
     private static final String PARTICIPANT_START = "Participant:";
     private static final String OFFERING_START = "ServiceOffering:";
@@ -358,8 +364,8 @@ public class GXFSCatalogRestService {
         }
 
         TermsAndConditions merlotTnC = new TermsAndConditions();
-        merlotTnC.setContent(new StringTypeValue("xsd:anyURI", "https://merlot-education.eu"));
-        merlotTnC.setHash(new StringTypeValue("hash1234"));
+        merlotTnC.setContent(new StringTypeValue("xsd:anyURI", merlotTnCContent));
+        merlotTnC.setHash(new StringTypeValue(merlotTnCHash));
         merlotTnC.setType("gax-trust-framework:TermsAndConditions");
 
         ServiceOfferingExtension extension;
