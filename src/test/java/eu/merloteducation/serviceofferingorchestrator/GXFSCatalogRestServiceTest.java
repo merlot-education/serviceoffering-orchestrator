@@ -235,14 +235,34 @@ class GXFSCatalogRestServiceTest {
                         startsWith(gxfscatalogSelfdescriptionsUri), any(), any()))
                 .thenReturn(unescapeJson(mockOfferingCreatedResponse));
 
+
+
         OrganizationDetails organizationDetails = new OrganizationDetails();
         organizationDetails.setSelfDescription(new OrganizationSelfDescription());
         organizationDetails.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
         organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        TermsAndConditions orgaTnC = new TermsAndConditions();
+        orgaTnC.setContent(new StringTypeValue("http://example.com"));
+        orgaTnC.setHash(new StringTypeValue("hash1234"));
+        organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(orgaTnC);
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
+
+        OrganizationDetails organizationDetails2 = new OrganizationDetails();
+        organizationDetails2.setSelfDescription(new OrganizationSelfDescription());
+        organizationDetails2.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
+        organizationDetails2.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
+        organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
+        organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        TermsAndConditions emptyOrgaTnC = new TermsAndConditions();
+        emptyOrgaTnC.setContent(new StringTypeValue(""));
+        emptyOrgaTnC.setHash(new StringTypeValue(""));
+        organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(emptyOrgaTnC);
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("Participant:notnc")))
+                .thenReturn(organizationDetails2);
+
 
     }
 
@@ -299,6 +319,17 @@ class GXFSCatalogRestServiceTest {
 
         SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
+    }
+
+    @Test
+    void addNewValidServiceOfferingButNoProviderTnC() {
+        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:notnc"));
+        credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:notnc"));
+
+        ResponseStatusException exception =
+                assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
     }
 
     @Test
