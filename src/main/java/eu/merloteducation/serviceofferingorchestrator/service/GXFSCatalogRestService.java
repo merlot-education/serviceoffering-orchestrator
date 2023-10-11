@@ -64,13 +64,6 @@ public class GXFSCatalogRestService {
 
     @Value("${gxfscatalog.selfdescriptions-uri}")
     private String gxfscatalogSelfdescriptionsUri;
-
-    @Value("${merlottnc.content}")
-    private String merlotTnCContent;
-
-    @Value("${merlottnc.hash}")
-    private String merlotTnCHash;
-
     private final Logger logger = LoggerFactory.getLogger(GXFSCatalogRestService.class);
     private static final String PARTICIPANT_START = "Participant:";
     private static final String OFFERING_START = "ServiceOffering:";
@@ -363,10 +356,9 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(FORBIDDEN, "Cannot create/update self-description without valid provider TnC");
         }
 
-        TermsAndConditions merlotTnC = new TermsAndConditions();
-        merlotTnC.setContent(new StringTypeValue("xsd:anyURI", merlotTnCContent));
-        merlotTnC.setHash(new StringTypeValue(merlotTnCHash));
-        merlotTnC.setType("gax-trust-framework:TermsAndConditions");
+        TermsAndConditions merlotTnC = organizationOrchestratorClient
+                .getOrganizationDetails("Participant:99")
+                .getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions();
 
         ServiceOfferingExtension extension;
         String previousSdHash = null;
@@ -376,11 +368,6 @@ public class GXFSCatalogRestService {
             credentialSubject.setCreationDate(new StringTypeValue(
                     extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT)));
             credentialSubject.setId(OFFERING_START + UUID.randomUUID());
-            if (credentialSubject.getTermsAndConditions() == null) {
-                credentialSubject.setTermsAndConditions(new ArrayList<>());
-            }
-            credentialSubject.getTermsAndConditions().add(merlotTnC);
-            credentialSubject.getTermsAndConditions().add(providerTnC);
         } else {
             extension = serviceOfferingExtensionRepository
                     .findById(credentialSubject.getId()).orElse(null);
@@ -405,6 +392,17 @@ public class GXFSCatalogRestService {
             } else {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
             }
+        }
+
+        // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them
+        if (credentialSubject.getTermsAndConditions() == null) {
+            credentialSubject.setTermsAndConditions(new ArrayList<>());
+        }
+        if (!credentialSubject.getTermsAndConditions().contains(merlotTnC)) {
+            credentialSubject.getTermsAndConditions().add(merlotTnC);
+        }
+        if (!credentialSubject.getTermsAndConditions().contains(providerTnC)) {
+            credentialSubject.getTermsAndConditions().add(providerTnC);
         }
 
         // prepare a json to send to the gxfs catalog, sign it and read the response
