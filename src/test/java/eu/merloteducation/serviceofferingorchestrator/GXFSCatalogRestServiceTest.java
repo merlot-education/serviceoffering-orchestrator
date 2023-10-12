@@ -305,6 +305,8 @@ class GXFSCatalogRestServiceTest {
         merlotTnc.setHash(new StringTypeValue("hash12345"));
         merlotTnc.setType("gax-trust-framework:TermsAndConditions");
         tncList.add(tnc);
+        tncList.add(providerTnc);
+        tncList.add(merlotTnc);
         credentialSubject.setTermsAndConditions(tncList);
 
         List<StringTypeValue> policies = new ArrayList<>();
