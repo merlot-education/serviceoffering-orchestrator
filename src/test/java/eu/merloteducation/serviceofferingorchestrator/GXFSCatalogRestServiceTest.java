@@ -1,5 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
@@ -66,6 +67,9 @@ class GXFSCatalogRestServiceTest {
 
     @Autowired
     ServiceOfferingMapper serviceOfferingMapper;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Value("${gxfscatalog.selfdescriptions-uri}")
     private String gxfscatalogSelfdescriptionsUri;
@@ -148,6 +152,7 @@ class GXFSCatalogRestServiceTest {
     @BeforeEach
     public void setUp() {
         ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingMapper", serviceOfferingMapper);
+        ReflectionTestUtils.setField(gxfsCatalogRestService, "objectMapper", objectMapper);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfscatalogSelfdescriptionsUri", gxfscatalogSelfdescriptionsUri);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfsSignerService", new GXFSSignerService());
         ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
