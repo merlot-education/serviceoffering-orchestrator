@@ -296,6 +296,14 @@ class GXFSCatalogRestServiceTest {
         tnc.setContent(new StringTypeValue("http://myexample.com"));
         tnc.setHash(new StringTypeValue("1234"));
         tnc.setType("gax-trust-framework:TermsAndConditions");
+        TermsAndConditions providerTnc = new TermsAndConditions();
+        providerTnc.setContent(new StringTypeValue("http://example.com"));
+        providerTnc.setHash(new StringTypeValue("hash1234"));
+        providerTnc.setType("gax-trust-framework:TermsAndConditions");
+        TermsAndConditions merlotTnc = new TermsAndConditions();
+        merlotTnc.setContent(new StringTypeValue("https://merlot-education.eu"));
+        merlotTnc.setHash(new StringTypeValue("hash12345"));
+        merlotTnc.setType("gax-trust-framework:TermsAndConditions");
         tncList.add(tnc);
         credentialSubject.setTermsAndConditions(tncList);
 
