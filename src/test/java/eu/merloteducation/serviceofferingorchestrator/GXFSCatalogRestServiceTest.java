@@ -255,6 +255,19 @@ class GXFSCatalogRestServiceTest {
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
 
+        OrganizationDetails merlotDetails = new OrganizationDetails();
+        merlotDetails.setSelfDescription(new OrganizationSelfDescription());
+        merlotDetails.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
+        merlotDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
+        merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
+        merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        TermsAndConditions merlotTnc = new TermsAndConditions();
+        merlotTnc.setContent(new StringTypeValue("https://merlot-education.eu"));
+        merlotTnc.setHash(new StringTypeValue("hash12345"));
+        merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(merlotTnc);
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails("Participant:99"))
+                .thenReturn(merlotDetails);
+
         OrganizationDetails organizationDetails2 = new OrganizationDetails();
         organizationDetails2.setSelfDescription(new OrganizationSelfDescription());
         organizationDetails2.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
@@ -335,6 +348,19 @@ class GXFSCatalogRestServiceTest {
         ResponseStatusException exception =
                 assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+    }
+
+    @Test
+    @Transactional
+    void addNewValidServiceOfferingWithoutTncInCredentialSubject() throws Exception {
+        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:1234"));
+        credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:1234"));
+        credentialSubject.setTermsAndConditions(null);
+
+        SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        assertNotNull(response.getId());
+        // TODO assert that TnC are actually set (landing in mock catalog currently which discards it)
     }
 
     @Test
