@@ -354,10 +354,10 @@ public class GXFSCatalogRestService {
             credentialSubject.setTermsAndConditions(new ArrayList<>());
         }
         if (!credentialSubject.getTermsAndConditions().contains(merlotTnC)) {
-            credentialSubject.getTermsAndConditions().add(merlotTnC);
+            credentialSubject.getTermsAndConditions().add(0, merlotTnC);
         }
         if (!credentialSubject.getTermsAndConditions().contains(providerTnC)) {
-            credentialSubject.getTermsAndConditions().add(providerTnC);
+            credentialSubject.getTermsAndConditions().add(1, providerTnC);
         }
     }
 
