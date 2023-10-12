@@ -293,7 +293,7 @@ class GXFSCatalogRestServiceTest {
 
         List<TermsAndConditions> tncList = new ArrayList<>();
         TermsAndConditions tnc = new TermsAndConditions();
-        tnc.setContent(new StringTypeValue("http://example.com"));
+        tnc.setContent(new StringTypeValue("http://myexample.com"));
         tnc.setHash(new StringTypeValue("1234"));
         tnc.setType("gax-trust-framework:TermsAndConditions");
         tncList.add(tnc);

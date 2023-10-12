@@ -22,10 +22,4 @@ public class StringTypeValue {
         this.type = "xsd:string";
         this.value = value;
     }
-
-    public StringTypeValue(String type, String value) {
-        this.type = type;
-        this.value = value;
-    }
-
 }
