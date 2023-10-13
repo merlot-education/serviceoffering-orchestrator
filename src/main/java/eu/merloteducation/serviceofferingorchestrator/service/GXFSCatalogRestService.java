@@ -12,11 +12,13 @@ import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOffering
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
+import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsResponse;
 import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationDetails;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
+import io.netty.util.internal.StringUtil;
 import jakarta.transaction.Transactional;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
@@ -60,9 +62,11 @@ public class GXFSCatalogRestService {
     @Autowired
     private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Value("${gxfscatalog.selfdescriptions-uri}")
     private String gxfscatalogSelfdescriptionsUri;
-
     private final Logger logger = LoggerFactory.getLogger(GXFSCatalogRestService.class);
     private static final String PARTICIPANT_START = "Participant:";
     private static final String OFFERING_START = "ServiceOffering:";
@@ -98,14 +102,13 @@ public class GXFSCatalogRestService {
                 null);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
-        return new ObjectMapper().readValue(response, new TypeReference<>() {
+        return objectMapper.readValue(response, new TypeReference<>() {
         });
     }
 
     private void handleCatalogError(WebClientResponseException e)
             throws ResponseStatusException, JsonProcessingException {
         logger.warn("Error in communication with catalog: {}", e.getResponseBodyAsString());
-        ObjectMapper objectMapper = new ObjectMapper();
         JsonNode errorMessage = objectMapper.readTree(e.getResponseBodyAsString());
         throw new ResponseStatusException(e.getStatusCode(), errorMessage.get("message").asText());
     }
@@ -217,8 +220,7 @@ public class GXFSCatalogRestService {
 
 
         // create a mapper to map the response to the SelfDescriptionResponse class
-        ObjectMapper mapper = new ObjectMapper();
-        SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
+        SelfDescriptionsResponse selfDescriptionsResponse = objectMapper.readValue(response, SelfDescriptionsResponse.class);
 
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
@@ -273,8 +275,7 @@ public class GXFSCatalogRestService {
                 null);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
-        ObjectMapper mapper = new ObjectMapper();
-        SelfDescriptionsResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsResponse.class);
+        SelfDescriptionsResponse selfDescriptionsResponse = objectMapper.readValue(response, SelfDescriptionsResponse.class);
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
@@ -334,6 +335,32 @@ public class GXFSCatalogRestService {
         return addServiceOffering(subject);
     }
 
+    private void patchTermsAndConditions(ServiceOfferingCredentialSubject credentialSubject) {
+        TermsAndConditions providerTnC = organizationOrchestratorClient
+                .getOrganizationDetails(credentialSubject.getOfferedBy().getId())
+                .getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions();
+
+        if (StringUtil.isNullOrEmpty(providerTnC.getContent().getValue())
+                || StringUtil.isNullOrEmpty(providerTnC.getHash().getValue())) {
+            throw new ResponseStatusException(FORBIDDEN, "Cannot create/update self-description without valid provider TnC");
+        }
+
+        TermsAndConditions merlotTnC = organizationOrchestratorClient
+                .getOrganizationDetails("Participant:99")
+                .getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions();
+
+        // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them
+        if (credentialSubject.getTermsAndConditions() == null) {
+            credentialSubject.setTermsAndConditions(new ArrayList<>());
+        }
+        if (!credentialSubject.getTermsAndConditions().contains(merlotTnC)) {
+            credentialSubject.getTermsAndConditions().add(0, merlotTnC);
+        }
+        if (!credentialSubject.getTermsAndConditions().contains(providerTnC)) {
+            credentialSubject.getTermsAndConditions().add(1, providerTnC);
+        }
+    }
+
     /**
      * Given a self-description, attempt to publish it to the GXFS catalog.
      * If the id is not specified (set to ServiceOffering:TBR), create a new entry,
@@ -380,6 +407,8 @@ public class GXFSCatalogRestService {
             }
         }
 
+        patchTermsAndConditions(credentialSubject);
+
         // prepare a json to send to the gxfs catalog, sign it and read the response
         ObjectMapper mapper = new ObjectMapper();
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -407,8 +436,7 @@ public class GXFSCatalogRestService {
                     null);
         }
 
-        mapper = new ObjectMapper();
-        SelfDescriptionsCreateResponse selfDescriptionsResponse = mapper.readValue(response, SelfDescriptionsCreateResponse.class);
+        SelfDescriptionsCreateResponse selfDescriptionsResponse = objectMapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self description
         extension.setId(selfDescriptionsResponse.getId());

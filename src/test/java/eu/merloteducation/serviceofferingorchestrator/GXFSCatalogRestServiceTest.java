@@ -1,5 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
@@ -66,6 +67,9 @@ class GXFSCatalogRestServiceTest {
 
     @Autowired
     ServiceOfferingMapper serviceOfferingMapper;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Value("${gxfscatalog.selfdescriptions-uri}")
     private String gxfscatalogSelfdescriptionsUri;
@@ -148,6 +152,7 @@ class GXFSCatalogRestServiceTest {
     @BeforeEach
     public void setUp() {
         ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingMapper", serviceOfferingMapper);
+        ReflectionTestUtils.setField(gxfsCatalogRestService, "objectMapper", objectMapper);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfscatalogSelfdescriptionsUri", gxfscatalogSelfdescriptionsUri);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfsSignerService", new GXFSSignerService());
         ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
@@ -235,14 +240,47 @@ class GXFSCatalogRestServiceTest {
                         startsWith(gxfscatalogSelfdescriptionsUri), any(), any()))
                 .thenReturn(unescapeJson(mockOfferingCreatedResponse));
 
+
+
         OrganizationDetails organizationDetails = new OrganizationDetails();
         organizationDetails.setSelfDescription(new OrganizationSelfDescription());
         organizationDetails.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
         organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        TermsAndConditions orgaTnC = new TermsAndConditions();
+        orgaTnC.setContent(new StringTypeValue("http://example.com"));
+        orgaTnC.setHash(new StringTypeValue("hash1234"));
+        organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(orgaTnC);
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
+
+        OrganizationDetails merlotDetails = new OrganizationDetails();
+        merlotDetails.setSelfDescription(new OrganizationSelfDescription());
+        merlotDetails.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
+        merlotDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
+        merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
+        merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        TermsAndConditions merlotTnc = new TermsAndConditions();
+        merlotTnc.setContent(new StringTypeValue("https://merlot-education.eu"));
+        merlotTnc.setHash(new StringTypeValue("hash12345"));
+        merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(merlotTnc);
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails("Participant:99"))
+                .thenReturn(merlotDetails);
+
+        OrganizationDetails organizationDetails2 = new OrganizationDetails();
+        organizationDetails2.setSelfDescription(new OrganizationSelfDescription());
+        organizationDetails2.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
+        organizationDetails2.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
+        organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
+        organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        TermsAndConditions emptyOrgaTnC = new TermsAndConditions();
+        emptyOrgaTnC.setContent(new StringTypeValue(""));
+        emptyOrgaTnC.setHash(new StringTypeValue(""));
+        organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(emptyOrgaTnC);
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("Participant:notnc")))
+                .thenReturn(organizationDetails2);
+
 
     }
 
@@ -255,10 +293,20 @@ class GXFSCatalogRestServiceTest {
 
         List<TermsAndConditions> tncList = new ArrayList<>();
         TermsAndConditions tnc = new TermsAndConditions();
-        tnc.setContent(new StringTypeValue("http://example.com"));
+        tnc.setContent(new StringTypeValue("http://myexample.com"));
         tnc.setHash(new StringTypeValue("1234"));
         tnc.setType("gax-trust-framework:TermsAndConditions");
+        TermsAndConditions providerTnc = new TermsAndConditions();
+        providerTnc.setContent(new StringTypeValue("http://example.com"));
+        providerTnc.setHash(new StringTypeValue("hash1234"));
+        providerTnc.setType("gax-trust-framework:TermsAndConditions");
+        TermsAndConditions merlotTnc = new TermsAndConditions();
+        merlotTnc.setContent(new StringTypeValue("https://merlot-education.eu"));
+        merlotTnc.setHash(new StringTypeValue("hash12345"));
+        merlotTnc.setType("gax-trust-framework:TermsAndConditions");
         tncList.add(tnc);
+        tncList.add(providerTnc);
+        tncList.add(merlotTnc);
         credentialSubject.setTermsAndConditions(tncList);
 
         List<StringTypeValue> policies = new ArrayList<>();
@@ -299,6 +347,30 @@ class GXFSCatalogRestServiceTest {
 
         SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
+    }
+
+    @Test
+    void addNewValidServiceOfferingButNoProviderTnC() {
+        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:notnc"));
+        credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:notnc"));
+
+        ResponseStatusException exception =
+                assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+    }
+
+    @Test
+    @Transactional
+    void addNewValidServiceOfferingWithoutTncInCredentialSubject() throws Exception {
+        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:1234"));
+        credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:1234"));
+        credentialSubject.setTermsAndConditions(null);
+
+        SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        assertNotNull(response.getId());
+        // TODO assert that TnC are actually set (landing in mock catalog currently which discards it)
     }
 
     @Test
