@@ -1,13 +1,13 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.CooperationCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
 import jakarta.validation.Valid;

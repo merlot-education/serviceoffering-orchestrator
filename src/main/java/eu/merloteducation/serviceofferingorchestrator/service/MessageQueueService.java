@@ -1,9 +1,9 @@
 package eu.merloteducation.serviceofferingorchestrator.service;
 
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
+import eu.merloteducation.modelslib.queue.ContractTemplateUpdated;
 import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
-import eu.merloteducation.serviceofferingorchestrator.models.messagequeue.ContractTemplateUpdated;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
