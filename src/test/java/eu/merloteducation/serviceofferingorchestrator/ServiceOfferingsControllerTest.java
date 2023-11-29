@@ -2,7 +2,11 @@ package eu.merloteducation.serviceofferingorchestrator;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import eu.merloteducation.serviceofferingorchestrator.auth.*;
+import eu.merloteducation.authorizationlibrary.authorization.AuthorityChecker;
+import eu.merloteducation.authorizationlibrary.authorization.JwtAuthConverter;
+import eu.merloteducation.authorizationlibrary.authorization.JwtAuthConverterProperties;
+import eu.merloteducation.authorizationlibrary.authorization.OrganizationRoleGrantedAuthority;
+import eu.merloteducation.serviceofferingorchestrator.auth.OfferingAuthorityChecker;
 import eu.merloteducation.serviceofferingorchestrator.controller.ServiceOfferingsController;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.OfferingMetaDto;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
@@ -27,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -43,8 +48,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest({ServiceOfferingsController.class, WebSecurityConfig.class, AuthorityChecker.class,
+@WebMvcTest({ServiceOfferingsController.class, WebSecurityConfig.class,
         OfferingAuthorityChecker.class})
+@Import({ AuthorityChecker.class, JwtAuthConverter.class})
 @AutoConfigureMockMvc()
 class ServiceOfferingsControllerTest {
 

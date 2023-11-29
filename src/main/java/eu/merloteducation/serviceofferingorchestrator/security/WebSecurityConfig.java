@@ -1,6 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.security;
 
-import eu.merloteducation.serviceofferingorchestrator.auth.JwtAuthConverter;
+import eu.merloteducation.authorizationlibrary.authorization.JwtAuthConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
