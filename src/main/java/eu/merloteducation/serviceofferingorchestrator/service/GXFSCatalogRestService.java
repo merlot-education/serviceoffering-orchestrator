@@ -111,7 +111,9 @@ public class GXFSCatalogRestService {
             throws ResponseStatusException, JsonProcessingException {
         logger.warn("Error in communication with catalog: {}", e.getResponseBodyAsString());
         JsonNode errorMessage = objectMapper.readTree(e.getResponseBodyAsString());
-        throw new ResponseStatusException(e.getStatusCode(), errorMessage.get("message").asText());
+        String messageText = errorMessage.get("message").asText();
+        throw new ResponseStatusException(e.getStatusCode(),
+                messageText.substring(0, Math.min(500, messageText.length())));
     }
 
     private String presentAndSign(String credentialSubjectJson, String issuer) throws Exception {
