@@ -6,17 +6,18 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
+import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
+import eu.merloteducation.modelslib.gxfscatalog.datatypes.StringTypeValue;
+import eu.merloteducation.modelslib.gxfscatalog.datatypes.TermsAndConditions;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.GXFSCatalogListResponse;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionItem;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.StringTypeValue;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.TermsAndConditions;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.ServiceOfferingCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsResponse;
-import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationDetails;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import io.netty.util.internal.StringUtil;
 import jakarta.transaction.Transactional;
@@ -93,7 +94,7 @@ public class GXFSCatalogRestService {
         serviceOfferingExtensionRepository.delete(extension);
     }
 
-    private SelfDescriptionsResponse getSelfDescriptionByOfferingExtension
+    private GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> getSelfDescriptionByOfferingExtension
             (ServiceOfferingExtension extension) throws Exception {
         String response = keycloakAuthService.webCallAuthenticated(
                 HttpMethod.GET,
@@ -110,7 +111,9 @@ public class GXFSCatalogRestService {
             throws ResponseStatusException, JsonProcessingException {
         logger.warn("Error in communication with catalog: {}", e.getResponseBodyAsString());
         JsonNode errorMessage = objectMapper.readTree(e.getResponseBodyAsString());
-        throw new ResponseStatusException(e.getStatusCode(), errorMessage.get("message").asText());
+        String messageText = errorMessage.get("message").asText();
+        throw new ResponseStatusException(e.getStatusCode(),
+                messageText.substring(0, Math.min(500, messageText.length())));
     }
 
     private String presentAndSign(String credentialSubjectJson, String issuer) throws Exception {
@@ -183,7 +186,7 @@ public class GXFSCatalogRestService {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
         }
 
-        SelfDescriptionsResponse selfDescriptionsResponse = getSelfDescriptionByOfferingExtension(extension);
+        GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse = getSelfDescriptionByOfferingExtension(extension);
         // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
@@ -220,7 +223,7 @@ public class GXFSCatalogRestService {
 
 
         // create a mapper to map the response to the SelfDescriptionResponse class
-        SelfDescriptionsResponse selfDescriptionsResponse = objectMapper.readValue(response, SelfDescriptionsResponse.class);
+        GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse = objectMapper.readValue(response, new TypeReference<>(){});
 
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
@@ -275,12 +278,12 @@ public class GXFSCatalogRestService {
                 null);
 
         // create a mapper to map the response to the SelfDescriptionResponse class
-        SelfDescriptionsResponse selfDescriptionsResponse = objectMapper.readValue(response, SelfDescriptionsResponse.class);
+        GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse = objectMapper.readValue(response, new TypeReference<>(){});
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
-        OrganizationDetails providerOrga = organizationOrchestratorClient.getOrganizationDetails(orgaId);
+        MerlotParticipantDto providerOrga = organizationOrchestratorClient.getOrganizationDetails(orgaId);
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
         List<ServiceOfferingBasicDto> models = selfDescriptionsResponse.getItems().stream()
@@ -321,7 +324,7 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(PRECONDITION_FAILED, "Invalid state for regenerating this offering");
         }
 
-        SelfDescriptionsResponse selfDescriptionsResponse =
+        GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse =
                 getSelfDescriptionByOfferingExtension(extension);
         // if we do not get exactly one item or the id doesn't start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1

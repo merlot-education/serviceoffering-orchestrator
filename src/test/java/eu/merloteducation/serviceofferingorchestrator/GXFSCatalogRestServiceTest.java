@@ -1,22 +1,22 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
+import eu.merloteducation.modelslib.gxfscatalog.datatypes.*;
+import eu.merloteducation.modelslib.gxfscatalog.datatypes.Runtime;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescription;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionVerifiableCredential;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.participants.MerlotOrganizationCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.CooperationCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.*;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.Runtime;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.CooperationCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.DataDeliveryCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptions.serviceoffering.SaaSCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionsCreateResponse;
-import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationDetails;
-import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationSelfDescription;
-import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationVerifiableCredential;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import eu.merloteducation.serviceofferingorchestrator.service.*;
 import org.apache.commons.text.StringEscapeUtils;
@@ -242,10 +242,10 @@ class GXFSCatalogRestServiceTest {
 
 
 
-        OrganizationDetails organizationDetails = new OrganizationDetails();
-        organizationDetails.setSelfDescription(new OrganizationSelfDescription());
-        organizationDetails.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
-        organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
+        MerlotParticipantDto organizationDetails = new MerlotParticipantDto();
+        organizationDetails.setSelfDescription(new SelfDescription<>());
+        organizationDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential<>());
+        organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new MerlotOrganizationCredentialSubject());
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
         organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
         TermsAndConditions orgaTnC = new TermsAndConditions();
@@ -255,10 +255,10 @@ class GXFSCatalogRestServiceTest {
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
 
-        OrganizationDetails merlotDetails = new OrganizationDetails();
-        merlotDetails.setSelfDescription(new OrganizationSelfDescription());
-        merlotDetails.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
-        merlotDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
+        MerlotParticipantDto merlotDetails = new MerlotParticipantDto();
+        merlotDetails.setSelfDescription(new SelfDescription<>());
+        merlotDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential<>());
+        merlotDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new MerlotOrganizationCredentialSubject());
         merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
         merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
         TermsAndConditions merlotTnc = new TermsAndConditions();
@@ -268,10 +268,10 @@ class GXFSCatalogRestServiceTest {
         lenient().when(organizationOrchestratorClient.getOrganizationDetails("Participant:99"))
                 .thenReturn(merlotDetails);
 
-        OrganizationDetails organizationDetails2 = new OrganizationDetails();
-        organizationDetails2.setSelfDescription(new OrganizationSelfDescription());
-        organizationDetails2.getSelfDescription().setVerifiableCredential(new OrganizationVerifiableCredential());
-        organizationDetails2.getSelfDescription().getVerifiableCredential().setCredentialSubject(new OrganizationCredentialSubject());
+        MerlotParticipantDto organizationDetails2 = new MerlotParticipantDto();
+        organizationDetails2.setSelfDescription(new SelfDescription<>());
+        organizationDetails2.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential<>());
+        organizationDetails2.getSelfDescription().getVerifiableCredential().setCredentialSubject(new MerlotOrganizationCredentialSubject());
         organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
         organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
         TermsAndConditions emptyOrgaTnC = new TermsAndConditions();

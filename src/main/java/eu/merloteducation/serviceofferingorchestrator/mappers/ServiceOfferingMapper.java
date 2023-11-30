@@ -1,10 +1,11 @@
 package eu.merloteducation.serviceofferingorchestrator.mappers;
 
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingBasicDto;
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
+import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionMeta;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
-import eu.merloteducation.serviceofferingorchestrator.models.gxfscatalog.selfdescriptionsmeta.SelfDescriptionMeta;
-import eu.merloteducation.serviceofferingorchestrator.models.organisationsorchestrator.OrganizationDetails;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -23,9 +24,9 @@ public interface ServiceOfferingMapper {
     @Mapping(target = "name", source = "selfDescriptionMeta.content.verifiableCredential.credentialSubject.name.value")
     @Mapping(target = "creationDate", source = "extension.creationDate")
     @Mapping(target = "providerLegalName", source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.legalName.value")
-    ServiceOfferingBasicDto selfDescriptionMetaToServiceOfferingBasicDto(SelfDescriptionMeta selfDescriptionMeta,
+    ServiceOfferingBasicDto selfDescriptionMetaToServiceOfferingBasicDto(SelfDescriptionMeta<ServiceOfferingCredentialSubject> selfDescriptionMeta,
                                                                          ServiceOfferingExtension extension,
-                                                                         OrganizationDetails providerDetails);
+                                                                         MerlotParticipantDto providerDetails);
     @Mapping(target = "metadata.state", source = "extension.state")
     @Mapping(target = "metadata.hash", source = "extension.currentSdHash")
     @Mapping(target = "metadata.creationDate", source = "extension.creationDate")
@@ -35,7 +36,7 @@ public interface ServiceOfferingMapper {
             source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.id")
     @Mapping(target = "providerDetails.providerLegalName",
             source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.legalName.value")
-    ServiceOfferingDto selfDescriptionMetaToServiceOfferingDto(SelfDescriptionMeta selfDescriptionMeta,
+    ServiceOfferingDto selfDescriptionMetaToServiceOfferingDto(SelfDescriptionMeta<ServiceOfferingCredentialSubject> selfDescriptionMeta,
                                                                ServiceOfferingExtension extension,
-                                                               OrganizationDetails providerDetails);
+                                                               MerlotParticipantDto providerDetails);
 }
