@@ -2,10 +2,8 @@ package eu.merloteducation.serviceofferingorchestrator;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import eu.merloteducation.authorizationlibrary.authorization.AuthorityChecker;
-import eu.merloteducation.authorizationlibrary.authorization.JwtAuthConverter;
-import eu.merloteducation.authorizationlibrary.authorization.JwtAuthConverterProperties;
-import eu.merloteducation.authorizationlibrary.authorization.OrganizationRoleGrantedAuthority;
+import eu.merloteducation.authorizationlibrary.authorization.*;
+import eu.merloteducation.authorizationlibrary.config.InterceptorConfig;
 import eu.merloteducation.serviceofferingorchestrator.auth.OfferingAuthorityChecker;
 import eu.merloteducation.serviceofferingorchestrator.controller.ServiceOfferingsController;
 import eu.merloteducation.serviceofferingorchestrator.models.dto.OfferingMetaDto;
@@ -50,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest({ServiceOfferingsController.class, WebSecurityConfig.class,
         OfferingAuthorityChecker.class})
-@Import({ AuthorityChecker.class, JwtAuthConverter.class})
+@Import({ AuthorityChecker.class, ActiveRoleHeaderHandlerInterceptor.class, JwtAuthConverter.class, InterceptorConfig.class})
 @AutoConfigureMockMvc()
 class ServiceOfferingsControllerTest {
 
