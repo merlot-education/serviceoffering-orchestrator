@@ -1,8 +1,8 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
-import eu.merloteducation.serviceofferingorchestrator.models.dto.ServiceOfferingDto;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
+import eu.merloteducation.modelslib.queue.ContractTemplateUpdated;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
-import eu.merloteducation.serviceofferingorchestrator.models.messagequeue.ContractTemplateUpdated;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.MessageQueueService;
@@ -55,9 +55,7 @@ class MessageQueueServiceTests {
     @Transactional
     @Test
     void contractCreatedForExistingOffering() {
-        ContractTemplateUpdated contractTemplateUpdated = new ContractTemplateUpdated();
-        contractTemplateUpdated.setContractId("contract");
-        contractTemplateUpdated.setServiceOfferingId("1234");
+        ContractTemplateUpdated contractTemplateUpdated = new ContractTemplateUpdated("contract", "1234");
         messageQueueService.contractCreatedListener(contractTemplateUpdated);
 
         ServiceOfferingExtension offering = serviceOfferingExtensionRepository.findById(contractTemplateUpdated
@@ -69,9 +67,7 @@ class MessageQueueServiceTests {
     @Transactional
     @Test
     void contractPurgedForExistingOffering() {
-        ContractTemplateUpdated contractTemplateUpdated = new ContractTemplateUpdated();
-        contractTemplateUpdated.setContractId("contract");
-        contractTemplateUpdated.setServiceOfferingId("1234");
+        ContractTemplateUpdated contractTemplateUpdated = new ContractTemplateUpdated("contract", "1234");
         ServiceOfferingExtension offering = serviceOfferingExtensionRepository.findById(contractTemplateUpdated
                 .getServiceOfferingId()).orElse(null);
         offering.addAssociatedContract(contractTemplateUpdated.getContractId());
