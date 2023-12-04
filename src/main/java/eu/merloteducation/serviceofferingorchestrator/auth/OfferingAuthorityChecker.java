@@ -6,6 +6,7 @@ import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferi
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import eu.merloteducation.authorizationlibrary.authorization.AuthorityChecker;
 
 import java.util.Set;
 

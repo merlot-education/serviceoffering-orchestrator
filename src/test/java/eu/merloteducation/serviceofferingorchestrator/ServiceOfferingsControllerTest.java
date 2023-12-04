@@ -2,6 +2,9 @@ package eu.merloteducation.serviceofferingorchestrator;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import eu.merloteducation.authorizationlibrary.authorization.*;
+import eu.merloteducation.authorizationlibrary.config.InterceptorConfig;
+import eu.merloteducation.serviceofferingorchestrator.auth.OfferingAuthorityChecker;
 import eu.merloteducation.modelslib.api.serviceoffering.OfferingMetaDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
@@ -14,7 +17,6 @@ import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceoffering
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.SaaSCredentialSubject;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.ServiceOfferingCredentialSubject;
-import eu.merloteducation.serviceofferingorchestrator.auth.*;
 import eu.merloteducation.serviceofferingorchestrator.controller.ServiceOfferingsController;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
@@ -27,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -43,8 +46,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest({ServiceOfferingsController.class, WebSecurityConfig.class, AuthorityChecker.class,
+@WebMvcTest({ServiceOfferingsController.class, WebSecurityConfig.class,
         OfferingAuthorityChecker.class})
+@Import({ AuthorityChecker.class, ActiveRoleHeaderHandlerInterceptor.class, JwtAuthConverter.class, InterceptorConfig.class})
 @AutoConfigureMockMvc()
 class ServiceOfferingsControllerTest {
 
