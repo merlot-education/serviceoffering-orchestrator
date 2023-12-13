@@ -46,6 +46,8 @@ server:
 gxfscatalog:
   base-uri: "http://localhost:8081"
   selfdescriptions-uri: "${gxfscatalog.base-uri}/self-descriptions"
+  private-key-path: ""
+  cert-path: ""
 
 gxfswizard:
   base-uri: "http://localhost:8085"
