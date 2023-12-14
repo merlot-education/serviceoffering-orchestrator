@@ -92,11 +92,8 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
         }
         serviceOfferingExtensionRepository.delete(extension);
-        try {
-            deleteServiceOfferingFromCatalog(extension.getCurrentSdHash());
-        } catch (WebClientResponseException e) {
-            handleCatalogError(e);
-        }
+        deleteServiceOfferingFromCatalog(extension.getCurrentSdHash());
+
     }
 
     private GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> getSelfDescriptionByOfferingExtension
@@ -439,15 +436,7 @@ public class GXFSCatalogRestService {
         String signedVp = presentAndSign(credentialSubjectJson, credentialSubject.getOfferedBy().getId());
 
         String response = "";
-        try {
-            response = keycloakAuthService.webCallAuthenticated(
-                    HttpMethod.POST,
-                    gxfscatalogSelfdescriptionsUri,
-                    signedVp,
-                    MediaType.APPLICATION_JSON);
-        } catch (WebClientResponseException e) {
-            handleCatalogError(e);
-        }
+        response = addServiceOfferingToCatalog(signedVp);
 
         SelfDescriptionsCreateResponse selfDescriptionsResponse = objectMapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
@@ -459,11 +448,7 @@ public class GXFSCatalogRestService {
             serviceOfferingExtensionRepository.save(extension);
         } catch (RuntimeException e){
             // if saving fails, "rollback" the service-offering creation in the catalog
-            try {
-                deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
-            }  catch (WebClientResponseException ex) {
-                handleCatalogError(ex);
-            }
+            deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
             throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be saved.");
         }
 
@@ -471,13 +456,9 @@ public class GXFSCatalogRestService {
         if (previousSdHash != null) {
             try {
                 deleteServiceOfferingFromCatalog(previousSdHash);
-            }  catch (WebClientResponseException ex) {
+            }  catch (ResponseStatusException ex) {
                 //if deleting the previous entry fails, "rollback" the service-offering creation in the catalog
-                try {
-                    deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
-                }  catch (WebClientResponseException e) {
-                    handleCatalogError(e);
-                }
+                deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
                 throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be updated.");
             }
         }
@@ -485,11 +466,29 @@ public class GXFSCatalogRestService {
         return selfDescriptionsResponse;
     }
 
-    private void deleteServiceOfferingFromCatalog(String sdHash){
-        keycloakAuthService.webCallAuthenticated(
-            HttpMethod.DELETE,
-            gxfscatalogSelfdescriptionsUri + "/" + sdHash,
-            "",
-            null);
+    private void deleteServiceOfferingFromCatalog(String sdHash) throws JsonProcessingException {
+        try {
+            keycloakAuthService.webCallAuthenticated(
+                HttpMethod.DELETE,
+                gxfscatalogSelfdescriptionsUri + "/" + sdHash,
+                "",
+                null);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
+    }
+
+    private String addServiceOfferingToCatalog(String signedVp) throws JsonProcessingException {
+        String response = "";
+        try {
+            response = keycloakAuthService.webCallAuthenticated(
+                HttpMethod.POST,
+                gxfscatalogSelfdescriptionsUri,
+                signedVp,
+                MediaType.APPLICATION_JSON);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
+        return response;
     }
 }
