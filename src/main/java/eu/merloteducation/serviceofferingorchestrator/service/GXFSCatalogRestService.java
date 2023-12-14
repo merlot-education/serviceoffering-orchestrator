@@ -73,35 +73,44 @@ public class GXFSCatalogRestService {
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
 
-    private void deleteOffering(ServiceOfferingExtension extension) {
+    private void deleteOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
         extension.delete();
+        try {
         keycloakAuthService.webCallAuthenticated(
                 HttpMethod.POST,
                 gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash() + "/revoke",
                 "",
                 null);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
     }
 
-    private void purgeOffering(ServiceOfferingExtension extension) {
+    @Transactional(rollbackOn = {ResponseStatusException.class})
+    private void purgeOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
         if (extension.getState() != ServiceOfferingState.DELETED) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
         }
-        keycloakAuthService.webCallAuthenticated(
-                HttpMethod.DELETE,
-                gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash(),
-                "",
-                null);
         serviceOfferingExtensionRepository.delete(extension);
+        try {
+            deleteServiceOfferingFromCatalog(extension.getCurrentSdHash());
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
     }
 
     private GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> getSelfDescriptionByOfferingExtension
             (ServiceOfferingExtension extension) throws Exception {
-        String response = keycloakAuthService.webCallAuthenticated(
+        String response = "";
+        try {
+        response= keycloakAuthService.webCallAuthenticated(
                 HttpMethod.GET,
                 gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + extension.getId(),
                 "",
                 null);
-
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
         // create a mapper to map the response to the SelfDescriptionResponse class
         return objectMapper.readValue(response, new TypeReference<>() {
         });
@@ -159,11 +168,13 @@ public class GXFSCatalogRestService {
                     case DELETED, ARCHIVED -> deleteOffering(extension);
                     case PURGED -> purgeOffering(extension);
                 }
-                if (targetState != ServiceOfferingState.PURGED) {
-                    serviceOfferingExtensionRepository.save(extension);
-                }
+            } catch (ResponseStatusException ex) {
+                throw ex;
             } catch (Exception e) {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
+            }
+            if (targetState != ServiceOfferingState.PURGED) {
+                serviceOfferingExtensionRepository.save(extension);
             }
         }
 
@@ -187,7 +198,7 @@ public class GXFSCatalogRestService {
         }
 
         GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse = getSelfDescriptionByOfferingExtension(extension);
-        // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
+        // if we do not get exactly one item or the id doesn't start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
@@ -215,12 +226,16 @@ public class GXFSCatalogRestService {
                 .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                         .collect(Collectors.toSet()));
 
-        String response = keycloakAuthService.webCallAuthenticated(
+        String response = "";
+        try {
+        response = keycloakAuthService.webCallAuthenticated(
                 HttpMethod.GET,
                 gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE&hashes=" + extensionHashes,
                 "",
                 null);
-
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
 
         // create a mapper to map the response to the SelfDescriptionResponse class
         GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse = objectMapper.readValue(response, new TypeReference<>(){});
@@ -271,12 +286,16 @@ public class GXFSCatalogRestService {
                 .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                         .collect(Collectors.toSet()));
 
-        String response = keycloakAuthService.webCallAuthenticated(
+        String response = "";
+        try {
+        response = keycloakAuthService.webCallAuthenticated(
                 HttpMethod.GET,
                 gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + extensionHashes,
                 "",
                 null);
-
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
         // create a mapper to map the response to the SelfDescriptionResponse class
         GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse = objectMapper.readValue(response, new TypeReference<>(){});
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
@@ -373,7 +392,7 @@ public class GXFSCatalogRestService {
      * @return creation response of the GXFS catalog
      * @throws Exception mapping exception
      */
-    @Transactional
+    @Transactional(rollbackOn = {ResponseStatusException.class})
     public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
         ServiceOfferingExtension extension;
@@ -430,23 +449,47 @@ public class GXFSCatalogRestService {
             handleCatalogError(e);
         }
 
-        // delete previous entry if it exists
-        if (previousSdHash != null) {
-            keycloakAuthService.webCallAuthenticated(
-                    HttpMethod.DELETE,
-                    gxfscatalogSelfdescriptionsUri + "/" + previousSdHash,
-                    "",
-                    null);
-        }
-
         SelfDescriptionsCreateResponse selfDescriptionsResponse = objectMapper.readValue(response, SelfDescriptionsCreateResponse.class);
 
-        // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self description
+        // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self-description
         extension.setId(selfDescriptionsResponse.getId());
         extension.setIssuer(selfDescriptionsResponse.getIssuer());
         extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
-        serviceOfferingExtensionRepository.save(extension);
+        try {
+            serviceOfferingExtensionRepository.save(extension);
+        } catch (RuntimeException e){
+            // if saving fails, "rollback" the service-offering creation in the catalog
+            try {
+                deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
+            }  catch (WebClientResponseException ex) {
+                handleCatalogError(ex);
+            }
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be saved.");
+        }
+
+        // delete previous entry if it exists
+        if (previousSdHash != null) {
+            try {
+                deleteServiceOfferingFromCatalog(previousSdHash);
+            }  catch (WebClientResponseException ex) {
+                //if deleting the previous entry fails, "rollback" the service-offering creation in the catalog
+                try {
+                    deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
+                }  catch (WebClientResponseException e) {
+                    handleCatalogError(e);
+                }
+                throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be updated.");
+            }
+        }
 
         return selfDescriptionsResponse;
+    }
+
+    private void deleteServiceOfferingFromCatalog(String sdHash){
+        keycloakAuthService.webCallAuthenticated(
+            HttpMethod.DELETE,
+            gxfscatalogSelfdescriptionsUri + "/" + sdHash,
+            "",
+            null);
     }
 }
