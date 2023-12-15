@@ -42,6 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.security.cert.CertificateException;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -150,11 +152,11 @@ class GXFSCatalogRestServiceTest {
     }
 
     @BeforeEach
-    public void setUp() {
+    public void setUp() throws CertificateException, IOException {
         ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingMapper", serviceOfferingMapper);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "objectMapper", objectMapper);
         ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfscatalogSelfdescriptionsUri", gxfscatalogSelfdescriptionsUri);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfsSignerService", new GXFSSignerService());
+        ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfsSignerService", new GXFSSignerService("", ""));
         ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
 
         saasOffering = new ServiceOfferingExtension();
