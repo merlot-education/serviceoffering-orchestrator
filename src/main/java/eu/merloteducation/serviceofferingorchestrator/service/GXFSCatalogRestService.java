@@ -73,8 +73,11 @@ public class GXFSCatalogRestService {
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
 
+    @Transactional(rollbackOn = {ResponseStatusException.class})
     private void deleteOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
         extension.delete();
+        serviceOfferingExtensionRepository.save(extension);
+
         try {
         keycloakAuthService.webCallAuthenticated(
                 HttpMethod.POST,
@@ -93,7 +96,6 @@ public class GXFSCatalogRestService {
         }
         serviceOfferingExtensionRepository.delete(extension);
         deleteServiceOfferingFromCatalog(extension.getCurrentSdHash());
-
     }
 
     private GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> getSelfDescriptionByOfferingExtension
@@ -170,7 +172,9 @@ public class GXFSCatalogRestService {
             } catch (Exception e) {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
             }
-            if (targetState != ServiceOfferingState.PURGED) {
+            if (targetState != ServiceOfferingState.PURGED
+                && targetState != ServiceOfferingState.DELETED
+                && targetState != ServiceOfferingState.ARCHIVED) {
                 serviceOfferingExtensionRepository.save(extension);
             }
         }
