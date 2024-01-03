@@ -21,6 +21,7 @@ import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferi
 import eu.merloteducation.serviceofferingorchestrator.service.*;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.text.StringSubstitutor;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,14 +39,21 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 
 @SpringBootTest
@@ -82,6 +90,10 @@ class GXFSCatalogRestServiceTest {
     private ServiceOfferingExtension saasOffering;
     private ServiceOfferingExtension dateDeliveryOffering;
     private ServiceOfferingExtension cooperationOffering;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+    private TransactionTemplate transactionTemplate;
 
     private String createCatalogItem(String id, String issuer, String sdHash, String type) {
         String contentSaas = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"http://example.edu/verifiablePresentation/self-description1\",\"type\":[\"VerifiablePresentation\"],\"verifiableCredential\":{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"https://www.example.org/ServiceOffering.json\",\"@type\":[\"VerifiableCredential\"],\"issuer\":\"Participant:10\",\"issuanceDate\":\"2022-10-19T18:48:09Z\",\"credentialSubject\":{\"@id\":\"${id}\",\"@type\":\"merlot:MerlotServiceOfferingSaaS\",\"@context\":{\"merlot\":\"http://w3id.org/gaia-x/merlot#\",\"dct\":\"http://purl.org/dc/terms/\",\"gax-trust-framework\":\"http://w3id.org/gaia-x/gax-trust-framework#\",\"rdf\":\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\"sh\":\"http://www.w3.org/ns/shacl#\",\"xsd\":\"http://www.w3.org/2001/XMLSchema#\",\"gax-validation\":\"http://w3id.org/gaia-x/validation#\",\"skos\":\"http://www.w3.org/2004/02/skos/core#\",\"dcat\":\"http://www.w3.org/ns/dcat#\",\"gax-core\":\"http://w3id.org/gaia-x/core#\"},\"gax-core:offeredBy\":{\"@id\":\"Participant:10\"},\"gax-trust-framework:name\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"gax-trust-framework:termsAndConditions\":[{\"gax-trust-framework:content\":{\"@type\":\"xsd:anyURI\",\"@value\":\"Test\"},\"gax-trust-framework:hash\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"@type\":\"gax-trust-framework:TermsAndConditions\"}],\"gax-trust-framework:policy\":[{\"@type\":\"xsd:string\",\"@value\":\"dummyPolicy\"}],\"gax-trust-framework:dataAccountExport\":[{\"gax-trust-framework:formatType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:accessType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:requestType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"@type\":\"gax-trust-framework:DataAccountExport\"}],\"gax-trust-framework:providedBy\":{\"@id\":\"Participant:10\"},\"merlot:creationDate\":{\"@type\":\"xsd:string\",\"@value\":\"2023-05-24T13:30:12.382871745Z\"},\"merlot:runtimeOption\": { \"@type\": \"merlot:Runtime\",\"merlot:runtimeCount\": {\"@value\": \"0\",\"@type\": \"xsd:number\"},\"merlot:runtimeMeasurement\": {\"@value\": \"unlimited\",\"@type\": \"xsd:string\"}},\"merlot:merlotTermsAndConditionsAccepted\":true,\"merlot:userCountOption\": { \"@type\": \"merlot:AllowedUserCount\",\"merlot:userCountUpTo\": {\"@value\": \"0\",\"@type\": \"xsd:number\"}}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\"}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\"}}";
@@ -480,6 +492,88 @@ class GXFSCatalogRestServiceTest {
                 ServiceOfferingState.PURGED);
         result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNull(result);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void transitionServiceOfferingDeletedFail() {
+        transactionTemplate = new TransactionTemplate(transactionManager);
+
+        doThrow(WebClientResponseException.class).when(keycloakAuthService).webCallAuthenticated(eq(HttpMethod.POST),
+            endsWith("/revoke"), any(), any());
+
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(@NotNull TransactionStatus status) {
+                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.RELEASED);
+                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.REVOKED);
+            }
+        });
+
+        Exception thrownEx = null;
+        try {
+            transactionTemplate.execute(status -> {
+                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.DELETED);
+
+                return "garbage";
+            });
+        } catch (Exception ex) {
+            thrownEx = ex;
+        }
+
+        assertNotNull(thrownEx);
+        assertEquals(thrownEx.getClass(), ResponseStatusException.class);
+
+        // extension should be in revoked state as transition to deleted state was unsuccessful
+        ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
+        assertNotNull(result);
+        assertEquals(ServiceOfferingState.REVOKED, result.getState());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void transitionServiceOfferingPurgedFail() {
+        transactionTemplate = new TransactionTemplate(transactionManager);
+
+        doThrow(WebClientResponseException.class).when(keycloakAuthService).webCallAuthenticated(eq(HttpMethod.DELETE),
+            eq(gxfscatalogSelfdescriptionsUri + "/" + saasOffering.getCurrentSdHash()), any(), any());
+
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(@NotNull TransactionStatus status) {
+                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.RELEASED);
+                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.REVOKED);
+                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.DELETED);
+            }
+        });
+
+        Exception thrownEx = null;
+
+        try {
+            transactionTemplate.execute(status -> {
+
+                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.PURGED);
+
+                return "garbage";
+            });
+        } catch (Exception ex) {
+            thrownEx = ex;
+        }
+
+        assertNotNull(thrownEx);
+        assertEquals(thrownEx.getClass(), ResponseStatusException.class);
+
+        // extension should still exist and be in deleted state as purging was unsuccessful
+        ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
+        assertNotNull(result);
+        assertEquals(ServiceOfferingState.DELETED, result.getState());
     }
 
     @Test
