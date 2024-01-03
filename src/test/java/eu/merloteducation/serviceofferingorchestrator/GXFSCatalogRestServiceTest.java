@@ -390,8 +390,54 @@ class GXFSCatalogRestServiceTest {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId(saasOffering.getId());
 
+        ServiceOfferingExtension se = serviceOfferingExtensionRepository.findById("ServiceOffering:new").orElse(null);
+        assertNull(se);
+
         SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
+
+        assertEquals("ServiceOffering:new", response.getId());
+        se = serviceOfferingExtensionRepository.findById(response.getId()).orElse(null);
+        assertNotNull(se);
+        assertEquals("4321", response.getSdHash());
+        assertEquals(response.getSdHash(), se.getCurrentSdHash());
+
+        // clean-up
+        serviceOfferingExtensionRepository.delete(se);
+
+    }
+
+    @Test
+    void updateExistingWithValidServiceOfferingFail() throws Exception {
+        transactionTemplate = new TransactionTemplate(transactionManager);
+
+        doThrow(getWebClientResponseException()).when(keycloakAuthService).webCallAuthenticated(eq(HttpMethod.DELETE),
+            eq(gxfscatalogSelfdescriptionsUri + "/" + saasOffering.getCurrentSdHash()), any(), any());
+
+        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+        credentialSubject.setId(saasOffering.getId());
+
+        Exception thrownEx = null;
+        try {
+            transactionTemplate.execute(status -> {
+                try {
+                    gxfsCatalogRestService.addServiceOffering(credentialSubject);
+                } catch (ResponseStatusException e) {
+                    throw e;
+                } catch (Exception ignore) {
+                }
+                return "garbage";
+            });
+        } catch (Exception ex) {
+            thrownEx = ex;
+        }
+
+        assertNotNull(thrownEx);
+        assertEquals(thrownEx.getClass(), ResponseStatusException.class);
+        assertEquals("Service offering could not be updated.", ((ResponseStatusException) thrownEx).getReason());
+
+        ServiceOfferingExtension se = serviceOfferingExtensionRepository.findById("ServiceOffering:new").orElse(null);
+        assertNull(se);
     }
 
     @Test
@@ -454,9 +500,9 @@ class GXFSCatalogRestServiceTest {
         doThrow(getWebClientResponseException()).when(keycloakAuthService).webCallAuthenticated(eq(HttpMethod.GET),
                 startsWith(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE&hashes="), any(), any());
 
+        PageRequest request = PageRequest.of(0, 9, Sort.by("creationDate").descending());
         assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService
-            .getAllPublicServiceOfferings(
-                PageRequest.of(0, 9, Sort.by("creationDate").descending())));
+            .getAllPublicServiceOfferings(request));
     }
 
     @Test
@@ -482,9 +528,9 @@ class GXFSCatalogRestServiceTest {
         doThrow(getWebClientResponseException()).when(keycloakAuthService).webCallAuthenticated(eq(HttpMethod.GET),
             startsWith(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes="), any(), any());
 
+        PageRequest request = PageRequest.of(0, 9, Sort.by("creationDate").descending());
         assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService
-            .getOrganizationServiceOfferings("10", ServiceOfferingState.IN_DRAFT,
-                PageRequest.of(0, 9, Sort.by("creationDate").descending())));
+            .getOrganizationServiceOfferings("10", ServiceOfferingState.IN_DRAFT, request));
     }
 
     @Test
@@ -673,8 +719,9 @@ class GXFSCatalogRestServiceTest {
         doThrow(getWebClientResponseException()).when(keycloakAuthService).webCallAuthenticated(eq(HttpMethod.GET),
             startsWith(gxfscatalogSelfdescriptionsUri), any(), any());
 
+        String id = cooperationOffering.getId();
         assertThrows(ResponseStatusException.class,
-            () -> gxfsCatalogRestService.getServiceOfferingById(cooperationOffering.getId()));
+            () -> gxfsCatalogRestService.getServiceOfferingById(id));
     }
 
     private WebClientResponseException getWebClientResponseException(){
