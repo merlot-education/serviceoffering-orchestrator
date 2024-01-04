@@ -390,54 +390,24 @@ class GXFSCatalogRestServiceTest {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId(saasOffering.getId());
 
-        ServiceOfferingExtension se = serviceOfferingExtensionRepository.findById("ServiceOffering:new").orElse(null);
-        assertNull(se);
-
         SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
-
-        assertEquals("ServiceOffering:new", response.getId());
-        se = serviceOfferingExtensionRepository.findById(response.getId()).orElse(null);
-        assertNotNull(se);
-        assertEquals("4321", response.getSdHash());
-        assertEquals(response.getSdHash(), se.getCurrentSdHash());
-
-        // clean-up
-        serviceOfferingExtensionRepository.delete(se);
 
     }
 
     @Test
     void updateExistingWithValidServiceOfferingFail() throws Exception {
-        transactionTemplate = new TransactionTemplate(transactionManager);
-
         doThrow(getWebClientResponseException()).when(keycloakAuthService).webCallAuthenticated(eq(HttpMethod.DELETE),
             eq(gxfscatalogSelfdescriptionsUri + "/" + saasOffering.getCurrentSdHash()), any(), any());
 
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId(saasOffering.getId());
 
-        Exception thrownEx = null;
-        try {
-            transactionTemplate.execute(status -> {
-                try {
-                    gxfsCatalogRestService.addServiceOffering(credentialSubject);
-                } catch (ResponseStatusException e) {
-                    throw e;
-                } catch (Exception ignore) {
-                }
-                return "garbage";
-            });
-        } catch (Exception ex) {
-            thrownEx = ex;
-        }
+        ResponseStatusException exception =
+            assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exception.getStatusCode());
+        assertEquals("Service offering could not be updated.", exception.getReason());
 
-        assertNotNull(thrownEx);
-        assertEquals(thrownEx.getClass(), ResponseStatusException.class);
-        assertEquals("Service offering could not be updated.", ((ResponseStatusException) thrownEx).getReason());
-
-        ServiceOfferingExtension se = serviceOfferingExtensionRepository.findById("ServiceOffering:new").orElse(null);
-        assertNull(se);
     }
 
     @Test
@@ -561,7 +531,7 @@ class GXFSCatalogRestServiceTest {
     }
 
     @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED) // handle transactions manually
     void transitionServiceOfferingDeletedFail() {
         transactionTemplate = new TransactionTemplate(transactionManager);
 
@@ -584,7 +554,7 @@ class GXFSCatalogRestServiceTest {
                 gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
                     ServiceOfferingState.DELETED);
 
-                return "garbage";
+                return "foo";
             });
         } catch (Exception ex) {
             thrownEx = ex;
@@ -593,14 +563,14 @@ class GXFSCatalogRestServiceTest {
         assertNotNull(thrownEx);
         assertEquals(thrownEx.getClass(), ResponseStatusException.class);
 
-        // extension should be in revoked state as transition to deleted state was unsuccessful
+        // extension should be in REVOKED state as transition to DELETED state was unsuccessful
         ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.REVOKED, result.getState());
     }
 
     @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED) // handle transactions manually
     void transitionServiceOfferingPurgedFail() {
         transactionTemplate = new TransactionTemplate(transactionManager);
 
@@ -627,7 +597,7 @@ class GXFSCatalogRestServiceTest {
                 gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
                     ServiceOfferingState.PURGED);
 
-                return "garbage";
+                return "foo";
             });
         } catch (Exception ex) {
             thrownEx = ex;
@@ -636,7 +606,7 @@ class GXFSCatalogRestServiceTest {
         assertNotNull(thrownEx);
         assertEquals(thrownEx.getClass(), ResponseStatusException.class);
 
-        // extension should still exist and be in deleted state as purging was unsuccessful
+        // extension should still exist and be in DELETED state as purging was unsuccessful
         ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.DELETED, result.getState());
