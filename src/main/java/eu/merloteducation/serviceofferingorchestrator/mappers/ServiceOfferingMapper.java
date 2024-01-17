@@ -6,7 +6,7 @@ import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionMeta;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.participants.MerlotOrganizationCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.ServiceOfferingCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -14,7 +14,7 @@ import org.mapstruct.Named;
 
 import java.time.OffsetDateTime;
 
-@Mapper(componentModel = "spring", imports = { ServiceOfferingCredentialSubject.class, MerlotOrganizationCredentialSubject.class })
+@Mapper(componentModel = "spring", imports = { MerlotServiceOfferingCredentialSubject.class, MerlotOrganizationCredentialSubject.class })
 public interface ServiceOfferingMapper {
 
     default String map(OffsetDateTime offsetDateTime) {
@@ -36,7 +36,7 @@ public interface ServiceOfferingMapper {
     @Mapping(target = "id", source = "selfDescriptionMeta.content.verifiableCredential.credentialSubject.id")
     @Mapping(target = "type", source = "selfDescriptionMeta.content.verifiableCredential.credentialSubject.type")
     @Mapping(target = "state", source = "extension.state")
-    @Mapping(target = "name", expression = "java(((ServiceOfferingCredentialSubject) selfDescriptionMeta.getContent().getVerifiableCredential().getCredentialSubject()).getName().getValue())")
+    @Mapping(target = "name", expression = "java(((MerlotServiceOfferingCredentialSubject) selfDescriptionMeta.getContent().getVerifiableCredential().getCredentialSubject()).getName().getValue())")
     @Mapping(target = "creationDate", source = "extension.creationDate")
     @Mapping(target = "providerLegalName", expression = "java(((MerlotOrganizationCredentialSubject) providerDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject()).getLegalName().getValue())")
     ServiceOfferingBasicDto selfDescriptionMetaToServiceOfferingBasicDto(SelfDescriptionMeta selfDescriptionMeta,
@@ -47,8 +47,6 @@ public interface ServiceOfferingMapper {
     @Mapping(target = "metadata.creationDate", source = "extension.creationDate")
     @Mapping(target = "metadata.modifiedDate", source = "selfDescriptionMeta.statusDatetime")
     @Mapping(target = "selfDescription", source = "selfDescriptionMeta.content")
-    @Mapping(target = "providerDetails.providerId",
-            source = "providerDetails.selfDescription.verifiableCredential.credentialSubject.id")
     @Mapping(target = "providerDetails", source = "providerDetails", qualifiedByName = "providerDetailsDtoMap")
     ServiceOfferingDto selfDescriptionMetaToServiceOfferingDto(SelfDescriptionMeta selfDescriptionMeta,
                                                                ServiceOfferingExtension extension,

@@ -13,7 +13,7 @@ import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.GXFSCatalogList
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionItem;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.participants.MerlotOrganizationCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.ServiceOfferingCredentialSubject;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
@@ -284,14 +284,14 @@ public class GXFSCatalogRestService {
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
             throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
-        ServiceOfferingCredentialSubject subject = (ServiceOfferingCredentialSubject) selfDescriptionsResponse.getItems()
+        MerlotServiceOfferingCredentialSubject subject = (MerlotServiceOfferingCredentialSubject) selfDescriptionsResponse.getItems()
                 .get(0).getMeta().getContent().getVerifiableCredential().getCredentialSubject();
         subject.setId(OFFERING_START + "TBR");
 
         return addServiceOffering(subject);
     }
 
-    private void patchTermsAndConditions(ServiceOfferingCredentialSubject credentialSubject) {
+    private void patchTermsAndConditions(MerlotServiceOfferingCredentialSubject credentialSubject) {
         TermsAndConditions providerTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
                 .getOrganizationDetails(credentialSubject.getOfferedBy().getId())
                 .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
@@ -327,7 +327,7 @@ public class GXFSCatalogRestService {
      * @throws Exception mapping exception
      */
     @Transactional
-    public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
+    public SelfDescriptionsCreateResponse addServiceOffering(MerlotServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
         ServiceOfferingExtension extension;
         String previousSdHash = null;
