@@ -1,12 +1,12 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.serviceofferings.CooperationCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.serviceofferings.SaaSCredentialSubject;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionMeta;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.CooperationCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
@@ -150,7 +150,6 @@ public class ServiceOfferingsController {
      *
      * @param serviceofferingId id of the offering to transition
      * @param status target offering state
-     * @throws Exception exception during transitioning
      */
     @PatchMapping("/serviceoffering/status/{soId}/{status}")
     @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuer(authentication, #serviceofferingId)")
@@ -163,7 +162,7 @@ public class ServiceOfferingsController {
      * GET request for retrieving all available MERLOT shapes for the catalog.
      *
      * @return Map of shape types to shape files
-     * @throws Exception exception during shape fetching
+     * @throws JsonProcessingException exception during shape fetching
      */
     @GetMapping("/shapes/getAvailableShapesCategorized")
     public Map<String, List<String>> getAvailableShapes() throws JsonProcessingException {
