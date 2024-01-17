@@ -11,7 +11,7 @@ import eu.merloteducation.modelslib.gxfscatalog.datatypes.StringTypeValue;
 import eu.merloteducation.modelslib.gxfscatalog.datatypes.TermsAndConditions;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.GXFSCatalogListResponse;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionItem;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionMeta;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.participants.MerlotOrganizationCredentialSubject;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
@@ -261,7 +261,7 @@ public class GXFSCatalogRestService {
      * @return creation response from catalog
      * @throws Exception communication or mapping exception
      */
-    public SelfDescriptionsCreateResponse regenerateOffering(String id) throws Exception {
+    public SelfDescriptionMeta regenerateOffering(String id) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -327,7 +327,7 @@ public class GXFSCatalogRestService {
      * @throws Exception mapping exception
      */
     @Transactional
-    public SelfDescriptionsCreateResponse addServiceOffering(MerlotServiceOfferingCredentialSubject credentialSubject) throws Exception {
+    public SelfDescriptionMeta addServiceOffering(MerlotServiceOfferingCredentialSubject credentialSubject) throws Exception {
 
         ServiceOfferingExtension extension;
         String previousSdHash = null;
@@ -365,7 +365,7 @@ public class GXFSCatalogRestService {
 
         patchTermsAndConditions(credentialSubject);
 
-        SelfDescriptionsCreateResponse selfDescriptionsResponse = null;
+        SelfDescriptionMeta selfDescriptionsResponse = null;
         try {
             selfDescriptionsResponse = gxfsCatalogService.addServiceOffering(credentialSubject);
         } catch (WebClientResponseException e) {

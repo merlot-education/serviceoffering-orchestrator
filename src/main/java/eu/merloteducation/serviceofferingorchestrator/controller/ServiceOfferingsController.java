@@ -3,7 +3,7 @@ package eu.merloteducation.serviceofferingorchestrator.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
+import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionMeta;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.CooperationCredentialSubject;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
 import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.SaaSCredentialSubject;
@@ -101,7 +101,7 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionsCreateResponse addServiceOfferingSaas(@Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
+    public SelfDescriptionMeta addServiceOfferingSaas(@Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
@@ -114,7 +114,7 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionsCreateResponse addServiceOfferingDataDelivery(@Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
+    public SelfDescriptionMeta addServiceOfferingDataDelivery(@Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
@@ -127,7 +127,7 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionsCreateResponse addServiceOfferingCooperation(@Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
+    public SelfDescriptionMeta addServiceOfferingCooperation(@Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
         return gxfsCatalogRestService.addServiceOffering(credentialSubject);
     }
 
@@ -140,7 +140,7 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/regenerate/{soId}")
     @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuer(authentication, #serviceofferingId)")
-    public SelfDescriptionsCreateResponse regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId)
+    public SelfDescriptionMeta regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId)
             throws Exception {
         return gxfsCatalogRestService.regenerateOffering(serviceofferingId);
     }
