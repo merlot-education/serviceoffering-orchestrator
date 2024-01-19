@@ -66,23 +66,36 @@ public class GXFSCatalogRestService {
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
 
-    private void deleteOffering(ServiceOfferingExtension extension) {
+    @Transactional(rollbackOn = {ResponseStatusException.class})
+    private void deleteOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
         extension.delete();
-        gxfsCatalogService.revokeSelfDescriptionByHash(extension.getCurrentSdHash());
+        serviceOfferingExtensionRepository.save(extension);
+
+        try {
+            gxfsCatalogService.revokeSelfDescriptionByHash(extension.getCurrentSdHash());
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
     }
 
-    private void purgeOffering(ServiceOfferingExtension extension) {
+    @Transactional(rollbackOn = {ResponseStatusException.class})
+    private void purgeOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
         if (extension.getState() != ServiceOfferingState.DELETED) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
         }
-        gxfsCatalogService.deleteSelfDescriptionByHash(extension.getCurrentSdHash());
         serviceOfferingExtensionRepository.delete(extension);
+        deleteServiceOfferingFromCatalog(extension.getCurrentSdHash());
     }
 
     private GXFSCatalogListResponse<SelfDescriptionItem> getSelfDescriptionByOfferingExtension
-            (ServiceOfferingExtension extension) {
-        // create a mapper to map the response to the SelfDescriptionResponse class
-        return gxfsCatalogService.getSelfDescriptionsByIds(new String[]{extension.getId()});
+            (ServiceOfferingExtension extension) throws JsonProcessingException {
+        GXFSCatalogListResponse<SelfDescriptionItem> response = null;
+        try {
+            response = gxfsCatalogService.getSelfDescriptionsByIds(new String[]{extension.getId()});
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
+        return response;
     }
 
     private void handleCatalogError(WebClientResponseException e)
@@ -115,11 +128,15 @@ public class GXFSCatalogRestService {
                     case DELETED, ARCHIVED -> deleteOffering(extension);
                     case PURGED -> purgeOffering(extension);
                 }
-                if (targetState != ServiceOfferingState.PURGED) {
-                    serviceOfferingExtensionRepository.save(extension);
-                }
+            } catch (ResponseStatusException ex) {
+                throw ex;
             } catch (Exception e) {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
+            }
+            if (targetState != ServiceOfferingState.PURGED
+                && targetState != ServiceOfferingState.DELETED
+                && targetState != ServiceOfferingState.ARCHIVED) {
+                serviceOfferingExtensionRepository.save(extension);
             }
         }
 
@@ -132,7 +149,7 @@ public class GXFSCatalogRestService {
      * @return found offering
      * @throws Exception mapping exception
      */
-    public ServiceOfferingDto getServiceOfferingById(String id) throws Exception {
+    public ServiceOfferingDto getServiceOfferingById(String id) throws JsonProcessingException {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -144,7 +161,7 @@ public class GXFSCatalogRestService {
 
         GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse =
                 getSelfDescriptionByOfferingExtension(extension);
-        // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
+        // if we do not get exactly one item or the id doesn't start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
@@ -168,12 +185,16 @@ public class GXFSCatalogRestService {
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
+
         String[] extensionHashes = extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                 .collect(Collectors.toSet()).toArray(String[]::new);
 
-        // create a mapper to map the response to the SelfDescriptionResponse class
-        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse =
-                gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
+        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse = null;
+        try {
+            selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
 
         if (extensionHashes.length == 0) {
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
@@ -228,9 +249,12 @@ public class GXFSCatalogRestService {
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-        // create a mapper to map the response to the SelfDescriptionResponse class
-        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse =
-                gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
+        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse = null;
+        try {
+            selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
 
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
@@ -326,9 +350,8 @@ public class GXFSCatalogRestService {
      * @return creation response of the GXFS catalog
      * @throws Exception mapping exception
      */
-    @Transactional
+    @Transactional(rollbackOn = {ResponseStatusException.class})
     public SelfDescriptionMeta addServiceOffering(MerlotServiceOfferingCredentialSubject credentialSubject) throws Exception {
-
         ServiceOfferingExtension extension;
         String previousSdHash = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
@@ -367,22 +390,54 @@ public class GXFSCatalogRestService {
 
         SelfDescriptionMeta selfDescriptionsResponse = null;
         try {
-            selfDescriptionsResponse = gxfsCatalogService.addServiceOffering(credentialSubject);
+            selfDescriptionsResponse = addServiceOfferingToCatalog(credentialSubject);
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         }
 
-        // delete previous entry if it exists
-        if (previousSdHash != null) {
-            gxfsCatalogService.deleteSelfDescriptionByHash(previousSdHash);
-        }
-
-        // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self description
+        // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self-description
         extension.setId(selfDescriptionsResponse.getId());
         extension.setIssuer(selfDescriptionsResponse.getIssuer());
         extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
-        serviceOfferingExtensionRepository.save(extension);
+        try {
+            serviceOfferingExtensionRepository.save(extension);
+        } catch (Exception e) {
+            // if saving fails, "rollback" the service-offering creation in the catalog
+            deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be saved.");
+        }
+
+        // delete previous entry if it exists
+        if (previousSdHash != null) {
+            try {
+                deleteServiceOfferingFromCatalog(previousSdHash);
+            } catch (ResponseStatusException ex) {
+                //if deleting the previous entry fails, "rollback" the service-offering creation in the catalog
+                deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
+                throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be updated.");
+            }
+        }
 
         return selfDescriptionsResponse;
+    }
+
+    private void deleteServiceOfferingFromCatalog(String sdHash) throws JsonProcessingException {
+        try {
+            gxfsCatalogService.deleteSelfDescriptionByHash(sdHash);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
+    }
+
+    private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject) throws JsonProcessingException {
+        SelfDescriptionMeta response = null;
+        try {
+            response = gxfsCatalogService.addServiceOffering(credentialSubject);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Unknown error");
+        }
+        return response;
     }
 }
