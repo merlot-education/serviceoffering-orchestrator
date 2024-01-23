@@ -114,10 +114,10 @@ class ServiceOfferingsControllerTest {
         SelfDescriptionMeta selfDescriptionsCreateResponse = new SelfDescriptionMeta();
 
         lenient().when(gxfsCatalogRestService
-                .getAllPublicServiceOfferings(any())).thenReturn(new PageImpl<>(List.of(serviceOfferingBasicDto)));
+                .getAllPublicServiceOfferings(any())).thenReturn(null);
 
         lenient().when(gxfsCatalogRestService
-                .getOrganizationServiceOfferings(any(), any(), any())).thenReturn(new PageImpl<>(List.of(serviceOfferingBasicDto)));
+                .getOrganizationServiceOfferings(any(), any(), any())).thenReturn(null);
 
         lenient().when(gxfsCatalogRestService
                 .getServiceOfferingById(any())).thenReturn(serviceOfferingDto);
