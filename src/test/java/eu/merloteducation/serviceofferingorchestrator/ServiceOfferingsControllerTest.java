@@ -24,7 +24,7 @@ import eu.merloteducation.serviceofferingorchestrator.controller.ServiceOffering
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import eu.merloteducation.serviceofferingorchestrator.security.WebSecurityConfig;
-import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
+import eu.merloteducation.serviceofferingorchestrator.service.ServiceOfferingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +32,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -55,7 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ServiceOfferingsControllerTest {
 
     @MockBean
-    private GXFSCatalogRestService gxfsCatalogRestService;
+    private ServiceOfferingsService serviceOfferingsService;
 
     @MockBean
     private GxfsWizardApiService gxfsWizardApiService;
@@ -113,28 +112,28 @@ class ServiceOfferingsControllerTest {
         serviceOfferingBasicDto.setName("bla");
         SelfDescriptionMeta selfDescriptionsCreateResponse = new SelfDescriptionMeta();
 
-        lenient().when(gxfsCatalogRestService
+        lenient().when(serviceOfferingsService
                 .getAllPublicServiceOfferings(any())).thenReturn(null);
 
-        lenient().when(gxfsCatalogRestService
+        lenient().when(serviceOfferingsService
                 .getOrganizationServiceOfferings(any(), any(), any())).thenReturn(null);
 
-        lenient().when(gxfsCatalogRestService
+        lenient().when(serviceOfferingsService
                 .getServiceOfferingById(any())).thenReturn(serviceOfferingDto);
 
-        lenient().when(gxfsCatalogRestService
+        lenient().when(serviceOfferingsService
                 .getServiceOfferingById(eq("notreleased"))).thenReturn(serviceOfferingNotReleasedDto);
 
-        lenient().when(gxfsCatalogRestService
+        lenient().when(serviceOfferingsService
                 .getServiceOfferingById(eq("garbage"))).thenThrow(NoSuchElementException.class);
 
-        lenient().when(gxfsCatalogRestService
+        lenient().when(serviceOfferingsService
                 .addServiceOffering(any())).thenReturn(selfDescriptionsCreateResponse);
 
-        lenient().when(gxfsCatalogRestService
+        lenient().when(serviceOfferingsService
                 .addServiceOffering(any())).thenReturn(selfDescriptionsCreateResponse);
 
-        lenient().when(gxfsCatalogRestService
+        lenient().when(serviceOfferingsService
                 .regenerateOffering(any())).thenReturn(selfDescriptionsCreateResponse);
 
         lenient().when(gxfsWizardApiService.getServiceOfferingShapesByEcosystem(eq("merlot"))).thenReturn(Collections.emptyList());

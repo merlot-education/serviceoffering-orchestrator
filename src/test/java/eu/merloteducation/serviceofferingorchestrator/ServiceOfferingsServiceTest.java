@@ -61,7 +61,7 @@ import static org.mockito.Mockito.lenient;
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
 @EnableConfigurationProperties
-class GXFSCatalogRestServiceTest {
+class ServiceOfferingsServiceTest {
 
     @Mock
     private OrganizationOrchestratorClient organizationOrchestratorClient;
@@ -84,7 +84,7 @@ class GXFSCatalogRestServiceTest {
     @Value("${gxfscatalog.selfdescriptions-uri}")
     private String gxfscatalogSelfdescriptionsUri;
     @InjectMocks
-    private GXFSCatalogRestService gxfsCatalogRestService;
+    private ServiceOfferingsService serviceOfferingsService;
 
     @Autowired
     private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
@@ -166,11 +166,11 @@ class GXFSCatalogRestServiceTest {
     @BeforeEach
     public void setUp() throws JsonProcessingException, CredentialSignatureException, CredentialPresentationException {
         ObjectMapper mapper = new ObjectMapper();
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingMapper", serviceOfferingMapper);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "objectMapper", objectMapper);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfscatalogSelfdescriptionsUri", gxfscatalogSelfdescriptionsUri);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfsCatalogService", gxfsCatalogService);
+        ReflectionTestUtils.setField(serviceOfferingsService, "serviceOfferingMapper", serviceOfferingMapper);
+        ReflectionTestUtils.setField(serviceOfferingsService, "objectMapper", objectMapper);
+        ReflectionTestUtils.setField(serviceOfferingsService, "gxfscatalogSelfdescriptionsUri", gxfscatalogSelfdescriptionsUri);
+        ReflectionTestUtils.setField(serviceOfferingsService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
+        ReflectionTestUtils.setField(serviceOfferingsService, "gxfsCatalogService", gxfsCatalogService);
 
         saasOffering = new ServiceOfferingExtension();
         saasOffering.setIssuer("Participant:10");
@@ -364,7 +364,7 @@ class GXFSCatalogRestServiceTest {
     void addNewValidServiceOffering() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
 
-        SelfDescriptionMeta response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
     }
 
@@ -375,7 +375,7 @@ class GXFSCatalogRestServiceTest {
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:notnc"));
 
         ResponseStatusException exception =
-                assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+                assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
     }
 
@@ -387,7 +387,7 @@ class GXFSCatalogRestServiceTest {
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:1234"));
         credentialSubject.setTermsAndConditions(null);
 
-        SelfDescriptionMeta response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
         // TODO assert that TnC are actually set (landing in mock catalog currently which discards it)
     }
@@ -397,7 +397,7 @@ class GXFSCatalogRestServiceTest {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId(saasOffering.getId());
 
-        SelfDescriptionMeta response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
 
     }
@@ -411,7 +411,7 @@ class GXFSCatalogRestServiceTest {
         credentialSubject.setId(saasOffering.getId());
 
         ResponseStatusException exception =
-            assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exception.getStatusCode());
         assertEquals("Service offering could not be updated.", exception.getReason());
 
@@ -423,7 +423,7 @@ class GXFSCatalogRestServiceTest {
         credentialSubject.setId("ServiceOffering:exists");
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:20"));
 
-        assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
     }
 
     @Test
@@ -431,17 +431,17 @@ class GXFSCatalogRestServiceTest {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId("ServiceOffering:exists2");
 
-        assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
     }
 
     @Test
     @Transactional
     void regenerateExistingServiceOfferingValid() throws Exception {
         String offeringId = saasOffering.getId();
-        gxfsCatalogRestService.transitionServiceOfferingExtension(offeringId,
+        serviceOfferingsService.transitionServiceOfferingExtension(offeringId,
                 ServiceOfferingState.RELEASED);
 
-        SelfDescriptionMeta response = gxfsCatalogRestService.regenerateOffering(offeringId);
+        SelfDescriptionMeta response = serviceOfferingsService.regenerateOffering(offeringId);
         assertNotNull(response.getId());
     }
 
@@ -451,7 +451,7 @@ class GXFSCatalogRestServiceTest {
         String offeringId = saasOffering.getId();
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.regenerateOffering(offeringId));
+                () -> serviceOfferingsService.regenerateOffering(offeringId));
         assertEquals(HttpStatus.PRECONDITION_FAILED, exception.getStatusCode());
     }
 
@@ -459,13 +459,13 @@ class GXFSCatalogRestServiceTest {
     @Transactional
     void regenerateExistingServiceOfferingNonExistent() {
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.regenerateOffering("garbage"));
+                () -> serviceOfferingsService.regenerateOffering("garbage"));
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     @Test
     void getAllPublicOfferings() throws Exception {
-        Page<ServiceOfferingBasicDto> offerings = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> offerings = serviceOfferingsService
                 .getAllPublicServiceOfferings(
                         PageRequest.of(0, 9, Sort.by("creationDate").descending()));
 
@@ -477,13 +477,13 @@ class GXFSCatalogRestServiceTest {
         doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByHashes(any());
 
         PageRequest request = PageRequest.of(0, 9, Sort.by("creationDate").descending());
-        assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService
             .getAllPublicServiceOfferings(request));
     }
 
     @Test
     void getOrganizationOfferingsNoState() throws Exception {
-        Page<ServiceOfferingBasicDto> offerings = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> offerings = serviceOfferingsService
                 .getOrganizationServiceOfferings("10", null,
                         PageRequest.of(0, 9, Sort.by("creationDate").descending()));
 
@@ -492,7 +492,7 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getOrganizationOfferingsByState() throws Exception {
-        Page<ServiceOfferingBasicDto> offerings = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> offerings = serviceOfferingsService
                 .getOrganizationServiceOfferings("10", ServiceOfferingState.IN_DRAFT,
                         PageRequest.of(0, 9, Sort.by("creationDate").descending()));
 
@@ -504,32 +504,32 @@ class GXFSCatalogRestServiceTest {
         doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByHashes(any());
 
         PageRequest request = PageRequest.of(0, 9, Sort.by("creationDate").descending());
-        assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService
             .getOrganizationServiceOfferings("10", ServiceOfferingState.IN_DRAFT, request));
     }
 
     @Test
     @Transactional
     void transitionServiceOfferingValid() {
-        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+        serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.RELEASED);
         ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.RELEASED, result.getState());
 
-        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+        serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.REVOKED);
         result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.REVOKED, result.getState());
 
-        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+        serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.DELETED);
         result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.DELETED, result.getState());
 
-        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+        serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.PURGED);
         result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNull(result);
@@ -545,9 +545,9 @@ class GXFSCatalogRestServiceTest {
         transactionTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(@NotNull TransactionStatus status) {
-                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                     ServiceOfferingState.RELEASED);
-                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                     ServiceOfferingState.REVOKED);
             }
         });
@@ -555,7 +555,7 @@ class GXFSCatalogRestServiceTest {
         Exception thrownEx = null;
         try {
             transactionTemplate.execute(status -> {
-                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                     ServiceOfferingState.DELETED);
 
                 return "foo";
@@ -584,11 +584,11 @@ class GXFSCatalogRestServiceTest {
         transactionTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(@NotNull TransactionStatus status) {
-                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                     ServiceOfferingState.RELEASED);
-                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                     ServiceOfferingState.REVOKED);
-                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                     ServiceOfferingState.DELETED);
             }
         });
@@ -598,7 +598,7 @@ class GXFSCatalogRestServiceTest {
         try {
             transactionTemplate.execute(status -> {
 
-                gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                     ServiceOfferingState.PURGED);
 
                 return "foo";
@@ -622,7 +622,7 @@ class GXFSCatalogRestServiceTest {
         Set<String> representedOrgaIds = new HashSet<>();
         representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.transitionServiceOfferingExtension("garbage",
+                () -> serviceOfferingsService.transitionServiceOfferingExtension("garbage",
                         ServiceOfferingState.RELEASED));
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
@@ -632,14 +632,14 @@ class GXFSCatalogRestServiceTest {
     void transitionServiceOfferingInvalid() {
         String offeringId = saasOffering.getId();
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(offeringId,
+                () -> serviceOfferingsService.transitionServiceOfferingExtension(offeringId,
                         ServiceOfferingState.REVOKED));
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
     }
 
     @Test
     void getServiceOfferingDetailsSaasExistent() throws Exception {
-        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(saasOffering.getId());
+        ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(saasOffering.getId());
         assertNotNull(model);
 
         assertInstanceOf(SaaSCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
@@ -658,7 +658,7 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsDataDeliveryExistent() throws Exception {
-        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(dateDeliveryOffering.getId());
+        ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(dateDeliveryOffering.getId());
         assertNotNull(model);
         assertInstanceOf(DataDeliveryCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
                 .getCredentialSubject());
@@ -673,7 +673,7 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsCooperationExistent() throws Exception {
-        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(cooperationOffering.getId());
+        ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(cooperationOffering.getId());
         assertNotNull(model);
         assertInstanceOf(CooperationCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
                 .getCredentialSubject());
@@ -685,7 +685,7 @@ class GXFSCatalogRestServiceTest {
     @Test
     void getServiceOfferingDetailsNonExistent() {
         NoSuchElementException exception = assertThrows(NoSuchElementException.class,
-                () -> gxfsCatalogRestService.getServiceOfferingById("garbage"));
+                () -> serviceOfferingsService.getServiceOfferingById("garbage"));
     }
 
     @Test
@@ -694,7 +694,7 @@ class GXFSCatalogRestServiceTest {
 
         String id = cooperationOffering.getId();
         assertThrows(ResponseStatusException.class,
-            () -> gxfsCatalogRestService.getServiceOfferingById(id));
+            () -> serviceOfferingsService.getServiceOfferingById(id));
     }
 
     private WebClientResponseException getWebClientResponseException(){

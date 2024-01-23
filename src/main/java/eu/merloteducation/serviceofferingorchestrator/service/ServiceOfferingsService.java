@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 import static org.springframework.http.HttpStatus.*;
 
 @Service
-public class GXFSCatalogRestService {
+public class ServiceOfferingsService {
 
     @Autowired
     private OrganizationOrchestratorClient organizationOrchestratorClient;
@@ -61,7 +61,7 @@ public class GXFSCatalogRestService {
 
     @Value("${gxfscatalog.selfdescriptions-uri}")
     private String gxfscatalogSelfdescriptionsUri;
-    private final Logger logger = LoggerFactory.getLogger(GXFSCatalogRestService.class);
+    private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
     private static final String PARTICIPANT_START = "Participant:";
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";

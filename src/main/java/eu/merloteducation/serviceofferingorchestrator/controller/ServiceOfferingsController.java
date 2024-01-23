@@ -8,7 +8,7 @@ import eu.merloteducation.gxfscataloglibrary.service.GxfsWizardApiService;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
-import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
+import eu.merloteducation.serviceofferingorchestrator.service.ServiceOfferingsService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class ServiceOfferingsController {
 
     @Autowired
-    private GXFSCatalogRestService gxfsCatalogRestService;
+    private ServiceOfferingsService serviceOfferingsService;
 
     @Autowired
     private GxfsWizardApiService gxfsWizardApiService;
@@ -47,7 +47,7 @@ public class ServiceOfferingsController {
     public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
                                                                       @RequestParam(value = "size", defaultValue = "9") @Max(15) int size) throws Exception {
 
-        return gxfsCatalogRestService
+        return serviceOfferingsService
                 .getAllPublicServiceOfferings(
                         PageRequest.of(page, size, Sort.by("creationDate").descending()));
     }
@@ -69,7 +69,7 @@ public class ServiceOfferingsController {
                                                                            @RequestParam(value = "size", defaultValue = "9") @Max(15) int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
                                                                            @PathVariable(value = "orgaId") String orgaId) throws Exception {
-        return gxfsCatalogRestService
+        return serviceOfferingsService
                 .getOrganizationServiceOfferings(
                         orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()));
     }
@@ -85,7 +85,7 @@ public class ServiceOfferingsController {
     @PreAuthorize("@offeringAuthorityChecker.canAccessOffering(authentication, #serviceofferingId)")
     public ServiceOfferingDto getServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId) throws Exception {
         try {
-            return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
+            return serviceOfferingsService.getServiceOfferingById(serviceofferingId);
         } catch (NoSuchElementException e) {
             throw new ResponseStatusException(NOT_FOUND, e.getMessage());
         }
@@ -101,7 +101,7 @@ public class ServiceOfferingsController {
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
     public SelfDescriptionMeta addServiceOfferingSaas(@Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
-        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        return serviceOfferingsService.addServiceOffering(credentialSubject);
     }
 
     /**
@@ -114,7 +114,7 @@ public class ServiceOfferingsController {
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
     public SelfDescriptionMeta addServiceOfferingDataDelivery(@Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
-        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        return serviceOfferingsService.addServiceOffering(credentialSubject);
     }
 
     /**
@@ -127,7 +127,7 @@ public class ServiceOfferingsController {
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
     public SelfDescriptionMeta addServiceOfferingCooperation(@Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
-        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        return serviceOfferingsService.addServiceOffering(credentialSubject);
     }
 
     /**
@@ -141,7 +141,7 @@ public class ServiceOfferingsController {
     @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuer(authentication, #serviceofferingId)")
     public SelfDescriptionMeta regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId)
             throws Exception {
-        return gxfsCatalogRestService.regenerateOffering(serviceofferingId);
+        return serviceOfferingsService.regenerateOffering(serviceofferingId);
     }
 
     /**
@@ -154,7 +154,7 @@ public class ServiceOfferingsController {
     @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuer(authentication, #serviceofferingId)")
     public void patchStatusServiceOffering(@PathVariable(value = "soId") String serviceofferingId,
                                            @PathVariable(value = "status") ServiceOfferingState status) {
-        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, status);
+        serviceOfferingsService.transitionServiceOfferingExtension(serviceofferingId, status);
     }
 
     /**
