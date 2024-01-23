@@ -3,13 +3,13 @@ package eu.merloteducation.serviceofferingorchestrator.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import eu.merloteducation.gxfscataloglibrary.models.datatypes.StringTypeValue;
-import eu.merloteducation.gxfscataloglibrary.models.datatypes.TermsAndConditions;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.GXFSCatalogListResponse;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.participants.MerlotOrganizationCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.serviceofferings.MerlotServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.StringTypeValue;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.TermsAndConditions;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotOrganizationCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
@@ -178,9 +178,9 @@ public class GXFSCatalogRestService {
      *
      * @param pageable  paging parameters
      * @return page of public offerings
-     * @throws Exception mapping exception
+     * @throws JsonProcessingException mapping exception
      */
-    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
+    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable) throws JsonProcessingException {
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
@@ -229,9 +229,10 @@ public class GXFSCatalogRestService {
      * @param state     optional offering state for filtering
      * @param pageable  paging parameters
      * @return page of organization offerings
-     * @throws Exception mapping exception
+     * @throws JsonProcessingException mapping exception
      */
-    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable) throws Exception {
+    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable)
+            throws JsonProcessingException {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository

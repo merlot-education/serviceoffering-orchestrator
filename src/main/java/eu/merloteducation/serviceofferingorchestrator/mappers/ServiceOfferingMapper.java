@@ -1,8 +1,8 @@
 package eu.merloteducation.serviceofferingorchestrator.mappers;
 
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.participants.MerlotOrganizationCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.serviceofferings.MerlotServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotOrganizationCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ProviderDetailsDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;

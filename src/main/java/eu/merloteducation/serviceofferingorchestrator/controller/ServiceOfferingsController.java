@@ -1,15 +1,14 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.serviceofferings.CooperationCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.serviceofferings.SaaSCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.CooperationCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.DataDeliveryCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.SaaSCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.service.GxfsWizardApiService;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
-import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +33,7 @@ public class ServiceOfferingsController {
     private GXFSCatalogRestService gxfsCatalogRestService;
 
     @Autowired
-    private GXFSWizardRestService gxfsWizardRestService;
+    private GxfsWizardApiService gxfsWizardApiService;
 
     /**
      * GET request for getting a page of all public service offerings.
@@ -162,11 +161,10 @@ public class ServiceOfferingsController {
      * GET request for retrieving all available MERLOT shapes for the catalog.
      *
      * @return Map of shape types to shape files
-     * @throws JsonProcessingException exception during shape fetching
      */
     @GetMapping("/shapes/getAvailableShapesCategorized")
-    public Map<String, List<String>> getAvailableShapes() throws JsonProcessingException {
-        return gxfsWizardRestService.getServiceOfferingShapes();
+    public Map<String, List<String>> getAvailableShapes() {
+        return Map.of("Service", gxfsWizardApiService.getServiceOfferingShapesByEcosystem("merlot"));
     }
 
     /**
@@ -176,7 +174,7 @@ public class ServiceOfferingsController {
      */
     @GetMapping("/shapes/getJSON")
     public String getShapeJson(@RequestParam String name) {
-        return gxfsWizardRestService.getShape(name);
+        return gxfsWizardApiService.getShapeByName(name);
     }
 
 }

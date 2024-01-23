@@ -4,25 +4,27 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import eu.merloteducation.authorizationlibrary.authorization.*;
 import eu.merloteducation.authorizationlibrary.config.InterceptorConfig;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescription;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionVerifiableCredential;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.*;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.AllowedUserCount;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.DataExchangeCount;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.Runtime;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.CooperationCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.DataDeliveryCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.SaaSCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.service.GxfsWizardApiService;
 import eu.merloteducation.serviceofferingorchestrator.auth.OfferingAuthorityChecker;
 import eu.merloteducation.modelslib.api.serviceoffering.OfferingMetaDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
-import eu.merloteducation.modelslib.gxfscatalog.datatypes.*;
-import eu.merloteducation.modelslib.gxfscatalog.datatypes.Runtime;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescription;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionVerifiableCredential;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.CooperationCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.SaaSCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.controller.ServiceOfferingsController;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import eu.merloteducation.serviceofferingorchestrator.security.WebSecurityConfig;
 import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
-import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,7 +58,7 @@ class ServiceOfferingsControllerTest {
     private GXFSCatalogRestService gxfsCatalogRestService;
 
     @MockBean
-    private GXFSWizardRestService gxfsWizardRestService;
+    private GxfsWizardApiService gxfsWizardApiService;
 
     @Autowired
     private JwtAuthConverter jwtAuthConverter;
@@ -96,18 +98,20 @@ class ServiceOfferingsControllerTest {
         ServiceOfferingDto serviceOfferingNotReleasedDto = new ServiceOfferingDto();
         serviceOfferingNotReleasedDto.setMetadata(new OfferingMetaDto());
         serviceOfferingNotReleasedDto.getMetadata().setState("IN_DRAFT");
-        serviceOfferingNotReleasedDto.setSelfDescription(new SelfDescription<>());
-        serviceOfferingNotReleasedDto.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential<>());
+        serviceOfferingNotReleasedDto.setSelfDescription(new SelfDescription());
+        serviceOfferingNotReleasedDto.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
         serviceOfferingNotReleasedDto.getSelfDescription().getVerifiableCredential().setIssuer("Participant:10");
 
         ServiceOfferingDto serviceOfferingDto = new ServiceOfferingDto();
         serviceOfferingDto.setMetadata(new OfferingMetaDto());
         serviceOfferingDto.getMetadata().setState("RELEASED");
-        serviceOfferingDto.setSelfDescription(new SelfDescription<>());
-        serviceOfferingDto.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential<>());
+        serviceOfferingDto.setSelfDescription(new SelfDescription());
+        serviceOfferingDto.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
         serviceOfferingDto.getSelfDescription().getVerifiableCredential().setIssuer("Participant:10");
         ServiceOfferingBasicDto serviceOfferingBasicDto = new ServiceOfferingBasicDto();
-        SelfDescriptionsCreateResponse selfDescriptionsCreateResponse = new SelfDescriptionsCreateResponse();
+        serviceOfferingBasicDto.setId("1234");
+        serviceOfferingBasicDto.setName("bla");
+        SelfDescriptionMeta selfDescriptionsCreateResponse = new SelfDescriptionMeta();
 
         lenient().when(gxfsCatalogRestService
                 .getAllPublicServiceOfferings(any())).thenReturn(new PageImpl<>(List.of(serviceOfferingBasicDto)));
@@ -133,9 +137,9 @@ class ServiceOfferingsControllerTest {
         lenient().when(gxfsCatalogRestService
                 .regenerateOffering(any())).thenReturn(selfDescriptionsCreateResponse);
 
-        lenient().when(gxfsWizardRestService.getServiceOfferingShapes()).thenReturn(new HashMap<>());
+        lenient().when(gxfsWizardApiService.getServiceOfferingShapesByEcosystem(eq("merlot"))).thenReturn(Collections.emptyList());
 
-        lenient().when(gxfsWizardRestService.getShape(any())).thenReturn("shape");
+        lenient().when(gxfsWizardApiService.getShapeByName(any())).thenReturn("shape");
     }
 
     @Test
@@ -276,7 +280,7 @@ class ServiceOfferingsControllerTest {
                 .andExpect(status().isForbidden());
     }
 
-    private void setValidCredentialSubjectFields(ServiceOfferingCredentialSubject credentialSubject) {
+    private void setValidCredentialSubjectFields(MerlotServiceOfferingCredentialSubject credentialSubject) {
         credentialSubject.setId("ServiceOffering:TBR");
         credentialSubject.setContext(new HashMap<>());
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:10"));
