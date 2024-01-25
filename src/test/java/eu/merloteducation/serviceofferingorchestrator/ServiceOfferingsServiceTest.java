@@ -1,18 +1,22 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.merloteducation.gxfscataloglibrary.models.exception.CredentialPresentationException;
+import eu.merloteducation.gxfscataloglibrary.models.exception.CredentialSignatureException;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.*;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.*;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.AllowedUserCount;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.Runtime;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotOrganizationCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.CooperationCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.DataDeliveryCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.SaaSCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
-import eu.merloteducation.modelslib.gxfscatalog.datatypes.*;
-import eu.merloteducation.modelslib.gxfscatalog.datatypes.Runtime;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescription;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionVerifiableCredential;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.participants.MerlotOrganizationCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.CooperationCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
@@ -21,6 +25,7 @@ import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferi
 import eu.merloteducation.serviceofferingorchestrator.service.*;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.text.StringSubstitutor;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,34 +33,36 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.security.cert.CertificateException;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
 @EnableConfigurationProperties
-class GXFSCatalogRestServiceTest {
+class ServiceOfferingsServiceTest {
 
-    @Mock
+    @MockBean
     private OrganizationOrchestratorClient organizationOrchestratorClient;
 
     @MockBean
@@ -65,7 +72,7 @@ class GXFSCatalogRestServiceTest {
     MessageQueueConfig messageQueueConfig;
 
     @MockBean
-    private KeycloakAuthService keycloakAuthService;
+    private GxfsCatalogService gxfsCatalogService;
 
     @Autowired
     ServiceOfferingMapper serviceOfferingMapper;
@@ -73,10 +80,8 @@ class GXFSCatalogRestServiceTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${gxfscatalog.selfdescriptions-uri}")
-    private String gxfscatalogSelfdescriptionsUri;
     @InjectMocks
-    private GXFSCatalogRestService gxfsCatalogRestService;
+    private ServiceOfferingsService serviceOfferingsService;
 
     @Autowired
     private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
@@ -84,6 +89,10 @@ class GXFSCatalogRestServiceTest {
     private ServiceOfferingExtension saasOffering;
     private ServiceOfferingExtension dateDeliveryOffering;
     private ServiceOfferingExtension cooperationOffering;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+    private TransactionTemplate transactionTemplate;
 
     private String createCatalogItem(String id, String issuer, String sdHash, String type) {
         String contentSaas = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"http://example.edu/verifiablePresentation/self-description1\",\"type\":[\"VerifiablePresentation\"],\"verifiableCredential\":{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"@id\":\"https://www.example.org/ServiceOffering.json\",\"@type\":[\"VerifiableCredential\"],\"issuer\":\"Participant:10\",\"issuanceDate\":\"2022-10-19T18:48:09Z\",\"credentialSubject\":{\"@id\":\"${id}\",\"@type\":\"merlot:MerlotServiceOfferingSaaS\",\"@context\":{\"merlot\":\"http://w3id.org/gaia-x/merlot#\",\"dct\":\"http://purl.org/dc/terms/\",\"gax-trust-framework\":\"http://w3id.org/gaia-x/gax-trust-framework#\",\"rdf\":\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\"sh\":\"http://www.w3.org/ns/shacl#\",\"xsd\":\"http://www.w3.org/2001/XMLSchema#\",\"gax-validation\":\"http://w3id.org/gaia-x/validation#\",\"skos\":\"http://www.w3.org/2004/02/skos/core#\",\"dcat\":\"http://www.w3.org/ns/dcat#\",\"gax-core\":\"http://w3id.org/gaia-x/core#\"},\"gax-core:offeredBy\":{\"@id\":\"Participant:10\"},\"gax-trust-framework:name\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"gax-trust-framework:termsAndConditions\":[{\"gax-trust-framework:content\":{\"@type\":\"xsd:anyURI\",\"@value\":\"Test\"},\"gax-trust-framework:hash\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"@type\":\"gax-trust-framework:TermsAndConditions\"}],\"gax-trust-framework:policy\":[{\"@type\":\"xsd:string\",\"@value\":\"dummyPolicy\"}],\"gax-trust-framework:dataAccountExport\":[{\"gax-trust-framework:formatType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:accessType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:requestType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"@type\":\"gax-trust-framework:DataAccountExport\"}],\"gax-trust-framework:providedBy\":{\"@id\":\"Participant:10\"},\"merlot:creationDate\":{\"@type\":\"xsd:string\",\"@value\":\"2023-05-24T13:30:12.382871745Z\"},\"merlot:runtimeOption\": { \"@type\": \"merlot:Runtime\",\"merlot:runtimeCount\": {\"@value\": \"0\",\"@type\": \"xsd:number\"},\"merlot:runtimeMeasurement\": {\"@value\": \"unlimited\",\"@type\": \"xsd:string\"}},\"merlot:merlotTermsAndConditionsAccepted\":true,\"merlot:userCountOption\": { \"@type\": \"merlot:AllowedUserCount\",\"merlot:userCountUpTo\": {\"@value\": \"0\",\"@type\": \"xsd:number\"}}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\"}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\"}}";
@@ -152,12 +161,13 @@ class GXFSCatalogRestServiceTest {
     }
 
     @BeforeEach
-    public void setUp() throws CertificateException, IOException {
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingMapper", serviceOfferingMapper);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "objectMapper", objectMapper);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfscatalogSelfdescriptionsUri", gxfscatalogSelfdescriptionsUri);
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "gxfsSignerService", new GXFSSignerService("", ""));
-        ReflectionTestUtils.setField(gxfsCatalogRestService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
+    public void setUp() throws JsonProcessingException, CredentialSignatureException, CredentialPresentationException {
+        ObjectMapper mapper = new ObjectMapper();
+        ReflectionTestUtils.setField(serviceOfferingsService, "serviceOfferingMapper", serviceOfferingMapper);
+        ReflectionTestUtils.setField(serviceOfferingsService, "objectMapper", objectMapper);
+        ReflectionTestUtils.setField(serviceOfferingsService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
+        ReflectionTestUtils.setField(serviceOfferingsService, "gxfsCatalogService", gxfsCatalogService);
+        ReflectionTestUtils.setField(serviceOfferingsService, "organizationOrchestratorClient", organizationOrchestratorClient);
 
         saasOffering = new ServiceOfferingExtension();
         saasOffering.setIssuer("Participant:10");
@@ -179,10 +189,6 @@ class GXFSCatalogRestServiceTest {
         cooperationOffering.release();
         serviceOfferingExtensionRepository.save(cooperationOffering);
 
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
-                        any(), any(), any()))
-                .thenThrow(HttpClientErrorException.NotFound.class);
-
         List<String> catalogItems = new ArrayList<>();
         //catalogItems.add(createCatalogItem(saasOffering.getId(), saasOffering.getIssuer(), saasOffering.getCurrentSdHash(), "saas"));
         catalogItems.add(createCatalogItem(dateDeliveryOffering.getId(), dateDeliveryOffering.getIssuer(), dateDeliveryOffering.getCurrentSdHash(), "dataDelivery"));
@@ -202,84 +208,92 @@ class GXFSCatalogRestServiceTest {
         catalogSingleItemCooperation.add(createCatalogItem(cooperationOffering.getId(), cooperationOffering.getIssuer(), cooperationOffering.getCurrentSdHash(), "coop"));
         String offeringQueryResponseSingleCooperation = createCatalogResponse(catalogSingleItemCooperation);
 
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.DELETE),
-                        eq(gxfscatalogSelfdescriptionsUri + "/" + saasOffering.getCurrentSdHash()), any(), any()))
-                .thenReturn(unescapeJson(offeringQueryResponseSingleSaas));
+        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseObj =
+                mapper.readValue(unescapeJson(offeringQueryResponse), new TypeReference<>(){});
+        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseSingleSaasObj =
+                mapper.readValue(unescapeJson(offeringQueryResponseSingleSaas), new TypeReference<>(){});
+        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseSingleDataDeliveryObj =
+                mapper.readValue(unescapeJson(offeringQueryResponseSingleDataDelivery), new TypeReference<>(){});
 
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
-                        startsWith(gxfscatalogSelfdescriptionsUri + "?"), any(), any()))
-                .thenReturn(unescapeJson(offeringQueryResponse));
+        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseSingleCooperationObj =
+                mapper.readValue(unescapeJson(offeringQueryResponseSingleCooperation), new TypeReference<>(){});
 
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
-                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + saasOffering.getId()), any(), any()))
-                .thenReturn(unescapeJson(offeringQueryResponseSingleSaas));
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(any()))
+                .thenReturn(offeringQueryResponseObj);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(any(), any()))
+                .thenReturn(offeringQueryResponseObj);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(any()))
+                .thenReturn(offeringQueryResponseObj);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(any(), any()))
+                .thenReturn(offeringQueryResponseObj);
 
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
-                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + saasOffering.getCurrentSdHash()), any(), any()))
-                .thenReturn(unescapeJson(offeringQueryResponseSingleSaas));
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{saasOffering.getId()})))
+                .thenReturn(offeringQueryResponseSingleSaasObj);
 
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
-                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + dateDeliveryOffering.getId()), any(), any()))
-                .thenReturn(unescapeJson(offeringQueryResponseSingleDataDelivery));
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(eq(new String[]{saasOffering.getCurrentSdHash()})))
+                .thenReturn(offeringQueryResponseSingleSaasObj);
 
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
-                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + dateDeliveryOffering.getCurrentSdHash()), any(), any()))
-                .thenReturn(unescapeJson(offeringQueryResponseSingleDataDelivery));
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{dateDeliveryOffering.getId()})))
+                .thenReturn(offeringQueryResponseSingleDataDeliveryObj);
 
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
-                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + cooperationOffering.getId()), any(), any()))
-                .thenReturn(unescapeJson(offeringQueryResponseSingleCooperation));
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(eq(new String[]{dateDeliveryOffering.getCurrentSdHash()})))
+                .thenReturn(offeringQueryResponseSingleDataDeliveryObj);
 
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.GET),
-                        eq(gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + cooperationOffering.getCurrentSdHash()), any(), any()))
-                .thenReturn(unescapeJson(offeringQueryResponseSingleCooperation));
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{cooperationOffering.getId()})))
+                .thenReturn(offeringQueryResponseSingleCooperationObj);
+
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(eq(new String[]{cooperationOffering.getCurrentSdHash()})))
+                .thenReturn(offeringQueryResponseSingleCooperationObj);
 
         String mockOfferingCreatedResponse = """
                 {"sdHash":"4321","id":"ServiceOffering:new","status":"active","issuer":"Participant:10","validatorDids":["did:web:compliance.lab.gaia-x.eu"],"uploadDatetime":"2023-05-24T13:32:22.712661Z","statusDatetime":"2023-05-24T13:32:22.712662Z"}
                 """;
+        SelfDescriptionMeta meta = objectMapper.readValue(unescapeJson(mockOfferingCreatedResponse), new TypeReference<>(){});
         // for participant endpoint return a dummy list of one item
-        lenient().when(keycloakAuthService.webCallAuthenticated(eq(HttpMethod.POST),
-                        startsWith(gxfscatalogSelfdescriptionsUri), any(), any()))
-                .thenReturn(unescapeJson(mockOfferingCreatedResponse));
+        lenient().when(gxfsCatalogService.addServiceOffering(any()))
+                .thenReturn(meta);
 
 
 
         MerlotParticipantDto organizationDetails = new MerlotParticipantDto();
-        organizationDetails.setSelfDescription(new SelfDescription<>());
-        organizationDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential<>());
-        organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new MerlotOrganizationCredentialSubject());
-        organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
-        organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        organizationDetails.setSelfDescription(new SelfDescription());
+        organizationDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
+        MerlotOrganizationCredentialSubject credentialSubject = new MerlotOrganizationCredentialSubject();
+        organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubject);
+        credentialSubject.setId("Participant:1234");
+        credentialSubject.setLegalName(new StringTypeValue("Organization"));
         TermsAndConditions orgaTnC = new TermsAndConditions();
         orgaTnC.setContent(new StringTypeValue("http://example.com"));
         orgaTnC.setHash(new StringTypeValue("hash1234"));
-        organizationDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(orgaTnC);
+        credentialSubject.setTermsAndConditions(orgaTnC);
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
 
         MerlotParticipantDto merlotDetails = new MerlotParticipantDto();
-        merlotDetails.setSelfDescription(new SelfDescription<>());
-        merlotDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential<>());
-        merlotDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(new MerlotOrganizationCredentialSubject());
-        merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
-        merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        merlotDetails.setSelfDescription(new SelfDescription());
+        merlotDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
+        MerlotOrganizationCredentialSubject credentialSubjectDetails = new MerlotOrganizationCredentialSubject();
+        merlotDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubjectDetails);
+        credentialSubjectDetails.setId("Participant:1234");
+        credentialSubjectDetails.setLegalName(new StringTypeValue("Organization"));
         TermsAndConditions merlotTnc = new TermsAndConditions();
         merlotTnc.setContent(new StringTypeValue("https://merlot-education.eu"));
         merlotTnc.setHash(new StringTypeValue("hash12345"));
-        merlotDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(merlotTnc);
+        credentialSubjectDetails.setTermsAndConditions(merlotTnc);
         lenient().when(organizationOrchestratorClient.getOrganizationDetails("Participant:99"))
                 .thenReturn(merlotDetails);
 
         MerlotParticipantDto organizationDetails2 = new MerlotParticipantDto();
-        organizationDetails2.setSelfDescription(new SelfDescription<>());
-        organizationDetails2.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential<>());
-        organizationDetails2.getSelfDescription().getVerifiableCredential().setCredentialSubject(new MerlotOrganizationCredentialSubject());
-        organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setId("Participant:1234");
-        organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setLegalName(new StringTypeValue("Organization"));
+        organizationDetails2.setSelfDescription(new SelfDescription());
+        organizationDetails2.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
+        MerlotOrganizationCredentialSubject credentialSubject2 = new MerlotOrganizationCredentialSubject();
+        organizationDetails2.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubject2);
+        credentialSubject2.setId("Participant:1234");
+        credentialSubject2.setLegalName(new StringTypeValue("Organization"));
         TermsAndConditions emptyOrgaTnC = new TermsAndConditions();
         emptyOrgaTnC.setContent(new StringTypeValue(""));
         emptyOrgaTnC.setHash(new StringTypeValue(""));
-        organizationDetails2.getSelfDescription().getVerifiableCredential().getCredentialSubject().setTermsAndConditions(emptyOrgaTnC);
+        credentialSubject2.setTermsAndConditions(emptyOrgaTnC);
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("Participant:notnc")))
                 .thenReturn(organizationDetails2);
 
@@ -347,7 +361,7 @@ class GXFSCatalogRestServiceTest {
     void addNewValidServiceOffering() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
 
-        SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
     }
 
@@ -358,7 +372,7 @@ class GXFSCatalogRestServiceTest {
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:notnc"));
 
         ResponseStatusException exception =
-                assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+                assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
     }
 
@@ -370,7 +384,7 @@ class GXFSCatalogRestServiceTest {
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:1234"));
         credentialSubject.setTermsAndConditions(null);
 
-        SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
         // TODO assert that TnC are actually set (landing in mock catalog currently which discards it)
     }
@@ -380,8 +394,24 @@ class GXFSCatalogRestServiceTest {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId(saasOffering.getId());
 
-        SelfDescriptionsCreateResponse response = gxfsCatalogRestService.addServiceOffering(credentialSubject);
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
+
+    }
+
+    @Test
+    void updateExistingWithValidServiceOfferingFail() throws Exception {
+        doThrow(getWebClientResponseException()).when(gxfsCatalogService)
+                .deleteSelfDescriptionByHash(saasOffering.getCurrentSdHash());
+
+        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+        credentialSubject.setId(saasOffering.getId());
+
+        ResponseStatusException exception =
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exception.getStatusCode());
+        assertEquals("Service offering could not be updated.", exception.getReason());
+
     }
 
     @Test
@@ -390,7 +420,7 @@ class GXFSCatalogRestServiceTest {
         credentialSubject.setId("ServiceOffering:exists");
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:20"));
 
-        assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
     }
 
     @Test
@@ -398,17 +428,17 @@ class GXFSCatalogRestServiceTest {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId("ServiceOffering:exists2");
 
-        assertThrows(ResponseStatusException.class, () -> gxfsCatalogRestService.addServiceOffering(credentialSubject));
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
     }
 
     @Test
     @Transactional
     void regenerateExistingServiceOfferingValid() throws Exception {
         String offeringId = saasOffering.getId();
-        gxfsCatalogRestService.transitionServiceOfferingExtension(offeringId,
+        serviceOfferingsService.transitionServiceOfferingExtension(offeringId,
                 ServiceOfferingState.RELEASED);
 
-        SelfDescriptionsCreateResponse response = gxfsCatalogRestService.regenerateOffering(offeringId);
+        SelfDescriptionMeta response = serviceOfferingsService.regenerateOffering(offeringId);
         assertNotNull(response.getId());
     }
 
@@ -418,7 +448,7 @@ class GXFSCatalogRestServiceTest {
         String offeringId = saasOffering.getId();
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.regenerateOffering(offeringId));
+                () -> serviceOfferingsService.regenerateOffering(offeringId));
         assertEquals(HttpStatus.PRECONDITION_FAILED, exception.getStatusCode());
     }
 
@@ -426,13 +456,13 @@ class GXFSCatalogRestServiceTest {
     @Transactional
     void regenerateExistingServiceOfferingNonExistent() {
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.regenerateOffering("garbage"));
+                () -> serviceOfferingsService.regenerateOffering("garbage"));
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     @Test
     void getAllPublicOfferings() throws Exception {
-        Page<ServiceOfferingBasicDto> offerings = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> offerings = serviceOfferingsService
                 .getAllPublicServiceOfferings(
                         PageRequest.of(0, 9, Sort.by("creationDate").descending()));
 
@@ -440,8 +470,17 @@ class GXFSCatalogRestServiceTest {
     }
 
     @Test
+    void getAllPublicOfferingsFail(){
+        doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByHashes(any());
+
+        PageRequest request = PageRequest.of(0, 9, Sort.by("creationDate").descending());
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService
+            .getAllPublicServiceOfferings(request));
+    }
+
+    @Test
     void getOrganizationOfferingsNoState() throws Exception {
-        Page<ServiceOfferingBasicDto> offerings = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> offerings = serviceOfferingsService
                 .getOrganizationServiceOfferings("10", null,
                         PageRequest.of(0, 9, Sort.by("creationDate").descending()));
 
@@ -450,7 +489,7 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getOrganizationOfferingsByState() throws Exception {
-        Page<ServiceOfferingBasicDto> offerings = gxfsCatalogRestService
+        Page<ServiceOfferingBasicDto> offerings = serviceOfferingsService
                 .getOrganizationServiceOfferings("10", ServiceOfferingState.IN_DRAFT,
                         PageRequest.of(0, 9, Sort.by("creationDate").descending()));
 
@@ -458,30 +497,120 @@ class GXFSCatalogRestServiceTest {
     }
 
     @Test
+    void getOrganizationOfferingsByStateFail() {
+        doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByHashes(any());
+
+        PageRequest request = PageRequest.of(0, 9, Sort.by("creationDate").descending());
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService
+            .getOrganizationServiceOfferings("10", ServiceOfferingState.IN_DRAFT, request));
+    }
+
+    @Test
     @Transactional
     void transitionServiceOfferingValid() {
-        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+        serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.RELEASED);
         ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.RELEASED, result.getState());
 
-        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+        serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.REVOKED);
         result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.REVOKED, result.getState());
 
-        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+        serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.DELETED);
         result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNotNull(result);
         assertEquals(ServiceOfferingState.DELETED, result.getState());
 
-        gxfsCatalogRestService.transitionServiceOfferingExtension(saasOffering.getId(),
+        serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
                 ServiceOfferingState.PURGED);
         result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
         assertNull(result);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED) // handle transactions manually
+    void transitionServiceOfferingDeletedFail() {
+        transactionTemplate = new TransactionTemplate(transactionManager);
+
+        doThrow(getWebClientResponseException()).when(gxfsCatalogService).revokeSelfDescriptionByHash(any());
+
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(@NotNull TransactionStatus status) {
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.RELEASED);
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.REVOKED);
+            }
+        });
+
+        Exception thrownEx = null;
+        try {
+            transactionTemplate.execute(status -> {
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.DELETED);
+
+                return "foo";
+            });
+        } catch (Exception ex) {
+            thrownEx = ex;
+        }
+
+        assertNotNull(thrownEx);
+        assertEquals(thrownEx.getClass(), ResponseStatusException.class);
+
+        // extension should be in REVOKED state as transition to DELETED state was unsuccessful
+        ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
+        assertNotNull(result);
+        assertEquals(ServiceOfferingState.REVOKED, result.getState());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED) // handle transactions manually
+    void transitionServiceOfferingPurgedFail() {
+        transactionTemplate = new TransactionTemplate(transactionManager);
+
+        doThrow(getWebClientResponseException()).when(gxfsCatalogService)
+                .deleteSelfDescriptionByHash(saasOffering.getCurrentSdHash());
+
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(@NotNull TransactionStatus status) {
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.RELEASED);
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.REVOKED);
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.DELETED);
+            }
+        });
+
+        Exception thrownEx = null;
+
+        try {
+            transactionTemplate.execute(status -> {
+
+                serviceOfferingsService.transitionServiceOfferingExtension(saasOffering.getId(),
+                    ServiceOfferingState.PURGED);
+
+                return "foo";
+            });
+        } catch (Exception ex) {
+            thrownEx = ex;
+        }
+
+        assertNotNull(thrownEx);
+        assertEquals(thrownEx.getClass(), ResponseStatusException.class);
+
+        // extension should still exist and be in DELETED state as purging was unsuccessful
+        ServiceOfferingExtension result = serviceOfferingExtensionRepository.findById(saasOffering.getId()).orElse(null);
+        assertNotNull(result);
+        assertEquals(ServiceOfferingState.DELETED, result.getState());
     }
 
     @Test
@@ -490,7 +619,7 @@ class GXFSCatalogRestServiceTest {
         Set<String> representedOrgaIds = new HashSet<>();
         representedOrgaIds.add(saasOffering.getIssuer().replace("Participant:", ""));
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.transitionServiceOfferingExtension("garbage",
+                () -> serviceOfferingsService.transitionServiceOfferingExtension("garbage",
                         ServiceOfferingState.RELEASED));
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
@@ -500,14 +629,14 @@ class GXFSCatalogRestServiceTest {
     void transitionServiceOfferingInvalid() {
         String offeringId = saasOffering.getId();
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> gxfsCatalogRestService.transitionServiceOfferingExtension(offeringId,
+                () -> serviceOfferingsService.transitionServiceOfferingExtension(offeringId,
                         ServiceOfferingState.REVOKED));
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
     }
 
     @Test
     void getServiceOfferingDetailsSaasExistent() throws Exception {
-        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(saasOffering.getId());
+        ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(saasOffering.getId());
         assertNotNull(model);
 
         assertInstanceOf(SaaSCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
@@ -526,7 +655,7 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsDataDeliveryExistent() throws Exception {
-        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(dateDeliveryOffering.getId());
+        ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(dateDeliveryOffering.getId());
         assertNotNull(model);
         assertInstanceOf(DataDeliveryCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
                 .getCredentialSubject());
@@ -541,7 +670,7 @@ class GXFSCatalogRestServiceTest {
 
     @Test
     void getServiceOfferingDetailsCooperationExistent() throws Exception {
-        ServiceOfferingDto model = gxfsCatalogRestService.getServiceOfferingById(cooperationOffering.getId());
+        ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(cooperationOffering.getId());
         assertNotNull(model);
         assertInstanceOf(CooperationCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
                 .getCredentialSubject());
@@ -553,7 +682,25 @@ class GXFSCatalogRestServiceTest {
     @Test
     void getServiceOfferingDetailsNonExistent() {
         NoSuchElementException exception = assertThrows(NoSuchElementException.class,
-                () -> gxfsCatalogRestService.getServiceOfferingById("garbage"));
+                () -> serviceOfferingsService.getServiceOfferingById("garbage"));
+    }
+
+    @Test
+    void getServiceOfferingDetailsFail() {
+        doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByIds(any());
+
+        String id = cooperationOffering.getId();
+        assertThrows(ResponseStatusException.class,
+            () -> serviceOfferingsService.getServiceOfferingById(id));
+    }
+
+    private WebClientResponseException getWebClientResponseException(){
+        byte[] byteArray = {123, 34, 99, 111, 100, 101, 34, 58, 34, 110, 111, 116, 95, 102, 111, 117, 110, 100, 95, 101,
+            114, 114, 111, 114, 34, 44, 34, 109, 101, 115, 115, 97, 103, 101, 34, 58, 34, 80, 97, 114,
+            116, 105, 99, 105, 112, 97, 110, 116, 32, 110, 111, 116, 32, 102, 111, 117, 110, 100, 58,
+            32, 80, 97, 114, 116, 105, 99, 105, 112, 97, 110, 116, 58, 49, 50, 51, 52, 49, 51, 52, 50,
+            51, 52, 50, 49, 34, 125};
+        return new WebClientResponseException(HttpStatus.INTERNAL_SERVER_ERROR.value(), "garbage", null, byteArray, null);
     }
 
 }

@@ -18,7 +18,7 @@ public class MessageQueueService {
     ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
     @Autowired
-    GXFSCatalogRestService gxfsCatalogRestService;
+    ServiceOfferingsService serviceOfferingsService;
 
     private final Logger logger = LoggerFactory.getLogger(MessageQueueService.class);
 
@@ -84,6 +84,6 @@ public class MessageQueueService {
     @RabbitListener(queues = MessageQueueConfig.OFFERING_REQUEST_QUEUE)
     public ServiceOfferingDto offeringDetailsRequestListener(String offeringId) throws Exception {
         logger.info("Offering request message: offering ID {}", offeringId);
-        return gxfsCatalogRestService.getServiceOfferingById(offeringId);
+        return serviceOfferingsService.getServiceOfferingById(offeringId);
     }
 }

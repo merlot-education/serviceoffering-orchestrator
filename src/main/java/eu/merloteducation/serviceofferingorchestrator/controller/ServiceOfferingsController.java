@@ -1,15 +1,14 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.CooperationCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.DataDeliveryCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.SaaSCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.service.GxfsWizardApiService;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.CooperationCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.DataDeliveryCredentialSubject;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.SaaSCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
-import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
-import eu.merloteducation.serviceofferingorchestrator.service.GXFSWizardRestService;
+import eu.merloteducation.serviceofferingorchestrator.service.ServiceOfferingsService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,10 +30,10 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class ServiceOfferingsController {
 
     @Autowired
-    private GXFSCatalogRestService gxfsCatalogRestService;
+    private ServiceOfferingsService serviceOfferingsService;
 
     @Autowired
-    private GXFSWizardRestService gxfsWizardRestService;
+    private GxfsWizardApiService gxfsWizardApiService;
 
     /**
      * GET request for getting a page of all public service offerings.
@@ -48,7 +47,7 @@ public class ServiceOfferingsController {
     public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
                                                                       @RequestParam(value = "size", defaultValue = "9") @Max(15) int size) throws Exception {
 
-        return gxfsCatalogRestService
+        return serviceOfferingsService
                 .getAllPublicServiceOfferings(
                         PageRequest.of(page, size, Sort.by("creationDate").descending()));
     }
@@ -70,7 +69,7 @@ public class ServiceOfferingsController {
                                                                            @RequestParam(value = "size", defaultValue = "9") @Max(15) int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
                                                                            @PathVariable(value = "orgaId") String orgaId) throws Exception {
-        return gxfsCatalogRestService
+        return serviceOfferingsService
                 .getOrganizationServiceOfferings(
                         orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()));
     }
@@ -86,7 +85,7 @@ public class ServiceOfferingsController {
     @PreAuthorize("@offeringAuthorityChecker.canAccessOffering(authentication, #serviceofferingId)")
     public ServiceOfferingDto getServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId) throws Exception {
         try {
-            return gxfsCatalogRestService.getServiceOfferingById(serviceofferingId);
+            return serviceOfferingsService.getServiceOfferingById(serviceofferingId);
         } catch (NoSuchElementException e) {
             throw new ResponseStatusException(NOT_FOUND, e.getMessage());
         }
@@ -101,8 +100,8 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionsCreateResponse addServiceOfferingSaas(@Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
-        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+    public SelfDescriptionMeta addServiceOfferingSaas(@Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
+        return serviceOfferingsService.addServiceOffering(credentialSubject);
     }
 
     /**
@@ -114,8 +113,8 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionsCreateResponse addServiceOfferingDataDelivery(@Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
-        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+    public SelfDescriptionMeta addServiceOfferingDataDelivery(@Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
+        return serviceOfferingsService.addServiceOffering(credentialSubject);
     }
 
     /**
@@ -127,8 +126,8 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionsCreateResponse addServiceOfferingCooperation(@Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
-        return gxfsCatalogRestService.addServiceOffering(credentialSubject);
+    public SelfDescriptionMeta addServiceOfferingCooperation(@Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
+        return serviceOfferingsService.addServiceOffering(credentialSubject);
     }
 
     /**
@@ -140,9 +139,9 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/regenerate/{soId}")
     @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuer(authentication, #serviceofferingId)")
-    public SelfDescriptionsCreateResponse regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId)
+    public SelfDescriptionMeta regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId)
             throws Exception {
-        return gxfsCatalogRestService.regenerateOffering(serviceofferingId);
+        return serviceOfferingsService.regenerateOffering(serviceofferingId);
     }
 
     /**
@@ -150,24 +149,22 @@ public class ServiceOfferingsController {
      *
      * @param serviceofferingId id of the offering to transition
      * @param status target offering state
-     * @throws Exception exception during transitioning
      */
     @PatchMapping("/serviceoffering/status/{soId}/{status}")
     @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuer(authentication, #serviceofferingId)")
     public void patchStatusServiceOffering(@PathVariable(value = "soId") String serviceofferingId,
                                            @PathVariable(value = "status") ServiceOfferingState status) {
-        gxfsCatalogRestService.transitionServiceOfferingExtension(serviceofferingId, status);
+        serviceOfferingsService.transitionServiceOfferingExtension(serviceofferingId, status);
     }
 
     /**
      * GET request for retrieving all available MERLOT shapes for the catalog.
      *
      * @return Map of shape types to shape files
-     * @throws Exception exception during shape fetching
      */
     @GetMapping("/shapes/getAvailableShapesCategorized")
-    public Map<String, List<String>> getAvailableShapes() throws JsonProcessingException {
-        return gxfsWizardRestService.getServiceOfferingShapes();
+    public Map<String, List<String>> getAvailableShapes() {
+        return Map.of("Service", gxfsWizardApiService.getServiceOfferingShapesByEcosystem("merlot"));
     }
 
     /**
@@ -177,7 +174,7 @@ public class ServiceOfferingsController {
      */
     @GetMapping("/shapes/getJSON")
     public String getShapeJson(@RequestParam String name) {
-        return gxfsWizardRestService.getShape(name);
+        return gxfsWizardApiService.getShapeByName(name);
     }
 
 }

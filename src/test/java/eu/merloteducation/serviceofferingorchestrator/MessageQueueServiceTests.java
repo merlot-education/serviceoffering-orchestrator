@@ -4,8 +4,8 @@ import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.modelslib.queue.ContractTemplateUpdated;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
-import eu.merloteducation.serviceofferingorchestrator.service.GXFSCatalogRestService;
 import eu.merloteducation.serviceofferingorchestrator.service.MessageQueueService;
+import eu.merloteducation.serviceofferingorchestrator.service.ServiceOfferingsService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -39,17 +39,17 @@ class MessageQueueServiceTests {
     ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
     @Mock
-    GXFSCatalogRestService gxfsCatalogRestService;
+    ServiceOfferingsService serviceOfferingsService;
 
     @BeforeAll
     void beforeAll() throws Exception {
         ReflectionTestUtils.setField(messageQueueService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
-        ReflectionTestUtils.setField(messageQueueService, "gxfsCatalogRestService", gxfsCatalogRestService);
+        ReflectionTestUtils.setField(messageQueueService, "serviceOfferingsService", serviceOfferingsService);
         ServiceOfferingExtension extension = new ServiceOfferingExtension();
         extension.setId("1234");
         serviceOfferingExtensionRepository.save(extension);
-        when(gxfsCatalogRestService.getServiceOfferingById(any())).thenThrow(NoSuchElementException.class);
-        doReturn(new ServiceOfferingDto()).when(gxfsCatalogRestService).getServiceOfferingById("1234");
+        when(serviceOfferingsService.getServiceOfferingById(any())).thenThrow(NoSuchElementException.class);
+        doReturn(new ServiceOfferingDto()).when(serviceOfferingsService).getServiceOfferingById("1234");
     }
 
     @Transactional

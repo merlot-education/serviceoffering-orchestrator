@@ -1,20 +1,19 @@
 package eu.merloteducation.serviceofferingorchestrator.service;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Joiner;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.GXFSCatalogListResponse;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionItem;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.StringTypeValue;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.TermsAndConditions;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotOrganizationCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
-import eu.merloteducation.modelslib.gxfscatalog.datatypes.StringTypeValue;
-import eu.merloteducation.modelslib.gxfscatalog.datatypes.TermsAndConditions;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.GXFSCatalogListResponse;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionItem;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.SelfDescriptionsCreateResponse;
-import eu.merloteducation.modelslib.gxfscatalog.selfdescriptions.serviceofferings.ServiceOfferingCredentialSubject;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
@@ -26,18 +25,14 @@ import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
@@ -46,7 +41,7 @@ import java.util.stream.Collectors;
 import static org.springframework.http.HttpStatus.*;
 
 @Service
-public class GXFSCatalogRestService {
+public class ServiceOfferingsService {
 
     @Autowired
     private OrganizationOrchestratorClient organizationOrchestratorClient;
@@ -55,56 +50,71 @@ public class GXFSCatalogRestService {
     private ServiceOfferingMapper serviceOfferingMapper;
 
     @Autowired
-    private KeycloakAuthService keycloakAuthService;
-
-    @Autowired
-    private GXFSSignerService gxfsSignerService;
+    private GxfsCatalogService gxfsCatalogService;
 
     @Autowired
     private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @Value("${gxfscatalog.selfdescriptions-uri}")
-    private String gxfscatalogSelfdescriptionsUri;
-    private final Logger logger = LoggerFactory.getLogger(GXFSCatalogRestService.class);
+    private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
     private static final String PARTICIPANT_START = "Participant:";
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
 
-    private void deleteOffering(ServiceOfferingExtension extension) {
+    @Transactional(rollbackOn = {ResponseStatusException.class})
+    private void deleteOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
         extension.delete();
-        keycloakAuthService.webCallAuthenticated(
-                HttpMethod.POST,
-                gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash() + "/revoke",
-                "",
-                null);
+        serviceOfferingExtensionRepository.save(extension);
+
+        try {
+            gxfsCatalogService.revokeSelfDescriptionByHash(extension.getCurrentSdHash());
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
     }
 
-    private void purgeOffering(ServiceOfferingExtension extension) {
+    @Transactional(rollbackOn = {ResponseStatusException.class})
+    private void purgeOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
         if (extension.getState() != ServiceOfferingState.DELETED) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
         }
-        keycloakAuthService.webCallAuthenticated(
-                HttpMethod.DELETE,
-                gxfscatalogSelfdescriptionsUri + "/" + extension.getCurrentSdHash(),
-                "",
-                null);
         serviceOfferingExtensionRepository.delete(extension);
+        deleteServiceOfferingFromCatalog(extension.getCurrentSdHash());
     }
 
-    private GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> getSelfDescriptionByOfferingExtension
-            (ServiceOfferingExtension extension) throws Exception {
-        String response = keycloakAuthService.webCallAuthenticated(
-                HttpMethod.GET,
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&ids=" + extension.getId(),
-                "",
-                null);
+    private GXFSCatalogListResponse<SelfDescriptionItem> getSelfDescriptionByOfferingExtension
+            (ServiceOfferingExtension extension) throws JsonProcessingException {
+        GXFSCatalogListResponse<SelfDescriptionItem> response = null;
+        try {
+            response = gxfsCatalogService.getSelfDescriptionsByIds(new String[]{extension.getId()});
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
+        return response;
+    }
 
-        // create a mapper to map the response to the SelfDescriptionResponse class
-        return objectMapper.readValue(response, new TypeReference<>() {
-        });
+    private List<SelfDescriptionItem> getSelfDescriptionsByOfferingExtensionList
+            (Page<ServiceOfferingExtension> extensions) throws JsonProcessingException {
+        String[] extensionHashes = extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
+                .collect(Collectors.toSet()).toArray(String[]::new);
+
+        if (extensionHashes.length == 0) {
+            return Collections.emptyList();
+        }
+
+        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse = null;
+        try {
+            selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
+
+        if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
+            logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
+        }
+
+        return selfDescriptionsResponse.getItems();
     }
 
     private void handleCatalogError(WebClientResponseException e)
@@ -114,28 +124,6 @@ public class GXFSCatalogRestService {
         String messageText = errorMessage.get("message").asText();
         throw new ResponseStatusException(e.getStatusCode(),
                 messageText.substring(0, Math.min(500, messageText.length())));
-    }
-
-    private String presentAndSign(String credentialSubjectJson, String issuer) throws Exception {
-        String vp = """
-                {
-                    "@context": ["https://www.w3.org/2018/credentials/v1"],
-                    "@id": "http://example.edu/verifiablePresentation/self-description1",
-                    "type": ["VerifiablePresentation"],
-                    "verifiableCredential": {
-                        "@context": ["https://www.w3.org/2018/credentials/v1"],
-                        "@id": "https://www.example.org/ServiceOffering.json",
-                        "@type": ["VerifiableCredential"],
-                        "issuer": \"""" + issuer + """
-                ",
-                "issuanceDate": \"""" + OffsetDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT) + """
-                ",
-                "credentialSubject":\s""" + credentialSubjectJson + """
-                    }
-                }
-                """;
-
-        return gxfsSignerService.signVerifiablePresentation(vp);
     }
 
     /**
@@ -159,11 +147,15 @@ public class GXFSCatalogRestService {
                     case DELETED, ARCHIVED -> deleteOffering(extension);
                     case PURGED -> purgeOffering(extension);
                 }
-                if (targetState != ServiceOfferingState.PURGED) {
-                    serviceOfferingExtensionRepository.save(extension);
-                }
+            } catch (ResponseStatusException ex) {
+                throw ex;
             } catch (Exception e) {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
+            }
+            if (targetState != ServiceOfferingState.PURGED
+                && targetState != ServiceOfferingState.DELETED
+                && targetState != ServiceOfferingState.ARCHIVED) {
+                serviceOfferingExtensionRepository.save(extension);
             }
         }
 
@@ -176,7 +168,7 @@ public class GXFSCatalogRestService {
      * @return found offering
      * @throws Exception mapping exception
      */
-    public ServiceOfferingDto getServiceOfferingById(String id) throws Exception {
+    public ServiceOfferingDto getServiceOfferingById(String id) throws JsonProcessingException {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -186,8 +178,9 @@ public class GXFSCatalogRestService {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
         }
 
-        GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse = getSelfDescriptionByOfferingExtension(extension);
-        // if we do not get exactly one item or the id doesnt start with ServiceOffering, we did not find the correct item
+        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse =
+                getSelfDescriptionByOfferingExtension(extension);
+        // if we do not get exactly one item or the id doesn't start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
@@ -204,33 +197,18 @@ public class GXFSCatalogRestService {
      *
      * @param pageable  paging parameters
      * @return page of public offerings
-     * @throws Exception mapping exception
+     * @throws JsonProcessingException mapping exception
      */
-    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable) throws Exception {
+    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable) throws JsonProcessingException {
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
-        String extensionHashes = Joiner.on(",")
-                .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
-                        .collect(Collectors.toSet()));
 
-        String response = keycloakAuthService.webCallAuthenticated(
-                HttpMethod.GET,
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE&hashes=" + extensionHashes,
-                "",
-                null);
-
-
-        // create a mapper to map the response to the SelfDescriptionResponse class
-        GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse = objectMapper.readValue(response, new TypeReference<>(){});
-
-        if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
-            logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
-        }
+        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions);
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
-        List<ServiceOfferingBasicDto> models = selfDescriptionsResponse.getItems().stream()
+        List<ServiceOfferingBasicDto> models = items.stream()
                 .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingBasicDto(
                         item.getMeta(),
                         extensionMap.get(item.getMeta().getSdHash()),
@@ -243,7 +221,7 @@ public class GXFSCatalogRestService {
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
-        return new PageImpl<>(models, pageable, extensions.getTotalElements());
+        return new PageImpl<>(models, pageable, extensions.getTotalElements()); // TODO check if we need custom impl
     }
 
     /**
@@ -254,9 +232,10 @@ public class GXFSCatalogRestService {
      * @param state     optional offering state for filtering
      * @param pageable  paging parameters
      * @return page of organization offerings
-     * @throws Exception mapping exception
+     * @throws JsonProcessingException mapping exception
      */
-    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable) throws Exception {
+    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable)
+            throws JsonProcessingException {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository
@@ -267,26 +246,13 @@ public class GXFSCatalogRestService {
         }
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
-        String extensionHashes = Joiner.on(",")
-                .join(extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
-                        .collect(Collectors.toSet()));
 
-        String response = keycloakAuthService.webCallAuthenticated(
-                HttpMethod.GET,
-                gxfscatalogSelfdescriptionsUri + "?withContent=true&statuses=ACTIVE,REVOKED&hashes=" + extensionHashes,
-                "",
-                null);
-
-        // create a mapper to map the response to the SelfDescriptionResponse class
-        GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse = objectMapper.readValue(response, new TypeReference<>(){});
-        if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
-            logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
-        }
+        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions);
 
         MerlotParticipantDto providerOrga = organizationOrchestratorClient.getOrganizationDetails(orgaId);
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
-        List<ServiceOfferingBasicDto> models = selfDescriptionsResponse.getItems().stream()
+        List<ServiceOfferingBasicDto> models = items.stream()
                 .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingBasicDto(
                         item.getMeta(),
                         extensionMap.get(item.getMeta().getSdHash()),
@@ -297,7 +263,7 @@ public class GXFSCatalogRestService {
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
-        return new PageImpl<>(models, pageable, extensions.getTotalElements());
+        return new PageImpl<>(models, pageable, extensions.getTotalElements()); // TODO check if we need custom impl
     }
 
     /**
@@ -308,7 +274,7 @@ public class GXFSCatalogRestService {
      * @return creation response from catalog
      * @throws Exception communication or mapping exception
      */
-    public SelfDescriptionsCreateResponse regenerateOffering(String id) throws Exception {
+    public SelfDescriptionMeta regenerateOffering(String id) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -324,33 +290,33 @@ public class GXFSCatalogRestService {
             throw new ResponseStatusException(PRECONDITION_FAILED, "Invalid state for regenerating this offering");
         }
 
-        GXFSCatalogListResponse<SelfDescriptionItem<ServiceOfferingCredentialSubject>> selfDescriptionsResponse =
+        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse =
                 getSelfDescriptionByOfferingExtension(extension);
         // if we do not get exactly one item or the id doesn't start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
                 || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
             throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
         }
-        ServiceOfferingCredentialSubject subject = selfDescriptionsResponse.getItems().get(0).getMeta()
-                .getContent().getVerifiableCredential().getCredentialSubject();
+        MerlotServiceOfferingCredentialSubject subject = (MerlotServiceOfferingCredentialSubject) selfDescriptionsResponse.getItems()
+                .get(0).getMeta().getContent().getVerifiableCredential().getCredentialSubject();
         subject.setId(OFFERING_START + "TBR");
 
         return addServiceOffering(subject);
     }
 
-    private void patchTermsAndConditions(ServiceOfferingCredentialSubject credentialSubject) {
-        TermsAndConditions providerTnC = organizationOrchestratorClient
+    private void patchTermsAndConditions(MerlotServiceOfferingCredentialSubject credentialSubject) {
+        TermsAndConditions providerTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
                 .getOrganizationDetails(credentialSubject.getOfferedBy().getId())
-                .getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions();
+                .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
 
         if (StringUtil.isNullOrEmpty(providerTnC.getContent().getValue())
                 || StringUtil.isNullOrEmpty(providerTnC.getHash().getValue())) {
             throw new ResponseStatusException(FORBIDDEN, "Cannot create/update self-description without valid provider TnC");
         }
 
-        TermsAndConditions merlotTnC = organizationOrchestratorClient
+        TermsAndConditions merlotTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
                 .getOrganizationDetails("Participant:99")
-                .getSelfDescription().getVerifiableCredential().getCredentialSubject().getTermsAndConditions();
+                .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
 
         // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them
         if (credentialSubject.getTermsAndConditions() == null) {
@@ -373,9 +339,8 @@ public class GXFSCatalogRestService {
      * @return creation response of the GXFS catalog
      * @throws Exception mapping exception
      */
-    @Transactional
-    public SelfDescriptionsCreateResponse addServiceOffering(ServiceOfferingCredentialSubject credentialSubject) throws Exception {
-
+    @Transactional(rollbackOn = {ResponseStatusException.class})
+    public SelfDescriptionMeta addServiceOffering(MerlotServiceOfferingCredentialSubject credentialSubject) throws Exception {
         ServiceOfferingExtension extension;
         String previousSdHash = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
@@ -412,41 +377,56 @@ public class GXFSCatalogRestService {
 
         patchTermsAndConditions(credentialSubject);
 
-        // prepare a json to send to the gxfs catalog, sign it and read the response
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        String credentialSubjectJson = mapper.writeValueAsString(credentialSubject);
-
-        String signedVp = presentAndSign(credentialSubjectJson, credentialSubject.getOfferedBy().getId());
-
-        String response = "";
+        SelfDescriptionMeta selfDescriptionsResponse = null;
         try {
-            response = keycloakAuthService.webCallAuthenticated(
-                    HttpMethod.POST,
-                    gxfscatalogSelfdescriptionsUri,
-                    signedVp,
-                    MediaType.APPLICATION_JSON);
+            selfDescriptionsResponse = addServiceOfferingToCatalog(credentialSubject);
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         }
 
-        // delete previous entry if it exists
-        if (previousSdHash != null) {
-            keycloakAuthService.webCallAuthenticated(
-                    HttpMethod.DELETE,
-                    gxfscatalogSelfdescriptionsUri + "/" + previousSdHash,
-                    "",
-                    null);
-        }
-
-        SelfDescriptionsCreateResponse selfDescriptionsResponse = objectMapper.readValue(response, SelfDescriptionsCreateResponse.class);
-
-        // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self description
+        // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self-description
         extension.setId(selfDescriptionsResponse.getId());
         extension.setIssuer(selfDescriptionsResponse.getIssuer());
         extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
-        serviceOfferingExtensionRepository.save(extension);
+        try {
+            serviceOfferingExtensionRepository.save(extension);
+        } catch (Exception e) {
+            // if saving fails, "rollback" the service-offering creation in the catalog
+            deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be saved.");
+        }
+
+        // delete previous entry if it exists
+        if (previousSdHash != null) {
+            try {
+                deleteServiceOfferingFromCatalog(previousSdHash);
+            } catch (ResponseStatusException ex) {
+                //if deleting the previous entry fails, "rollback" the service-offering creation in the catalog
+                deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
+                throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be updated.");
+            }
+        }
 
         return selfDescriptionsResponse;
+    }
+
+    private void deleteServiceOfferingFromCatalog(String sdHash) throws JsonProcessingException {
+        try {
+            gxfsCatalogService.deleteSelfDescriptionByHash(sdHash);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
+    }
+
+    private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject) throws JsonProcessingException {
+        SelfDescriptionMeta response = null;
+        try {
+            response = gxfsCatalogService.addServiceOffering(credentialSubject);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Unknown error");
+        }
+        return response;
     }
 }
