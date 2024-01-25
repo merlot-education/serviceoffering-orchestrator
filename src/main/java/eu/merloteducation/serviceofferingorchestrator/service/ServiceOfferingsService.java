@@ -25,7 +25,6 @@ import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -93,6 +92,29 @@ public class ServiceOfferingsService {
             handleCatalogError(e);
         }
         return response;
+    }
+
+    private List<SelfDescriptionItem> getSelfDescriptionsByOfferingExtensionList
+            (Page<ServiceOfferingExtension> extensions) throws JsonProcessingException {
+        String[] extensionHashes = extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
+                .collect(Collectors.toSet()).toArray(String[]::new);
+
+        if (extensionHashes.length == 0) {
+            return Collections.emptyList();
+        }
+
+        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse = null;
+        try {
+            selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
+
+        if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
+            logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
+        }
+
+        return selfDescriptionsResponse.getItems();
     }
 
     private void handleCatalogError(WebClientResponseException e)
@@ -183,26 +205,10 @@ public class ServiceOfferingsService {
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
 
-        String[] extensionHashes = extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
-                .collect(Collectors.toSet()).toArray(String[]::new);
-
-        if (extensionHashes.length == 0) {
-            return new PageImpl<>(Collections.emptyList(), pageable, 0);
-        }
-
-        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse = null;
-        try {
-            selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
-        } catch (WebClientResponseException e) {
-            handleCatalogError(e);
-        }
-
-        if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
-            logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
-        }
+        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions);
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
-        List<ServiceOfferingBasicDto> models = selfDescriptionsResponse.getItems().stream()
+        List<ServiceOfferingBasicDto> models = items.stream()
                 .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingBasicDto(
                         item.getMeta(),
                         extensionMap.get(item.getMeta().getSdHash()),
@@ -215,7 +221,7 @@ public class ServiceOfferingsService {
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
-        return new PageImpl<>(models, pageable, extensions.getTotalElements());
+        return new PageImpl<>(models, pageable, extensions.getTotalElements()); // TODO check if we need custom impl
     }
 
     /**
@@ -240,28 +246,13 @@ public class ServiceOfferingsService {
         }
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
-        String[] extensionHashes = extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
-                .collect(Collectors.toSet()).toArray(String[]::new);
 
-        if (extensionHashes.length == 0) {
-            return new PageImpl<>(Collections.emptyList(), pageable, 0);
-        }
-
-        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse = null;
-        try {
-            selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
-        } catch (WebClientResponseException e) {
-            handleCatalogError(e);
-        }
-
-        if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
-            logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
-        }
+        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions);
 
         MerlotParticipantDto providerOrga = organizationOrchestratorClient.getOrganizationDetails(orgaId);
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
-        List<ServiceOfferingBasicDto> models = selfDescriptionsResponse.getItems().stream()
+        List<ServiceOfferingBasicDto> models = items.stream()
                 .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingBasicDto(
                         item.getMeta(),
                         extensionMap.get(item.getMeta().getSdHash()),
@@ -272,7 +263,7 @@ public class ServiceOfferingsService {
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
-        return new PageImpl<>(models, pageable, extensions.getTotalElements());
+        return new PageImpl<>(models, pageable, extensions.getTotalElements()); // TODO check if we need custom impl
     }
 
     /**
