@@ -87,7 +87,8 @@ public class ServiceOfferingsService {
             (ServiceOfferingExtension extension) throws JsonProcessingException {
         GXFSCatalogListResponse<SelfDescriptionItem> response = null;
         try {
-            response = gxfsCatalogService.getSelfDescriptionsByIds(new String[]{extension.getId()});
+            response = gxfsCatalogService.getSelfDescriptionsByIds(new String[]{extension.getId()},
+                    new SelfDescriptionStatus[]{SelfDescriptionStatus.ACTIVE, SelfDescriptionStatus.REVOKED});
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         }

@@ -227,19 +227,19 @@ class ServiceOfferingsServiceTest {
         lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(any(), any()))
                 .thenReturn(offeringQueryResponseObj);
 
-        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{saasOffering.getId()})))
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{saasOffering.getId()}), any()))
                 .thenReturn(offeringQueryResponseSingleSaasObj);
 
         lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(eq(new String[]{saasOffering.getCurrentSdHash()})))
                 .thenReturn(offeringQueryResponseSingleSaasObj);
 
-        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{dateDeliveryOffering.getId()})))
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{dateDeliveryOffering.getId()}), any()))
                 .thenReturn(offeringQueryResponseSingleDataDeliveryObj);
 
         lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(eq(new String[]{dateDeliveryOffering.getCurrentSdHash()})))
                 .thenReturn(offeringQueryResponseSingleDataDeliveryObj);
 
-        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{cooperationOffering.getId()})))
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{cooperationOffering.getId()}), any()))
                 .thenReturn(offeringQueryResponseSingleCooperationObj);
 
         lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(eq(new String[]{cooperationOffering.getCurrentSdHash()})))
@@ -687,7 +687,7 @@ class ServiceOfferingsServiceTest {
 
     @Test
     void getServiceOfferingDetailsFail() {
-        doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByIds(any());
+        doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByIds(any(), any());
 
         String id = cooperationOffering.getId();
         assertThrows(ResponseStatusException.class,
