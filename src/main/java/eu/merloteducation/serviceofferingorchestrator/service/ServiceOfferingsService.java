@@ -58,9 +58,6 @@ public class ServiceOfferingsService {
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @Value("${gxfscatalog.selfdescriptions-uri}")
-    private String gxfscatalogSelfdescriptionsUri;
     private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
     private static final String PARTICIPANT_START = "Participant:";
     private static final String OFFERING_START = "ServiceOffering:";
@@ -189,15 +186,15 @@ public class ServiceOfferingsService {
         String[] extensionHashes = extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                 .collect(Collectors.toSet()).toArray(String[]::new);
 
+        if (extensionHashes.length == 0) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
         GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse = null;
         try {
             selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
-        }
-
-        if (extensionHashes.length == 0) {
-            return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {

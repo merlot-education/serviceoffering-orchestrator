@@ -33,7 +33,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -63,7 +62,7 @@ import static org.mockito.Mockito.lenient;
 @EnableConfigurationProperties
 class ServiceOfferingsServiceTest {
 
-    @Mock
+    @MockBean
     private OrganizationOrchestratorClient organizationOrchestratorClient;
 
     @MockBean
@@ -81,8 +80,6 @@ class ServiceOfferingsServiceTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${gxfscatalog.selfdescriptions-uri}")
-    private String gxfscatalogSelfdescriptionsUri;
     @InjectMocks
     private ServiceOfferingsService serviceOfferingsService;
 
@@ -168,9 +165,9 @@ class ServiceOfferingsServiceTest {
         ObjectMapper mapper = new ObjectMapper();
         ReflectionTestUtils.setField(serviceOfferingsService, "serviceOfferingMapper", serviceOfferingMapper);
         ReflectionTestUtils.setField(serviceOfferingsService, "objectMapper", objectMapper);
-        ReflectionTestUtils.setField(serviceOfferingsService, "gxfscatalogSelfdescriptionsUri", gxfscatalogSelfdescriptionsUri);
         ReflectionTestUtils.setField(serviceOfferingsService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
         ReflectionTestUtils.setField(serviceOfferingsService, "gxfsCatalogService", gxfsCatalogService);
+        ReflectionTestUtils.setField(serviceOfferingsService, "organizationOrchestratorClient", organizationOrchestratorClient);
 
         saasOffering = new ServiceOfferingExtension();
         saasOffering.setIssuer("Participant:10");
