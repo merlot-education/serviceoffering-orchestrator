@@ -150,15 +150,14 @@
 			<version>0.0.4-ffa14d8</version>
 		</dependency>
 		<dependency>
-				<groupId>eu.merloteducation.modelslib</groupId>
-				<artifactId>modelslib</artifactId>
-				<version>0.2.4</version>
+			<groupId>eu.merloteducation.modelslib</groupId>
+			<artifactId>modelslib</artifactId>
+			<version>0.2.10</version>
 		</dependency>
-
 		<dependency>
 			<groupId>eu.merlot-education</groupId>
 			<artifactId>gxfscatalog-library</artifactId>
-			<version>0.2.1</version>
+			<version>0.3.5</version>
 		</dependency>
 
 	</dependencies>

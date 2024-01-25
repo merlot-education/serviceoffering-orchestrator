@@ -29,16 +29,16 @@ public interface ServiceOfferingMapper {
                         .getVerifiableCredential().getCredentialSubject();
 
         providerDetailsDto.setProviderId(credentialSubject.getId());
-        providerDetailsDto.setProviderLegalName(credentialSubject.getLegalName().getValue());
+        providerDetailsDto.setProviderLegalName(credentialSubject.getLegalName());
         return providerDetailsDto;
     }
 
     @Mapping(target = "id", source = "selfDescriptionMeta.content.verifiableCredential.credentialSubject.id")
     @Mapping(target = "type", source = "selfDescriptionMeta.content.verifiableCredential.credentialSubject.type")
     @Mapping(target = "state", source = "extension.state")
-    @Mapping(target = "name", expression = "java(((MerlotServiceOfferingCredentialSubject) selfDescriptionMeta.getContent().getVerifiableCredential().getCredentialSubject()).getName().getValue())")
+    @Mapping(target = "name", expression = "java(((MerlotServiceOfferingCredentialSubject) selfDescriptionMeta.getContent().getVerifiableCredential().getCredentialSubject()).getName())")
     @Mapping(target = "creationDate", source = "extension.creationDate")
-    @Mapping(target = "providerLegalName", expression = "java(((MerlotOrganizationCredentialSubject) providerDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject()).getLegalName().getValue())")
+    @Mapping(target = "providerLegalName", expression = "java(((MerlotOrganizationCredentialSubject) providerDetails.getSelfDescription().getVerifiableCredential().getCredentialSubject()).getLegalName())")
     ServiceOfferingBasicDto selfDescriptionMetaToServiceOfferingBasicDto(SelfDescriptionMeta selfDescriptionMeta,
                                                                          ServiceOfferingExtension extension,
                                                                          MerlotParticipantDto providerDetails);

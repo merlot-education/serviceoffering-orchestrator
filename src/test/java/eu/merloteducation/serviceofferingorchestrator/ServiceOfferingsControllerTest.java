@@ -283,35 +283,35 @@ class ServiceOfferingsControllerTest {
         credentialSubject.setId("ServiceOffering:TBR");
         credentialSubject.setContext(new HashMap<>());
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:10"));
-        credentialSubject.setName(new StringTypeValue("Test Offering"));
+        credentialSubject.setName("Test Offering");
 
         List<TermsAndConditions> tncList = new ArrayList<>();
         TermsAndConditions tnc = new TermsAndConditions();
-        tnc.setContent(new StringTypeValue("http://example.com"));
-        tnc.setHash(new StringTypeValue("1234"));
+        tnc.setContent("http://example.com");
+        tnc.setHash("1234");
         tnc.setType("gax-trust-framework:TermsAndConditions");
         tncList.add(tnc);
         credentialSubject.setTermsAndConditions(tncList);
 
-        List<StringTypeValue> policies = new ArrayList<>();
-        policies.add(new StringTypeValue("Policy"));
+        List<String> policies = new ArrayList<>();
+        policies.add("Policy");
         credentialSubject.setPolicy(policies);
 
         List<DataAccountExport> exports = new ArrayList<>();
         DataAccountExport export = new DataAccountExport();
-        export.setFormatType(new StringTypeValue("dummyValue"));
-        export.setAccessType(new StringTypeValue("dummyValue"));
-        export.setRequestType(new StringTypeValue("dummyValue"));
+        export.setFormatType("dummyValue");
+        export.setAccessType("dummyValue");
+        export.setRequestType("dummyValue");
         exports.add(export);
         credentialSubject.setDataAccountExport(exports);
 
         credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
-        credentialSubject.setCreationDate(new StringTypeValue("1234"));
+        credentialSubject.setCreationDate("1234");
 
         List<Runtime> runtimeOptions = new ArrayList<>();
         Runtime runtimeUnlimited = new Runtime();
-        runtimeUnlimited.setRuntimeCount(new NumberTypeValue(0));
-        runtimeUnlimited.setRuntimeMeasurement(new StringTypeValue("unlimited"));
+        runtimeUnlimited.setRuntimeCount(0);
+        runtimeUnlimited.setRuntimeMeasurement("unlimited");
         runtimeOptions.add(runtimeUnlimited);
         credentialSubject.setRuntimeOptions(runtimeOptions);
 
@@ -322,7 +322,7 @@ class ServiceOfferingsControllerTest {
         credentialSubject.setType("merlot:MerlotServiceOfferingSaaS");
         List<AllowedUserCount> userCountOptions = new ArrayList<>();
         AllowedUserCount userCountUnlimted = new AllowedUserCount();
-        userCountUnlimted.setUserCountUpTo(new NumberTypeValue(0));
+        userCountUnlimted.setUserCountUpTo(0);
         userCountOptions.add(userCountUnlimted);
         credentialSubject.setUserCountOptions(userCountOptions);
     }
@@ -331,11 +331,11 @@ class ServiceOfferingsControllerTest {
         credentialSubject.setType("merlot:MerlotServiceOfferingDataDelivery");
         List<DataExchangeCount> exchangeCountOptions = new ArrayList<>();
         DataExchangeCount exchangeCount = new DataExchangeCount();
-        exchangeCount.setExchangeCountUpTo(new NumberTypeValue(5));
+        exchangeCount.setExchangeCountUpTo(5);
         exchangeCountOptions.add(exchangeCount);
         credentialSubject.setExchangeCountOptions(exchangeCountOptions);
-        credentialSubject.setDataAccessType(new StringTypeValue("Download"));
-        credentialSubject.setDataTransferType(new StringTypeValue("Pull"));
+        credentialSubject.setDataAccessType("Download");
+        credentialSubject.setDataTransferType("Pull");
     }
 
     private void setValidCooperationCredentialSubjectFields(CooperationCredentialSubject credentialSubject) {
