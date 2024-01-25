@@ -261,10 +261,10 @@ class ServiceOfferingsServiceTest {
         MerlotOrganizationCredentialSubject credentialSubject = new MerlotOrganizationCredentialSubject();
         organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubject);
         credentialSubject.setId("Participant:1234");
-        credentialSubject.setLegalName(new StringTypeValue("Organization"));
+        credentialSubject.setLegalName("Organization");
         TermsAndConditions orgaTnC = new TermsAndConditions();
-        orgaTnC.setContent(new StringTypeValue("http://example.com"));
-        orgaTnC.setHash(new StringTypeValue("hash1234"));
+        orgaTnC.setContent("http://example.com");
+        orgaTnC.setHash("hash1234");
         credentialSubject.setTermsAndConditions(orgaTnC);
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
@@ -275,10 +275,10 @@ class ServiceOfferingsServiceTest {
         MerlotOrganizationCredentialSubject credentialSubjectDetails = new MerlotOrganizationCredentialSubject();
         merlotDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubjectDetails);
         credentialSubjectDetails.setId("Participant:1234");
-        credentialSubjectDetails.setLegalName(new StringTypeValue("Organization"));
+        credentialSubjectDetails.setLegalName("Organization");
         TermsAndConditions merlotTnc = new TermsAndConditions();
-        merlotTnc.setContent(new StringTypeValue("https://merlot-education.eu"));
-        merlotTnc.setHash(new StringTypeValue("hash12345"));
+        merlotTnc.setContent("https://merlot-education.eu");
+        merlotTnc.setHash("hash12345");
         credentialSubjectDetails.setTermsAndConditions(merlotTnc);
         lenient().when(organizationOrchestratorClient.getOrganizationDetails("Participant:99"))
                 .thenReturn(merlotDetails);
@@ -289,10 +289,10 @@ class ServiceOfferingsServiceTest {
         MerlotOrganizationCredentialSubject credentialSubject2 = new MerlotOrganizationCredentialSubject();
         organizationDetails2.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubject2);
         credentialSubject2.setId("Participant:1234");
-        credentialSubject2.setLegalName(new StringTypeValue("Organization"));
+        credentialSubject2.setLegalName("Organization");
         TermsAndConditions emptyOrgaTnC = new TermsAndConditions();
-        emptyOrgaTnC.setContent(new StringTypeValue(""));
-        emptyOrgaTnC.setHash(new StringTypeValue(""));
+        emptyOrgaTnC.setContent("");
+        emptyOrgaTnC.setHash("");
         credentialSubject2.setTermsAndConditions(emptyOrgaTnC);
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("Participant:notnc")))
                 .thenReturn(organizationDetails2);
@@ -305,51 +305,51 @@ class ServiceOfferingsServiceTest {
         credentialSubject.setId("ServiceOffering:TBR");
         credentialSubject.setContext(new HashMap<>());
         credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:10"));
-        credentialSubject.setName(new StringTypeValue("Test Offering"));
+        credentialSubject.setName("Test Offering");
 
         List<TermsAndConditions> tncList = new ArrayList<>();
         TermsAndConditions tnc = new TermsAndConditions();
-        tnc.setContent(new StringTypeValue("http://myexample.com"));
-        tnc.setHash(new StringTypeValue("1234"));
+        tnc.setContent("http://myexample.com");
+        tnc.setHash("1234");
         tnc.setType("gax-trust-framework:TermsAndConditions");
         TermsAndConditions providerTnc = new TermsAndConditions();
-        providerTnc.setContent(new StringTypeValue("http://example.com"));
-        providerTnc.setHash(new StringTypeValue("hash1234"));
+        providerTnc.setContent("http://example.com");
+        providerTnc.setHash("hash1234");
         providerTnc.setType("gax-trust-framework:TermsAndConditions");
         TermsAndConditions merlotTnc = new TermsAndConditions();
-        merlotTnc.setContent(new StringTypeValue("https://merlot-education.eu"));
-        merlotTnc.setHash(new StringTypeValue("hash12345"));
+        merlotTnc.setContent("https://merlot-education.eu");
+        merlotTnc.setHash("hash12345");
         merlotTnc.setType("gax-trust-framework:TermsAndConditions");
         tncList.add(tnc);
         tncList.add(providerTnc);
         tncList.add(merlotTnc);
         credentialSubject.setTermsAndConditions(tncList);
 
-        List<StringTypeValue> policies = new ArrayList<>();
-        policies.add(new StringTypeValue("Policy"));
+        List<String> policies = new ArrayList<>();
+        policies.add("Policy");
         credentialSubject.setPolicy(policies);
 
         List<DataAccountExport> exports = new ArrayList<>();
         DataAccountExport export = new DataAccountExport();
-        export.setFormatType(new StringTypeValue("dummyValue"));
-        export.setAccessType(new StringTypeValue("dummyValue"));
-        export.setRequestType(new StringTypeValue("dummyValue"));
+        export.setFormatType("dummyValue");
+        export.setAccessType("dummyValue");
+        export.setRequestType("dummyValue");
         exports.add(export);
         credentialSubject.setDataAccountExport(exports);
 
         credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
-        credentialSubject.setCreationDate(new StringTypeValue("1234"));
+        credentialSubject.setCreationDate("1234");
 
         List<Runtime> runtimeOptions = new ArrayList<>();
         Runtime runtimeUnlimited = new Runtime();
-        runtimeUnlimited.setRuntimeCount(new NumberTypeValue(0));
-        runtimeUnlimited.setRuntimeMeasurement(new StringTypeValue("unlimited"));
+        runtimeUnlimited.setRuntimeCount(0);
+        runtimeUnlimited.setRuntimeMeasurement("unlimited");
         runtimeOptions.add(runtimeUnlimited);
         credentialSubject.setRuntimeOptions(runtimeOptions);
 
         List<AllowedUserCount> userCountOptions = new ArrayList<>();
         AllowedUserCount userCountUnlimted = new AllowedUserCount();
-        userCountUnlimted.setUserCountUpTo(new NumberTypeValue(0));
+        userCountUnlimted.setUserCountUpTo(0);
         userCountOptions.add(userCountUnlimted);
         credentialSubject.setUserCountOptions(userCountOptions);
 
@@ -650,7 +650,7 @@ class ServiceOfferingsServiceTest {
         assertEquals(saasOffering.getCurrentSdHash(), model.getMetadata().getHash());
 
         assertNull(credentialSubject.getHardwareRequirements());
-        assertEquals(0, credentialSubject.getUserCountOptions().get(0).getUserCountUpTo().getValue());
+        assertEquals(0, credentialSubject.getUserCountOptions().get(0).getUserCountUpTo());
     }
 
     @Test
@@ -663,9 +663,9 @@ class ServiceOfferingsServiceTest {
                 .getVerifiableCredential().getCredentialSubject();
         assertEquals("merlot:MerlotServiceOfferingDataDelivery", credentialSubject.getType());
 
-        assertEquals("Download", credentialSubject.getDataAccessType().getValue());
-        assertEquals("Push", credentialSubject.getDataTransferType().getValue());
-        assertEquals(0, credentialSubject.getExchangeCountOptions().get(0).getExchangeCountUpTo().getValue());
+        assertEquals("Download", credentialSubject.getDataAccessType());
+        assertEquals("Push", credentialSubject.getDataTransferType());
+        assertEquals(0, credentialSubject.getExchangeCountOptions().get(0).getExchangeCountUpTo());
     }
 
     @Test

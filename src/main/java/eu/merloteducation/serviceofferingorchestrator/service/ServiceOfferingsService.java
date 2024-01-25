@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.GXFSCatalogListResponse;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.StringTypeValue;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.TermsAndConditions;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotOrganizationCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
@@ -309,8 +308,8 @@ public class ServiceOfferingsService {
                 .getOrganizationDetails(credentialSubject.getOfferedBy().getId())
                 .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
 
-        if (StringUtil.isNullOrEmpty(providerTnC.getContent().getValue())
-                || StringUtil.isNullOrEmpty(providerTnC.getHash().getValue())) {
+        if (StringUtil.isNullOrEmpty(providerTnC.getContent())
+                || StringUtil.isNullOrEmpty(providerTnC.getHash())) {
             throw new ResponseStatusException(FORBIDDEN, "Cannot create/update self-description without valid provider TnC");
         }
 
@@ -346,8 +345,7 @@ public class ServiceOfferingsService {
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
             // override creation time to correspond to the current time and generate an ID
             extension = new ServiceOfferingExtension();
-            credentialSubject.setCreationDate(new StringTypeValue(
-                    extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT)));
+            credentialSubject.setCreationDate(extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT));
             credentialSubject.setId(OFFERING_START + UUID.randomUUID());
         } else {
             extension = serviceOfferingExtensionRepository
@@ -368,8 +366,7 @@ public class ServiceOfferingsService {
                 }
 
                 // override creation date
-                credentialSubject.setCreationDate(new StringTypeValue(
-                        extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT)));
+                credentialSubject.setCreationDate(extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT));
             } else {
                 throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
             }
