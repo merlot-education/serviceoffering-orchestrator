@@ -498,7 +498,7 @@ class ServiceOfferingsServiceTest {
 
     @Test
     void getOrganizationOfferingsByStateFail() {
-        doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByHashes(any());
+        doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByHashes(any(), any());
 
         PageRequest request = PageRequest.of(0, 9, Sort.by("creationDate").descending());
         assertThrows(ResponseStatusException.class, () -> serviceOfferingsService

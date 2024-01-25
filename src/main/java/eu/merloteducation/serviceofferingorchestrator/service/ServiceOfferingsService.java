@@ -3,6 +3,7 @@ package eu.merloteducation.serviceofferingorchestrator.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.merloteducation.gxfscataloglibrary.models.client.SelfDescriptionStatus;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.GXFSCatalogListResponse;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
@@ -94,7 +95,7 @@ public class ServiceOfferingsService {
     }
 
     private List<SelfDescriptionItem> getSelfDescriptionsByOfferingExtensionList
-            (Page<ServiceOfferingExtension> extensions) throws JsonProcessingException {
+            (Page<ServiceOfferingExtension> extensions, boolean showRevoked) throws JsonProcessingException {
         String[] extensionHashes = extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                 .collect(Collectors.toSet()).toArray(String[]::new);
 
@@ -104,7 +105,12 @@ public class ServiceOfferingsService {
 
         GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse = null;
         try {
-            selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
+            if (showRevoked) {
+                selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes,
+                        new SelfDescriptionStatus[]{SelfDescriptionStatus.ACTIVE, SelfDescriptionStatus.REVOKED});
+            } else {
+                selfDescriptionsResponse = gxfsCatalogService.getSelfDescriptionsByHashes(extensionHashes);
+            }
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         }
@@ -204,7 +210,7 @@ public class ServiceOfferingsService {
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
 
-        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions);
+        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions, false);
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
         List<ServiceOfferingBasicDto> models = items.stream()
@@ -246,7 +252,7 @@ public class ServiceOfferingsService {
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
 
-        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions);
+        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions, true);
 
         MerlotParticipantDto providerOrga = organizationOrchestratorClient.getOrganizationDetails(orgaId);
 
