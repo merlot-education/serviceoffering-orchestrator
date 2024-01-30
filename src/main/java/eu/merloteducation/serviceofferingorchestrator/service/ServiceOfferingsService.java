@@ -58,7 +58,6 @@ public class ServiceOfferingsService {
     @Autowired
     private ObjectMapper objectMapper;
     private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
-    private static final String PARTICIPANT_START = "Participant:";
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
 
@@ -245,10 +244,10 @@ public class ServiceOfferingsService {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository
-                    .findAllByIssuerAndState(PARTICIPANT_START + orgaId, state, pageable);
+                    .findAllByIssuerAndState(orgaId, state, pageable);
         } else {
             extensions = serviceOfferingExtensionRepository
-                    .findAllByIssuer(PARTICIPANT_START + orgaId, pageable);
+                    .findAllByIssuer(orgaId, pageable);
         }
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
@@ -321,7 +320,7 @@ public class ServiceOfferingsService {
         }
 
         TermsAndConditions merlotTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
-                .getOrganizationDetails("Participant:99")
+                .getOrganizationDetails("did:web:merlot-federation.marketplace.dev.merlot-education.eu") // TODO change url
                 .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
 
         // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them
