@@ -13,8 +13,6 @@ import java.util.Set;
 @Component("offeringAuthorityChecker")
 public class OfferingAuthorityChecker {
 
-    private static final String PARTICIPANT = "Participant:";
-
     @Autowired
     private AuthorityChecker authorityChecker;
 
@@ -45,7 +43,7 @@ public class OfferingAuthorityChecker {
         Set<String> representedOrgaIds = authorityChecker.getRepresentedOrgaIds(authentication);
 
         if (extension != null) {
-            return representedOrgaIds.contains(extension.getIssuer().replace(PARTICIPANT, ""));
+            return representedOrgaIds.contains(extension.getIssuer());
         }
         return false;
     }

@@ -25,6 +25,7 @@ import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -57,6 +58,9 @@ public class ServiceOfferingsService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Value("${merlot-domain}")
+    private String merlotDomain;
     private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
@@ -320,7 +324,7 @@ public class ServiceOfferingsService {
         }
 
         TermsAndConditions merlotTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
-                .getOrganizationDetails("did:web:merlot-federation.marketplace.dev.merlot-education.eu") // TODO change url
+                .getOrganizationDetails("did:web:merlot-federation." + merlotDomain)
                 .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
 
         // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them
