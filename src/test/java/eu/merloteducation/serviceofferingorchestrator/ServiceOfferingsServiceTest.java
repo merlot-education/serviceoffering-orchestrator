@@ -507,8 +507,9 @@ class ServiceOfferingsServiceTest {
         doThrow(getWebClientResponseException()).when(gxfsCatalogService).getSelfDescriptionsByHashes(any(), any());
 
         PageRequest request = PageRequest.of(0, 9, Sort.by("creationDate").descending());
+        String participantId = getParticipantId(10);
         assertThrows(ResponseStatusException.class, () -> serviceOfferingsService
-            .getOrganizationServiceOfferings(getParticipantId(10), ServiceOfferingState.IN_DRAFT, request));
+            .getOrganizationServiceOfferings(participantId, ServiceOfferingState.IN_DRAFT, request));
     }
 
     @Test
