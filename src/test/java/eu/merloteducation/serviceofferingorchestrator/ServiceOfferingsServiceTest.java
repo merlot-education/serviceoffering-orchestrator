@@ -97,7 +97,7 @@ class ServiceOfferingsServiceTest {
     private final String MERLOT_DOMAIN = "test.eu";
 
     private String getParticipantId(int num) {
-        return "did:web:orga-" + num + "." + MERLOT_DOMAIN;
+        return "did:web:"+ MERLOT_DOMAIN + "#orga-" + num;
     }
 
     private String createCatalogItem(String id, String issuer, String sdHash, String type) {
@@ -252,7 +252,7 @@ class ServiceOfferingsServiceTest {
                 .thenReturn(offeringQueryResponseSingleCooperationObj);
 
         String mockOfferingCreatedResponse = """
-                {"sdHash":"4321","id":"ServiceOffering:new","status":"active","issuer":"did:web:orga-10.test.eu","validatorDids":["did:web:compliance.lab.gaia-x.eu"],"uploadDatetime":"2023-05-24T13:32:22.712661Z","statusDatetime":"2023-05-24T13:32:22.712662Z"}
+                {"sdHash":"4321","id":"ServiceOffering:new","status":"active","issuer":"did:web:test.eu#orga-10","validatorDids":["did:web:compliance.lab.gaia-x.eu"],"uploadDatetime":"2023-05-24T13:32:22.712661Z","statusDatetime":"2023-05-24T13:32:22.712662Z"}
                 """;
         SelfDescriptionMeta meta = objectMapper.readValue(unescapeJson(mockOfferingCreatedResponse), new TypeReference<>(){});
         // for participant endpoint return a dummy list of one item

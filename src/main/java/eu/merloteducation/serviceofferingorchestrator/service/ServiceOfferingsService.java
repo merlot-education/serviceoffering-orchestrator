@@ -324,7 +324,7 @@ public class ServiceOfferingsService {
         }
 
         TermsAndConditions merlotTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
-                .getOrganizationDetails("did:web:merlot-federation." + merlotDomain)
+                .getOrganizationDetails("did:web:" + merlotDomain + "#merlot-federation")
                 .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
 
         // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them

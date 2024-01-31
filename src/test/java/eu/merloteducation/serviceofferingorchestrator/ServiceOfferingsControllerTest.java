@@ -39,6 +39,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
+import java.net.URI;
 import java.util.*;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -82,9 +83,8 @@ class ServiceOfferingsControllerTest {
     }
 
     private String getParticipantId(int num) {
-
         String MERLOT_DOMAIN = "test.eu";
-        return "did:web:orga-" + num + "." + MERLOT_DOMAIN;
+        return "did:web:"+ MERLOT_DOMAIN + "#orga-" + num;
     }
 
     @BeforeEach
@@ -160,7 +160,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void getOrganizationOfferingsUnauthenticated() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .get("/organization/" + getParticipantId(10))
+                        .get(new URI("/organization/" + getParticipantId(10).replace("#", "%23")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf()))
@@ -171,7 +171,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void getOrganizationOfferingsForbidden() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .get("/organization/" + getParticipantId(10))
+                        .get(new URI("/organization/" + getParticipantId(10).replace("#", "%23")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
@@ -184,8 +184,9 @@ class ServiceOfferingsControllerTest {
 
     @Test
     void getOrganizationOfferingsAuthorized() throws Exception {
+        System.out.println(getParticipantId(10));
         mvc.perform(MockMvcRequestBuilders
-                        .get("/organization/" + getParticipantId(10))
+                        .get(new URI("/organization/" + getParticipantId(10).replace("#", "%23")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "")
                         .accept(MediaType.APPLICATION_JSON)
