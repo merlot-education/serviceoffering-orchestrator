@@ -33,7 +33,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -286,7 +285,7 @@ class ServiceOfferingsServiceTest {
         merlotTnc.setContent("https://merlot-education.eu");
         merlotTnc.setHash("hash12345");
         credentialSubjectDetails.setTermsAndConditions(merlotTnc);
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails("did:web:merlot-federation." + MERLOT_DOMAIN))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails("did:web:" + MERLOT_DOMAIN + "#merlot-federation"))
                 .thenReturn(merlotDetails);
 
         MerlotParticipantDto organizationDetails2 = new MerlotParticipantDto();
@@ -300,7 +299,7 @@ class ServiceOfferingsServiceTest {
         emptyOrgaTnC.setContent("");
         emptyOrgaTnC.setHash("");
         credentialSubject2.setTermsAndConditions(emptyOrgaTnC);
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("did:web:no-tnc." + MERLOT_DOMAIN)))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("did:web:" + MERLOT_DOMAIN + "#no-tnc")))
                 .thenReturn(organizationDetails2);
 
 
@@ -374,8 +373,8 @@ class ServiceOfferingsServiceTest {
     @Test
     void addNewValidServiceOfferingButNoProviderTnC() {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("did:web:no-tnc." + MERLOT_DOMAIN));
-        credentialSubject.setOfferedBy(new NodeKindIRITypeId("did:web:no-tnc." + MERLOT_DOMAIN));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId("did:web:" + MERLOT_DOMAIN + "#no-tnc"));
+        credentialSubject.setOfferedBy(new NodeKindIRITypeId("did:web:" + MERLOT_DOMAIN + "#no-tnc"));
 
         ResponseStatusException exception =
                 assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
