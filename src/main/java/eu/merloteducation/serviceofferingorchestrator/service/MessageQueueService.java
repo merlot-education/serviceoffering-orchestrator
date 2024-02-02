@@ -15,6 +15,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class MessageQueueService {
 
@@ -93,7 +95,7 @@ public class MessageQueueService {
 
     /**
      * Listen for the event that an organization's membership has been revoked on the message bus.
-     * In that case, update the corresponding offering to be revoked.
+     * In that case, revoke the offerings associated with that organization.
      *
      * @param orgaId id of the organization whose membership has been revoked
      */
@@ -101,10 +103,10 @@ public class MessageQueueService {
     public void organizationRevokedListener(String orgaId) {
         logger.info("Organization revoked message: organization ID {}", orgaId);
 
-        Page<ServiceOfferingExtension> releasedOfferingsByRevokedOrga = serviceOfferingExtensionRepository.findAllByIssuerAndState(
-            orgaId, ServiceOfferingState.RELEASED, PageRequest.of(0, Integer.MAX_VALUE));
+        List<ServiceOfferingExtension> releasedOfferingsByRevokedOrga = serviceOfferingExtensionRepository.findAllByIssuerAndState(
+            orgaId, ServiceOfferingState.RELEASED);
 
-        if (releasedOfferingsByRevokedOrga.hasContent()) {
+        if (!releasedOfferingsByRevokedOrga.isEmpty()) {
             logger.info("Revoking released service offerings of organization with ID {}", orgaId);
             releasedOfferingsByRevokedOrga.forEach(extension -> {
                 extension.revoke();
