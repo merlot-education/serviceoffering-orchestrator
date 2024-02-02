@@ -25,6 +25,7 @@ import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -57,8 +58,10 @@ public class ServiceOfferingsService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Value("${merlot-domain}")
+    private String merlotDomain;
     private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
-    private static final String PARTICIPANT_START = "Participant:";
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
 
@@ -245,10 +248,10 @@ public class ServiceOfferingsService {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository
-                    .findAllByIssuerAndState(PARTICIPANT_START + orgaId, state, pageable);
+                    .findAllByIssuerAndState(orgaId, state, pageable);
         } else {
             extensions = serviceOfferingExtensionRepository
-                    .findAllByIssuer(PARTICIPANT_START + orgaId, pageable);
+                    .findAllByIssuer(orgaId, pageable);
         }
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
@@ -321,7 +324,7 @@ public class ServiceOfferingsService {
         }
 
         TermsAndConditions merlotTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
-                .getOrganizationDetails("Participant:99")
+                .getOrganizationDetails("did:web:" + merlotDomain + "#df15587a-0760-32b5-9c42-bb7be66e8076")
                 .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
 
         // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them
