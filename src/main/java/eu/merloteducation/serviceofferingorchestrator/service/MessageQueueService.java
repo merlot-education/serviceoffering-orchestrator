@@ -112,6 +112,8 @@ public class MessageQueueService {
                 extension.revoke();
                 serviceOfferingExtensionRepository.save(extension);
             });
+        } else {
+            logger.info("No released service offerings of organization with ID {} found to delete", orgaId);
         }
     }
 }
