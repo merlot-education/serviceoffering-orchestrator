@@ -39,6 +39,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
+import java.net.URI;
 import java.util.*;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -81,17 +82,21 @@ class ServiceOfferingsControllerTest {
         }
     }
 
+    private String getParticipantId(int num) {
+        String MERLOT_DOMAIN = "test.eu";
+        return "did:web:"+ MERLOT_DOMAIN + "#orga-" + num;
+    }
 
     @BeforeEach
     public void setUp() throws Exception {
 
         ServiceOfferingExtension extension = new ServiceOfferingExtension();
-        extension.setIssuer("Participant:10");
+        extension.setIssuer(getParticipantId(10));
         lenient().when(serviceOfferingExtensionRepository.findById("notreleased")).thenReturn(Optional.of(extension));
 
         ServiceOfferingExtension extension2 = new ServiceOfferingExtension();
         extension2.release();
-        extension2.setIssuer("Participant:10");
+        extension2.setIssuer(getParticipantId(10));
         lenient().when(serviceOfferingExtensionRepository.findById("released")).thenReturn(Optional.of(extension2));
 
         ServiceOfferingDto serviceOfferingNotReleasedDto = new ServiceOfferingDto();
@@ -99,14 +104,14 @@ class ServiceOfferingsControllerTest {
         serviceOfferingNotReleasedDto.getMetadata().setState("IN_DRAFT");
         serviceOfferingNotReleasedDto.setSelfDescription(new SelfDescription());
         serviceOfferingNotReleasedDto.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
-        serviceOfferingNotReleasedDto.getSelfDescription().getVerifiableCredential().setIssuer("Participant:10");
+        serviceOfferingNotReleasedDto.getSelfDescription().getVerifiableCredential().setIssuer(getParticipantId(10));
 
         ServiceOfferingDto serviceOfferingDto = new ServiceOfferingDto();
         serviceOfferingDto.setMetadata(new OfferingMetaDto());
         serviceOfferingDto.getMetadata().setState("RELEASED");
         serviceOfferingDto.setSelfDescription(new SelfDescription());
         serviceOfferingDto.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
-        serviceOfferingDto.getSelfDescription().getVerifiableCredential().setIssuer("Participant:10");
+        serviceOfferingDto.getSelfDescription().getVerifiableCredential().setIssuer(getParticipantId(10));
         ServiceOfferingBasicDto serviceOfferingBasicDto = new ServiceOfferingBasicDto();
         serviceOfferingBasicDto.setId("1234");
         serviceOfferingBasicDto.setName("bla");
@@ -155,7 +160,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void getOrganizationOfferingsUnauthenticated() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .get("/organization/10")
+                        .get(new URI("/organization/" + getParticipantId(10).replace("#", "%23")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf()))
@@ -166,12 +171,12 @@ class ServiceOfferingsControllerTest {
     @Test
     void getOrganizationOfferingsForbidden() throws Exception {
         mvc.perform(MockMvcRequestBuilders
-                        .get("/organization/10")
+                        .get(new URI("/organization/" + getParticipantId(10).replace("#", "%23")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_20")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -179,14 +184,15 @@ class ServiceOfferingsControllerTest {
 
     @Test
     void getOrganizationOfferingsAuthorized() throws Exception {
+        System.out.println(getParticipantId(10));
         mvc.perform(MockMvcRequestBuilders
-                        .get("/organization/10")
+                        .get(new URI("/organization/" + getParticipantId(10).replace("#", "%23")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "")
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -213,7 +219,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_20")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -228,7 +234,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -243,7 +249,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_20")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -258,7 +264,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -273,7 +279,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -282,7 +288,7 @@ class ServiceOfferingsControllerTest {
     private void setValidCredentialSubjectFields(MerlotServiceOfferingCredentialSubject credentialSubject) {
         credentialSubject.setId("ServiceOffering:TBR");
         credentialSubject.setContext(new HashMap<>());
-        credentialSubject.setOfferedBy(new NodeKindIRITypeId("Participant:10"));
+        credentialSubject.setOfferedBy(new NodeKindIRITypeId(getParticipantId(10)));
         credentialSubject.setName("Test Offering");
 
         List<TermsAndConditions> tncList = new ArrayList<>();
@@ -305,7 +311,7 @@ class ServiceOfferingsControllerTest {
         exports.add(export);
         credentialSubject.setDataAccountExport(exports);
 
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId(getParticipantId(10)));
         credentialSubject.setCreationDate("1234");
 
         List<Runtime> runtimeOptions = new ArrayList<>();
@@ -380,7 +386,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void addSaasOfferingForbidden() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId(getParticipantId(10)));
         mvc.perform(MockMvcRequestBuilders
                         .post("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -389,7 +395,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_20")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -398,7 +404,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void addSaasOfferingAllowed() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId(getParticipantId(10)));
         mvc.perform(MockMvcRequestBuilders
                         .post("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -407,7 +413,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -430,7 +436,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void addDataDeliveryOfferingForbidden() throws Exception {
         DataDeliveryCredentialSubject credentialSubject = createValidDataDeliveryCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId(getParticipantId(10)));
         mvc.perform(MockMvcRequestBuilders
                         .post("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -439,7 +445,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_20")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -448,7 +454,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void addDataDeliveryOfferingAllowed() throws Exception {
         DataDeliveryCredentialSubject credentialSubject = createValidDataDeliveryCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId(getParticipantId(10)));
         mvc.perform(MockMvcRequestBuilders
                         .post("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -457,7 +463,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -480,7 +486,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void addCooperationOfferingForbidden() throws Exception {
         CooperationCredentialSubject credentialSubject = createValidCooperationCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId(getParticipantId(10)));
         mvc.perform(MockMvcRequestBuilders
                         .post("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -489,7 +495,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_20")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -498,7 +504,7 @@ class ServiceOfferingsControllerTest {
     @Test
     void addCooperationOfferingAllowed() throws Exception {
         CooperationCredentialSubject credentialSubject = createValidCooperationCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("Participant:10"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId(getParticipantId(10)));
         mvc.perform(MockMvcRequestBuilders
                         .post("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -507,7 +513,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -534,7 +540,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -561,7 +567,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -588,7 +594,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -615,7 +621,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_10")
+                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
