@@ -94,6 +94,7 @@ class MessageQueueServiceTests {
     void organizationRevokedDeleteReleasedOfferings() {
 
         ServiceOfferingExtension initialExtension = serviceOfferingExtensionRepository.findById("1234").orElse(null);
+        assertNotNull(initialExtension);
         assertThat(initialExtension.getState()).isEqualTo(ServiceOfferingState.IN_DRAFT);
 
         initialExtension.setIssuer("issuer");
@@ -101,6 +102,7 @@ class MessageQueueServiceTests {
         serviceOfferingExtensionRepository.save(initialExtension);
 
         ServiceOfferingExtension updatedExtension = serviceOfferingExtensionRepository.findById("1234").orElse(null);
+        assertNotNull(updatedExtension);
         assertThat(updatedExtension.getState()).isEqualTo(ServiceOfferingState.RELEASED);
 
         messageQueueService.organizationRevokedListener("issuer");
