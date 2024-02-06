@@ -6,10 +6,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public interface ServiceOfferingExtensionRepository extends JpaRepository<ServiceOfferingExtension, String> {
     Page<ServiceOfferingExtension> findAllByState(ServiceOfferingState state, Pageable pageable);
 
     Page<ServiceOfferingExtension> findAllByIssuer(String issuer, Pageable pageable);
     Page<ServiceOfferingExtension> findAllByIssuerAndState(String issuer, ServiceOfferingState state, Pageable pageable);
+
+    List<ServiceOfferingExtension> findAllByIssuerAndState(String issuer, ServiceOfferingState state);
 
 }

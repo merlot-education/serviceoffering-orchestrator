@@ -4,12 +4,18 @@ import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.modelslib.queue.ContractTemplateUpdated;
 import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
+import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class MessageQueueService {
@@ -85,5 +91,29 @@ public class MessageQueueService {
     public ServiceOfferingDto offeringDetailsRequestListener(String offeringId) throws Exception {
         logger.info("Offering request message: offering ID {}", offeringId);
         return serviceOfferingsService.getServiceOfferingById(offeringId);
+    }
+
+    /**
+     * Listen for the event that an organization's membership has been revoked on the message bus.
+     * In that case, revoke the offerings associated with that organization.
+     *
+     * @param orgaId id of the organization whose membership has been revoked
+     */
+    @RabbitListener(queues = MessageQueueConfig.ORGANIZATION_REVOKED_QUEUE)
+    public void organizationRevokedListener(String orgaId) {
+        logger.info("Organization revoked message: organization ID {}", orgaId);
+
+        List<ServiceOfferingExtension> releasedOfferingsByRevokedOrga = serviceOfferingExtensionRepository.findAllByIssuerAndState(
+            orgaId, ServiceOfferingState.RELEASED);
+
+        if (!releasedOfferingsByRevokedOrga.isEmpty()) {
+            logger.info("Revoking released service offerings of organization with ID {}", orgaId);
+            releasedOfferingsByRevokedOrga.forEach(extension -> {
+                extension.revoke();
+                serviceOfferingExtensionRepository.save(extension);
+            });
+        } else {
+            logger.info("No released service offerings of organization with ID {} found to delete", orgaId);
+        }
     }
 }
