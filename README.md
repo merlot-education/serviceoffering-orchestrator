@@ -3,8 +3,9 @@ The Serviceoffering Orchestrator is a microservice in the MERLOT marketplace
 which handles all Service Offering related information.
 
 Internally, this service wraps self-description communication with the [XFSC Federated Catalog](https://gitlab.eclipse.org/eclipse/xfsc/cat/fc-service/-/tree/1.0.1?ref_type=tags) and [XFSC Self-Description Wizard](https://gitlab.eclipse.org/eclipse/xfsc/self-description-tooling/sd-creation-wizard-api)
-while also augmenting the self-description with a state machine providing visibility levels
-and information about associated contracts.
+while also augmenting the self-description with a state machine providing visibility levels* and information about associated contracts.
+
+*By introducing the state machine, we gained the ability to filter the serviceofferings by state (in-draft, released etc.). As an example, we are showing only "released" serviceofferings to the public.
 
 ## Development
 
