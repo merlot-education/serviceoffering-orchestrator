@@ -83,8 +83,8 @@ class ServiceOfferingsControllerTest {
     }
 
     private String getParticipantId(int num) {
-        String MERLOT_DOMAIN = "test.eu";
-        return "did:web:"+ MERLOT_DOMAIN + "#orga-" + num;
+        String DID_DOMAIN = "test.eu";
+        return "did:web:"+ DID_DOMAIN + ":participant:orga-" + num;
     }
 
     @BeforeEach

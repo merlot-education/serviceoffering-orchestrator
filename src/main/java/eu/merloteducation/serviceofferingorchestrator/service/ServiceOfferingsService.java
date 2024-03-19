@@ -12,6 +12,7 @@ import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.part
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
+import eu.merloteducation.modelslib.api.organization.OrganisationSignerConfigDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
@@ -59,8 +60,8 @@ public class ServiceOfferingsService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${merlot-domain}")
-    private String merlotDomain;
+    @Value("${did-domain}")
+    private String didDomain;
     private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
@@ -313,10 +314,7 @@ public class ServiceOfferingsService {
         return addServiceOffering(subject);
     }
 
-    private void patchTermsAndConditions(MerlotServiceOfferingCredentialSubject credentialSubject) {
-        TermsAndConditions providerTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
-                .getOrganizationDetails(credentialSubject.getOfferedBy().getId())
-                .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
+    private void patchTermsAndConditions(MerlotServiceOfferingCredentialSubject credentialSubject, TermsAndConditions providerTnC) {
 
         if (StringUtil.isNullOrEmpty(providerTnC.getContent())
                 || StringUtil.isNullOrEmpty(providerTnC.getHash())) {
@@ -324,7 +322,7 @@ public class ServiceOfferingsService {
         }
 
         TermsAndConditions merlotTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
-                .getOrganizationDetails("did:web:" + merlotDomain + "#df15587a-0760-32b5-9c42-bb7be66e8076")
+                .getOrganizationDetails("did:web:" + didDomain + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076")
                 .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
 
         // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them
@@ -382,11 +380,17 @@ public class ServiceOfferingsService {
             }
         }
 
-        patchTermsAndConditions(credentialSubject);
+        MerlotParticipantDto participantDto = organizationOrchestratorClient
+            .getOrganizationDetails(credentialSubject.getOfferedBy().getId());
 
+        TermsAndConditions termsAndConditions = ((MerlotOrganizationCredentialSubject) participantDto.getSelfDescription()
+            .getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
+        patchTermsAndConditions(credentialSubject, termsAndConditions);
+
+        OrganisationSignerConfigDto orgaSignerConfig = participantDto.getMetadata().getOrganisationSignerConfigDto();
         SelfDescriptionMeta selfDescriptionsResponse = null;
         try {
-            selfDescriptionsResponse = addServiceOfferingToCatalog(credentialSubject);
+            selfDescriptionsResponse = addServiceOfferingToCatalog(credentialSubject, orgaSignerConfig);
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         }
@@ -425,10 +429,10 @@ public class ServiceOfferingsService {
         }
     }
 
-    private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject) throws JsonProcessingException {
+    private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject, OrganisationSignerConfigDto orgaSignerConfig) throws JsonProcessingException {
         SelfDescriptionMeta response = null;
         try {
-            response = gxfsCatalogService.addServiceOffering(credentialSubject);
+            response = gxfsCatalogService.addServiceOffering(credentialSubject, orgaSignerConfig.getVerificationMethod(), orgaSignerConfig.getPrivateKey());
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         } catch (Exception e) {

@@ -94,4 +94,4 @@ cors:
     patterns: >
       http://localhost:[*]
 
-merlot-domain: "marketplace.dev.merlot-education.eu"
+did-domain: "localhost"

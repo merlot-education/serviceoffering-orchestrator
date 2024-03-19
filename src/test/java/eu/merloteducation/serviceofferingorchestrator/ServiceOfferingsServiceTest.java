@@ -15,6 +15,8 @@ import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serv
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.SaaSCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
+import eu.merloteducation.modelslib.api.organization.MerlotParticipantMetaDto;
+import eu.merloteducation.modelslib.api.organization.OrganisationSignerConfigDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
@@ -93,10 +95,10 @@ class ServiceOfferingsServiceTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
     private TransactionTemplate transactionTemplate;
-    private final String MERLOT_DOMAIN = "test.eu";
+    private final String DID_DOMAIN = "test.eu";
 
     private String getParticipantId(int num) {
-        return "did:web:"+ MERLOT_DOMAIN + "#orga-" + num;
+        return "did:web:"+ DID_DOMAIN + ":participant:orga-" + num;
     }
 
     private String createCatalogItem(String id, String issuer, String sdHash, String type) {
@@ -251,11 +253,11 @@ class ServiceOfferingsServiceTest {
                 .thenReturn(offeringQueryResponseSingleCooperationObj);
 
         String mockOfferingCreatedResponse = """
-                {"sdHash":"4321","id":"ServiceOffering:new","status":"active","issuer":"did:web:test.eu#orga-10","validatorDids":["did:web:compliance.lab.gaia-x.eu"],"uploadDatetime":"2023-05-24T13:32:22.712661Z","statusDatetime":"2023-05-24T13:32:22.712662Z"}
+                {"sdHash":"4321","id":"ServiceOffering:new","status":"active","issuer":"did:web:test.eu:participant:orga-10","validatorDids":["did:web:compliance.lab.gaia-x.eu"],"uploadDatetime":"2023-05-24T13:32:22.712661Z","statusDatetime":"2023-05-24T13:32:22.712662Z"}
                 """;
         SelfDescriptionMeta meta = objectMapper.readValue(unescapeJson(mockOfferingCreatedResponse), new TypeReference<>(){});
         // for participant endpoint return a dummy list of one item
-        lenient().when(gxfsCatalogService.addServiceOffering(any()))
+        lenient().when(gxfsCatalogService.addServiceOffering(any(), any(), any()))
                 .thenReturn(meta);
 
 
@@ -271,6 +273,9 @@ class ServiceOfferingsServiceTest {
         orgaTnC.setContent("http://example.com");
         orgaTnC.setHash("hash1234");
         credentialSubject.setTermsAndConditions(orgaTnC);
+        MerlotParticipantMetaDto metaDto = new MerlotParticipantMetaDto();
+        metaDto.setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", "verification method"));
+        organizationDetails.setMetadata(metaDto);
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
 
@@ -285,7 +290,7 @@ class ServiceOfferingsServiceTest {
         merlotTnc.setContent("https://merlot-education.eu");
         merlotTnc.setHash("hash12345");
         credentialSubjectDetails.setTermsAndConditions(merlotTnc);
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails("did:web:" + MERLOT_DOMAIN + "#merlot-federation"))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails("did:web:" + DID_DOMAIN + "participant:merlot-federation"))
                 .thenReturn(merlotDetails);
 
         MerlotParticipantDto organizationDetails2 = new MerlotParticipantDto();
@@ -299,7 +304,7 @@ class ServiceOfferingsServiceTest {
         emptyOrgaTnC.setContent("");
         emptyOrgaTnC.setHash("");
         credentialSubject2.setTermsAndConditions(emptyOrgaTnC);
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("did:web:" + MERLOT_DOMAIN + "#no-tnc")))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("did:web:" + DID_DOMAIN + ":participant:no-tnc")))
                 .thenReturn(organizationDetails2);
 
 
@@ -373,8 +378,8 @@ class ServiceOfferingsServiceTest {
     @Test
     void addNewValidServiceOfferingButNoProviderTnC() {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("did:web:" + MERLOT_DOMAIN + "#no-tnc"));
-        credentialSubject.setOfferedBy(new NodeKindIRITypeId("did:web:" + MERLOT_DOMAIN + "#no-tnc"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId("did:web:" + DID_DOMAIN + ":participant:no-tnc"));
+        credentialSubject.setOfferedBy(new NodeKindIRITypeId("did:web:" + DID_DOMAIN + ":participant:no-tnc"));
 
         ResponseStatusException exception =
                 assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
