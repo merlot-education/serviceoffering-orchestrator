@@ -322,8 +322,8 @@ public class ServiceOfferingsService {
         }
 
         TermsAndConditions merlotTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
-                .getOrganizationDetails("did:web:" + didDomain + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076")
-                .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
+                .getOrganizationDetails(getMerlotFederationId()).getSelfDescription().getVerifiableCredential().getCredentialSubject())
+                .getTermsAndConditions();
 
         // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them
         if (credentialSubject.getTermsAndConditions() == null) {
@@ -439,5 +439,9 @@ public class ServiceOfferingsService {
             throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Unknown error");
         }
         return response;
+    }
+
+    private String getMerlotFederationId() {
+        return "did:web:" + didDomain.replaceFirst(":", "%3A") + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076";
     }
 }

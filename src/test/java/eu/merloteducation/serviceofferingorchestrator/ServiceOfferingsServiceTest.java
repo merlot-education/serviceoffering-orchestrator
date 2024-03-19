@@ -175,6 +175,7 @@ class ServiceOfferingsServiceTest {
         ReflectionTestUtils.setField(serviceOfferingsService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
         ReflectionTestUtils.setField(serviceOfferingsService, "gxfsCatalogService", gxfsCatalogService);
         ReflectionTestUtils.setField(serviceOfferingsService, "organizationOrchestratorClient", organizationOrchestratorClient);
+        ReflectionTestUtils.setField(serviceOfferingsService, "didDomain", DID_DOMAIN);
 
         saasOffering = new ServiceOfferingExtension();
         saasOffering.setIssuer(getParticipantId(10));
@@ -290,7 +291,7 @@ class ServiceOfferingsServiceTest {
         merlotTnc.setContent("https://merlot-education.eu");
         merlotTnc.setHash("hash12345");
         credentialSubjectDetails.setTermsAndConditions(merlotTnc);
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails("did:web:" + DID_DOMAIN + "participant:merlot-federation"))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails("did:web:" + DID_DOMAIN + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076"))
                 .thenReturn(merlotDetails);
 
         MerlotParticipantDto organizationDetails2 = new MerlotParticipantDto();
