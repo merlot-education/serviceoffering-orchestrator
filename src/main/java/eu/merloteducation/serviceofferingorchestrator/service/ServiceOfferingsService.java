@@ -388,6 +388,12 @@ public class ServiceOfferingsService {
         patchTermsAndConditions(credentialSubject, termsAndConditions);
 
         OrganisationSignerConfigDto orgaSignerConfig = participantDto.getMetadata().getOrganisationSignerConfigDto();
+
+        if (orgaSignerConfig.getPrivateKey() == null || orgaSignerConfig.getPrivateKey().isBlank()
+            || orgaSignerConfig.getVerificationMethod() == null || orgaSignerConfig.getVerificationMethod().isBlank()) {
+            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Service offering can not be saved: Missing private key and/or verification method.");
+        }
+
         SelfDescriptionMeta selfDescriptionsResponse = null;
         try {
             selfDescriptionsResponse = addServiceOfferingToCatalog(credentialSubject, orgaSignerConfig);
