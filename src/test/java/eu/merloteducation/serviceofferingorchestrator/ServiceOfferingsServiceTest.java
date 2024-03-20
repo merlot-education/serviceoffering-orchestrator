@@ -261,22 +261,7 @@ class ServiceOfferingsServiceTest {
         lenient().when(gxfsCatalogService.addServiceOffering(any(), any(), any()))
                 .thenReturn(meta);
 
-
-
-        MerlotParticipantDto organizationDetails = new MerlotParticipantDto();
-        organizationDetails.setSelfDescription(new SelfDescription());
-        organizationDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
-        MerlotOrganizationCredentialSubject credentialSubject = new MerlotOrganizationCredentialSubject();
-        organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubject);
-        credentialSubject.setId(getParticipantId(1234));
-        credentialSubject.setLegalName("Organization");
-        TermsAndConditions orgaTnC = new TermsAndConditions();
-        orgaTnC.setContent("http://example.com");
-        orgaTnC.setHash("hash1234");
-        credentialSubject.setTermsAndConditions(orgaTnC);
-        MerlotParticipantMetaDto metaDto = new MerlotParticipantMetaDto();
-        metaDto.setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", "verification method"));
-        organizationDetails.setMetadata(metaDto);
+        MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
 
@@ -309,6 +294,25 @@ class ServiceOfferingsServiceTest {
                 .thenReturn(organizationDetails2);
 
 
+    }
+
+    private MerlotParticipantDto getValidMerlotParticipantDto() {
+
+        MerlotParticipantDto organizationDetails = new MerlotParticipantDto();
+        organizationDetails.setSelfDescription(new SelfDescription());
+        organizationDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
+        MerlotOrganizationCredentialSubject credentialSubject = new MerlotOrganizationCredentialSubject();
+        organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubject);
+        credentialSubject.setId(getParticipantId(1234));
+        credentialSubject.setLegalName("Organization");
+        TermsAndConditions orgaTnC = new TermsAndConditions();
+        orgaTnC.setContent("http://example.com");
+        orgaTnC.setHash("hash1234");
+        credentialSubject.setTermsAndConditions(orgaTnC);
+        MerlotParticipantMetaDto metaDto = new MerlotParticipantMetaDto();
+        metaDto.setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", "verification method"));
+        organizationDetails.setMetadata(metaDto);
+        return organizationDetails;
     }
 
     private SaaSCredentialSubject createValidSaasCredentialSubject() {
@@ -374,6 +378,49 @@ class ServiceOfferingsServiceTest {
 
         SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
         assertNotNull(response.getId());
+    }
+
+    @Test
+    void addNewValidServiceOfferingButNoValidSignerConfig() throws Exception {
+        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+        credentialSubject.setId(saasOffering.getId());
+
+        MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
+        String expectedExceptionMessage = "Service offering cannot be saved: Missing private key and/or verification method.";
+
+        // private key and verification method are null
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto());
+
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
+            .thenReturn(organizationDetails);
+
+        ResponseStatusException exception =
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
+
+        assertEquals(expectedExceptionMessage, exception.getReason());
+
+        // verification method is blank
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", ""));
+
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
+            .thenReturn(organizationDetails);
+
+        exception =
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
+        assertEquals(expectedExceptionMessage, exception.getReason());
+
+        // private key is null
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto(null, "verification method"));
+
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
+            .thenReturn(organizationDetails);
+
+        exception =
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
+        assertEquals(expectedExceptionMessage, exception.getReason());
     }
 
     @Test
