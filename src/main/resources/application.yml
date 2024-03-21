@@ -94,4 +94,7 @@ cors:
     patterns: >
       http://localhost:[*]
 
-did-domain: "localhost"
+merlot-domain: "localhost"
+
+gxfscatalog-library:
+  ignore-ssl: true

@@ -74,4 +74,7 @@ cors:
     patterns: >
       http://localhost:[*]x
 
-did-domain: "localhost:8443"
+merlot-domain: "localhost:8443"
+
+gxfscatalog-library:
+  ignore-ssl: true

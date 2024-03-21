@@ -95,10 +95,14 @@ class ServiceOfferingsServiceTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
     private TransactionTemplate transactionTemplate;
-    private final String DID_DOMAIN = "test.eu";
+    private final String MERLOT_DOMAIN = "test.eu";
 
     private String getParticipantId(int num) {
-        return "did:web:"+ DID_DOMAIN + ":participant:orga-" + num;
+        return "did:web:"+ MERLOT_DOMAIN + ":participant:orga-" + num;
+    }
+
+    private String getActiveRoleStringForParticipantId(int num) {
+        return "OrgLegRep_did:web:"+ MERLOT_DOMAIN + ":participant:orga-" + num;
     }
 
     private String createCatalogItem(String id, String issuer, String sdHash, String type) {
@@ -175,7 +179,7 @@ class ServiceOfferingsServiceTest {
         ReflectionTestUtils.setField(serviceOfferingsService, "serviceOfferingExtensionRepository", serviceOfferingExtensionRepository);
         ReflectionTestUtils.setField(serviceOfferingsService, "gxfsCatalogService", gxfsCatalogService);
         ReflectionTestUtils.setField(serviceOfferingsService, "organizationOrchestratorClient", organizationOrchestratorClient);
-        ReflectionTestUtils.setField(serviceOfferingsService, "didDomain", DID_DOMAIN);
+        ReflectionTestUtils.setField(serviceOfferingsService, "merlotDomain", MERLOT_DOMAIN);
 
         saasOffering = new ServiceOfferingExtension();
         saasOffering.setIssuer(getParticipantId(10));
@@ -265,6 +269,9 @@ class ServiceOfferingsServiceTest {
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
 
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
+            .thenReturn(organizationDetails);
+
         MerlotParticipantDto merlotDetails = new MerlotParticipantDto();
         merlotDetails.setSelfDescription(new SelfDescription());
         merlotDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
@@ -276,7 +283,7 @@ class ServiceOfferingsServiceTest {
         merlotTnc.setContent("https://merlot-education.eu");
         merlotTnc.setHash("hash12345");
         credentialSubjectDetails.setTermsAndConditions(merlotTnc);
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails("did:web:" + DID_DOMAIN + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076"))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("did:web:" + MERLOT_DOMAIN + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076"), any()))
                 .thenReturn(merlotDetails);
 
         MerlotParticipantDto organizationDetails2 = new MerlotParticipantDto();
@@ -290,7 +297,7 @@ class ServiceOfferingsServiceTest {
         emptyOrgaTnC.setContent("");
         emptyOrgaTnC.setHash("");
         credentialSubject2.setTermsAndConditions(emptyOrgaTnC);
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("did:web:" + DID_DOMAIN + ":participant:no-tnc")))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("did:web:" + MERLOT_DOMAIN + ":participant:no-tnc"), any()))
                 .thenReturn(organizationDetails2);
 
 
@@ -376,7 +383,7 @@ class ServiceOfferingsServiceTest {
     void addNewValidServiceOffering() throws Exception {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
 
-        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, getActiveRoleStringForParticipantId(10));
         assertNotNull(response.getId());
     }
 
@@ -391,11 +398,11 @@ class ServiceOfferingsServiceTest {
         // private key and verification method are null
         organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto());
 
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
             .thenReturn(organizationDetails);
 
         ResponseStatusException exception =
-            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
 
         assertEquals(expectedExceptionMessage, exception.getReason());
@@ -403,34 +410,36 @@ class ServiceOfferingsServiceTest {
         // verification method is blank
         organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", ""));
 
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
             .thenReturn(organizationDetails);
 
         exception =
-            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
         assertEquals(expectedExceptionMessage, exception.getReason());
 
         // private key is null
         organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto(null, "verification method"));
 
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
             .thenReturn(organizationDetails);
 
         exception =
-            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
         assertEquals(expectedExceptionMessage, exception.getReason());
     }
 
     @Test
     void addNewValidServiceOfferingButNoProviderTnC() {
+        String didWeb = "did:web:" + MERLOT_DOMAIN + ":participant:no-tnc";
+
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId("did:web:" + DID_DOMAIN + ":participant:no-tnc"));
-        credentialSubject.setOfferedBy(new NodeKindIRITypeId("did:web:" + DID_DOMAIN + ":participant:no-tnc"));
+        credentialSubject.setProvidedBy(new NodeKindIRITypeId(didWeb));
+        credentialSubject.setOfferedBy(new NodeKindIRITypeId(didWeb));
 
         ResponseStatusException exception =
-                assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+                assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
     }
 
@@ -442,7 +451,7 @@ class ServiceOfferingsServiceTest {
         credentialSubject.setOfferedBy(new NodeKindIRITypeId(getParticipantId(1234)));
         credentialSubject.setTermsAndConditions(null);
 
-        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, "");
         assertNotNull(response.getId());
         // TODO assert that TnC are actually set (landing in mock catalog currently which discards it)
     }
@@ -452,7 +461,7 @@ class ServiceOfferingsServiceTest {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId(saasOffering.getId());
 
-        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject);
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, "");
         assertNotNull(response.getId());
 
     }
@@ -466,7 +475,7 @@ class ServiceOfferingsServiceTest {
         credentialSubject.setId(saasOffering.getId());
 
         ResponseStatusException exception =
-            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exception.getStatusCode());
         assertEquals("Service offering could not be updated.", exception.getReason());
 
@@ -478,7 +487,7 @@ class ServiceOfferingsServiceTest {
         credentialSubject.setId("ServiceOffering:exists");
         credentialSubject.setOfferedBy(new NodeKindIRITypeId(getParticipantId(20)));
 
-        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
     }
 
     @Test
@@ -486,7 +495,7 @@ class ServiceOfferingsServiceTest {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
         credentialSubject.setId("ServiceOffering:exists2");
 
-        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject));
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
     }
 
     @Test
@@ -496,7 +505,7 @@ class ServiceOfferingsServiceTest {
         serviceOfferingsService.transitionServiceOfferingExtension(offeringId,
                 ServiceOfferingState.RELEASED);
 
-        SelfDescriptionMeta response = serviceOfferingsService.regenerateOffering(offeringId);
+        SelfDescriptionMeta response = serviceOfferingsService.regenerateOffering(offeringId, "");
         assertNotNull(response.getId());
     }
 
@@ -506,7 +515,7 @@ class ServiceOfferingsServiceTest {
         String offeringId = saasOffering.getId();
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> serviceOfferingsService.regenerateOffering(offeringId));
+                () -> serviceOfferingsService.regenerateOffering(offeringId, ""));
         assertEquals(HttpStatus.PRECONDITION_FAILED, exception.getStatusCode());
     }
 
@@ -514,7 +523,7 @@ class ServiceOfferingsServiceTest {
     @Transactional
     void regenerateExistingServiceOfferingNonExistent() {
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> serviceOfferingsService.regenerateOffering("garbage"));
+                () -> serviceOfferingsService.regenerateOffering("garbage", ""));
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 

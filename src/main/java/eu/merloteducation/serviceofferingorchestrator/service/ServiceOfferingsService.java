@@ -60,11 +60,12 @@ public class ServiceOfferingsService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${did-domain}")
-    private String didDomain;
+    @Value("${merlot-domain}")
+    private String merlotDomain;
     private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
+    private static final String AUTHORIZATION = "Authorization";
 
     @Transactional(rollbackOn = {ResponseStatusException.class})
     private void deleteOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
@@ -284,7 +285,7 @@ public class ServiceOfferingsService {
      * @return creation response from catalog
      * @throws Exception communication or mapping exception
      */
-    public SelfDescriptionMeta regenerateOffering(String id) throws Exception {
+    public SelfDescriptionMeta regenerateOffering(String id, String authToken) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -311,7 +312,7 @@ public class ServiceOfferingsService {
                 .get(0).getMeta().getContent().getVerifiableCredential().getCredentialSubject();
         subject.setId(OFFERING_START + "TBR");
 
-        return addServiceOffering(subject);
+        return addServiceOffering(subject, authToken);
     }
 
     private void patchTermsAndConditions(MerlotServiceOfferingCredentialSubject credentialSubject, TermsAndConditions providerTnC) {
@@ -347,7 +348,7 @@ public class ServiceOfferingsService {
      * @throws Exception mapping exception
      */
     @Transactional(rollbackOn = {ResponseStatusException.class})
-    public SelfDescriptionMeta addServiceOffering(MerlotServiceOfferingCredentialSubject credentialSubject) throws Exception {
+    public SelfDescriptionMeta addServiceOffering(MerlotServiceOfferingCredentialSubject credentialSubject, String authToken) throws Exception {
         ServiceOfferingExtension extension;
         String previousSdHash = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
@@ -381,7 +382,7 @@ public class ServiceOfferingsService {
         }
 
         MerlotParticipantDto participantDto = organizationOrchestratorClient
-            .getOrganizationDetails(credentialSubject.getOfferedBy().getId());
+            .getOrganizationDetails(credentialSubject.getOfferedBy().getId(), Map.of(AUTHORIZATION, authToken));
 
         TermsAndConditions termsAndConditions = ((MerlotOrganizationCredentialSubject) participantDto.getSelfDescription()
             .getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
@@ -431,7 +432,7 @@ public class ServiceOfferingsService {
     }
 
     private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject, OrganisationSignerConfigDto orgaSignerConfig) throws JsonProcessingException {
-        if (orgaSignerConfig.getPrivateKey() == null || orgaSignerConfig.getPrivateKey().isBlank()
+        if (orgaSignerConfig == null || orgaSignerConfig.getPrivateKey() == null || orgaSignerConfig.getPrivateKey().isBlank()
             || orgaSignerConfig.getVerificationMethod() == null || orgaSignerConfig.getVerificationMethod().isBlank()) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Service offering cannot be saved: Missing private key and/or verification method.");
         }
@@ -448,6 +449,6 @@ public class ServiceOfferingsService {
     }
 
     private String getMerlotFederationId() {
-        return "did:web:" + didDomain.replaceFirst(":", "%3A") + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076";
+        return "did:web:" + merlotDomain.replaceFirst(":", "%3A") + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076";
     }
 }

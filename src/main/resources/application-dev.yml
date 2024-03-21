@@ -5,4 +5,7 @@ cors:
       https://api.dev.merlot-education.eu
     patterns:
 
-did-domain: "marketplace.dev.merlot-education.eu"
+merlot-domain: "marketplace.dev.merlot-education.eu"
+
+gxfscatalog-library:
+  ignore-ssl: false
