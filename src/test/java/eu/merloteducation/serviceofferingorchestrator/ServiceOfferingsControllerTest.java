@@ -83,8 +83,8 @@ class ServiceOfferingsControllerTest {
     }
 
     private String getParticipantId(int num) {
-        String MERLOT_DOMAIN = "test.eu";
-        return "did:web:"+ MERLOT_DOMAIN + "#orga-" + num;
+        String merlotDomain = "test.eu";
+        return "did:web:"+ merlotDomain + ":participant:orga-" + num;
     }
 
     @BeforeEach
@@ -133,13 +133,13 @@ class ServiceOfferingsControllerTest {
                 .getServiceOfferingById(eq("garbage"))).thenThrow(NoSuchElementException.class);
 
         lenient().when(serviceOfferingsService
-                .addServiceOffering(any())).thenReturn(selfDescriptionsCreateResponse);
+                .addServiceOffering(any(), any())).thenReturn(selfDescriptionsCreateResponse);
 
         lenient().when(serviceOfferingsService
-                .addServiceOffering(any())).thenReturn(selfDescriptionsCreateResponse);
+                .addServiceOffering(any(), any())).thenReturn(selfDescriptionsCreateResponse);
 
         lenient().when(serviceOfferingsService
-                .regenerateOffering(any())).thenReturn(selfDescriptionsCreateResponse);
+                .regenerateOffering(any(), any())).thenReturn(selfDescriptionsCreateResponse);
 
         lenient().when(gxfsWizardApiService.getServiceOfferingShapesByEcosystem(eq("merlot"))).thenReturn(Collections.emptyList());
 

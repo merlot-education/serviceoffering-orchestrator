@@ -74,4 +74,7 @@ cors:
     patterns: >
       http://localhost:[*]x
 
-merlot-domain: "marketplace.dev.merlot-education.eu"
+merlot-domain: "localhost:8443"
+
+gxfscatalog-library:
+  ignore-ssl: true

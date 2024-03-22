@@ -12,6 +12,7 @@ import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.part
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
+import eu.merloteducation.modelslib.api.organization.OrganisationSignerConfigDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.mappers.ServiceOfferingMapper;
@@ -64,6 +65,7 @@ public class ServiceOfferingsService {
     private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
     private static final String OFFERING_START = "ServiceOffering:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
+    private static final String AUTHORIZATION = "Authorization";
 
     @Transactional(rollbackOn = {ResponseStatusException.class})
     private void deleteOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
@@ -283,7 +285,7 @@ public class ServiceOfferingsService {
      * @return creation response from catalog
      * @throws Exception communication or mapping exception
      */
-    public SelfDescriptionMeta regenerateOffering(String id) throws Exception {
+    public SelfDescriptionMeta regenerateOffering(String id, String authToken) throws Exception {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -310,13 +312,10 @@ public class ServiceOfferingsService {
                 .get(0).getMeta().getContent().getVerifiableCredential().getCredentialSubject();
         subject.setId(OFFERING_START + "TBR");
 
-        return addServiceOffering(subject);
+        return addServiceOffering(subject, authToken);
     }
 
-    private void patchTermsAndConditions(MerlotServiceOfferingCredentialSubject credentialSubject) {
-        TermsAndConditions providerTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
-                .getOrganizationDetails(credentialSubject.getOfferedBy().getId())
-                .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
+    private void patchTermsAndConditions(MerlotServiceOfferingCredentialSubject credentialSubject, TermsAndConditions providerTnC) {
 
         if (StringUtil.isNullOrEmpty(providerTnC.getContent())
                 || StringUtil.isNullOrEmpty(providerTnC.getHash())) {
@@ -324,8 +323,8 @@ public class ServiceOfferingsService {
         }
 
         TermsAndConditions merlotTnC = ((MerlotOrganizationCredentialSubject) organizationOrchestratorClient
-                .getOrganizationDetails("did:web:" + merlotDomain + "#df15587a-0760-32b5-9c42-bb7be66e8076")
-                .getSelfDescription().getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
+                .getOrganizationDetails(getMerlotFederationId()).getSelfDescription().getVerifiableCredential().getCredentialSubject())
+                .getTermsAndConditions();
 
         // regardless of if we are updating or creating a new offering, we need to patch the tnc if the frontend does not send them
         if (credentialSubject.getTermsAndConditions() == null) {
@@ -349,7 +348,7 @@ public class ServiceOfferingsService {
      * @throws Exception mapping exception
      */
     @Transactional(rollbackOn = {ResponseStatusException.class})
-    public SelfDescriptionMeta addServiceOffering(MerlotServiceOfferingCredentialSubject credentialSubject) throws Exception {
+    public SelfDescriptionMeta addServiceOffering(MerlotServiceOfferingCredentialSubject credentialSubject, String authToken) throws Exception {
         ServiceOfferingExtension extension;
         String previousSdHash = null;
         if (credentialSubject.getId().equals(OFFERING_START + "TBR")) {
@@ -382,14 +381,16 @@ public class ServiceOfferingsService {
             }
         }
 
-        patchTermsAndConditions(credentialSubject);
+        MerlotParticipantDto participantDto = organizationOrchestratorClient
+            .getOrganizationDetails(credentialSubject.getOfferedBy().getId(), Map.of(AUTHORIZATION, authToken));
 
-        SelfDescriptionMeta selfDescriptionsResponse = null;
-        try {
-            selfDescriptionsResponse = addServiceOfferingToCatalog(credentialSubject);
-        } catch (WebClientResponseException e) {
-            handleCatalogError(e);
-        }
+        TermsAndConditions termsAndConditions = ((MerlotOrganizationCredentialSubject) participantDto.getSelfDescription()
+            .getVerifiableCredential().getCredentialSubject()).getTermsAndConditions();
+        patchTermsAndConditions(credentialSubject, termsAndConditions);
+
+        OrganisationSignerConfigDto orgaSignerConfig = participantDto.getMetadata().getOrganisationSignerConfigDto();
+
+        SelfDescriptionMeta selfDescriptionsResponse = addServiceOfferingToCatalog(credentialSubject, orgaSignerConfig);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self-description
         extension.setId(selfDescriptionsResponse.getId());
@@ -425,15 +426,24 @@ public class ServiceOfferingsService {
         }
     }
 
-    private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject) throws JsonProcessingException {
+    private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject, OrganisationSignerConfigDto orgaSignerConfig) throws JsonProcessingException {
+        if (orgaSignerConfig == null || orgaSignerConfig.getPrivateKey() == null || orgaSignerConfig.getPrivateKey().isBlank()
+            || orgaSignerConfig.getVerificationMethod() == null || orgaSignerConfig.getVerificationMethod().isBlank()) {
+            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Service offering cannot be saved: Missing private key and/or verification method.");
+        }
+
         SelfDescriptionMeta response = null;
         try {
-            response = gxfsCatalogService.addServiceOffering(credentialSubject);
+            response = gxfsCatalogService.addServiceOffering(credentialSubject, orgaSignerConfig.getVerificationMethod(), orgaSignerConfig.getPrivateKey());
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         } catch (Exception e) {
             throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Unknown error");
         }
         return response;
+    }
+
+    private String getMerlotFederationId() {
+        return "did:web:" + merlotDomain.replaceFirst(":", "%3A") + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076";
     }
 }
