@@ -390,12 +390,7 @@ public class ServiceOfferingsService {
 
         OrganisationSignerConfigDto orgaSignerConfig = participantDto.getMetadata().getOrganisationSignerConfigDto();
 
-        SelfDescriptionMeta selfDescriptionsResponse = null;
-        try {
-            selfDescriptionsResponse = addServiceOfferingToCatalog(credentialSubject, orgaSignerConfig);
-        } catch (WebClientResponseException e) {
-            handleCatalogError(e);
-        }
+        SelfDescriptionMeta selfDescriptionsResponse = addServiceOfferingToCatalog(credentialSubject, orgaSignerConfig);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self-description
         extension.setId(selfDescriptionsResponse.getId());
