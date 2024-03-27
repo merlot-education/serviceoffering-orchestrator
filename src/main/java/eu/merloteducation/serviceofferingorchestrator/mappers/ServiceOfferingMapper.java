@@ -46,11 +46,9 @@ public interface ServiceOfferingMapper {
     @Mapping(target = "metadata.hash", source = "extension.currentSdHash")
     @Mapping(target = "metadata.creationDate", source = "extension.creationDate")
     @Mapping(target = "metadata.modifiedDate", source = "selfDescriptionMeta.statusDatetime")
-    @Mapping(target = "metadata.signedBy", source = "signerLegalName")
     @Mapping(target = "selfDescription", source = "selfDescriptionMeta.content")
     @Mapping(target = "providerDetails", source = "providerDetails", qualifiedByName = "providerDetailsDtoMap")
     ServiceOfferingDto selfDescriptionMetaToServiceOfferingDto(SelfDescriptionMeta selfDescriptionMeta,
                                                                ServiceOfferingExtension extension,
-                                                               MerlotParticipantDto providerDetails,
-                                                               String signerLegalName);
+                                                               MerlotParticipantDto providerDetails);
 }
