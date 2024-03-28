@@ -193,17 +193,15 @@ public class ServiceOfferingsService {
 
         GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse =
                 getSelfDescriptionByOfferingExtension(extension);
-
-        SelfDescriptionMeta selfDescriptionMeta = selfDescriptionsResponse.getItems().get(0).getMeta();
         // if we do not get exactly one item or the id doesn't start with ServiceOffering, we did not find the correct item
         if (selfDescriptionsResponse.getTotalCount() != 1
-                || !selfDescriptionMeta.getId().startsWith(OFFERING_START)) {
+                || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
         }
 
         String signerLegalName = null;
         try {
-            signerLegalName = getSignerLegalNameFromCatalog(selfDescriptionMeta.getContent());
+            signerLegalName = getSignerLegalNameFromCatalog(selfDescriptionsResponse.getItems().get(0).getMeta().getContent());
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         }
@@ -463,17 +461,14 @@ public class ServiceOfferingsService {
 
         String proofVerificationMethod = selfDescription.getProof().getVerificationMethod();
 
-        // If "#" is found, extract substring before it, otherwise, keep the original string
-        int indexFragmentIdentifier = proofVerificationMethod.indexOf("#");
-        String signerId = indexFragmentIdentifier != -1 ? proofVerificationMethod.substring(0, indexFragmentIdentifier) : proofVerificationMethod;
+        String signerId = proofVerificationMethod.replaceFirst("#.*", "");
 
         GXFSCatalogListResponse<GXFSQueryLegalNameItem>
             response = gxfsCatalogService.getParticipantLegalNameByUri("MerlotOrganization", signerId);
 
-
         // if we do not get exactly one item, we did not find the signer participant and the corresponding legal name
         if (response.getTotalCount() != 1) {
-            return "N/A";
+            return null;
         } else {
             return response.getItems().get(0).getLegalName();
         }
