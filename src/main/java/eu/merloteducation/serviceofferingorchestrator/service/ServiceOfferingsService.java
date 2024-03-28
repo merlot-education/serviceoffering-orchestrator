@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.gxfscataloglibrary.models.client.SelfDescriptionStatus;
+import eu.merloteducation.gxfscataloglibrary.models.query.GXFSQueryLegalNameItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.GXFSCatalogListResponse;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescription;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.TermsAndConditions;
@@ -197,10 +199,18 @@ public class ServiceOfferingsService {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
         }
 
+        String signerLegalName = null;
+        try {
+            signerLegalName = getSignerLegalNameFromCatalog(selfDescriptionsResponse.getItems().get(0).getMeta().getContent());
+        } catch (WebClientResponseException e) {
+            handleCatalogError(e);
+        }
+
         return serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
                 selfDescriptionsResponse.getItems().get(0).getMeta(),
                 extension,
-                organizationOrchestratorClient.getOrganizationDetails(extension.getIssuer()));
+                organizationOrchestratorClient.getOrganizationDetails(extension.getIssuer()),
+                signerLegalName);
     }
 
     /**
@@ -445,5 +455,22 @@ public class ServiceOfferingsService {
 
     private String getMerlotFederationId() {
         return "did:web:" + merlotDomain.replaceFirst(":", "%3A") + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076";
+    }
+
+    private String getSignerLegalNameFromCatalog(SelfDescription selfDescription) {
+
+        String proofVerificationMethod = selfDescription.getProof().getVerificationMethod();
+
+        String signerId = proofVerificationMethod.replaceFirst("#.*", "");
+
+        GXFSCatalogListResponse<GXFSQueryLegalNameItem>
+            response = gxfsCatalogService.getParticipantLegalNameByUri("MerlotOrganization", signerId);
+
+        // if we do not get exactly one item, we did not find the signer participant and the corresponding legal name
+        if (response.getTotalCount() != 1) {
+            return null;
+        } else {
+            return response.getItems().get(0).getLegalName();
+        }
     }
 }
