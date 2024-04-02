@@ -265,6 +265,8 @@ class ServiceOfferingsServiceTest {
         lenient().when(gxfsCatalogService.addServiceOffering(any(), any(), any()))
                 .thenReturn(meta);
 
+        lenient().when(gxfsCatalogService.getParticipantLegalNameByUri(eq("MerlotOrganization"), any())).thenReturn(new GXFSCatalogListResponse<>());
+
         MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
                 .thenReturn(organizationDetails);
