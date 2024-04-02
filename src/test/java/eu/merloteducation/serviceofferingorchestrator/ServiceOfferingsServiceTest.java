@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.gxfscataloglibrary.models.exception.CredentialPresentationException;
 import eu.merloteducation.gxfscataloglibrary.models.exception.CredentialSignatureException;
+import eu.merloteducation.gxfscataloglibrary.models.query.GXFSQueryLegalNameItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.*;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.*;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.AllowedUserCount;
@@ -721,6 +722,7 @@ class ServiceOfferingsServiceTest {
 
         assertNull(credentialSubject.getHardwareRequirements());
         assertEquals(0, credentialSubject.getUserCountOptions().get(0).getUserCountUpTo());
+        assertNull(model.getMetadata().getSignedBy());
     }
 
     @Test
@@ -736,10 +738,20 @@ class ServiceOfferingsServiceTest {
         assertEquals("Download", credentialSubject.getDataAccessType());
         assertEquals("Push", credentialSubject.getDataTransferType());
         assertEquals(0, credentialSubject.getExchangeCountOptions().get(0).getExchangeCountUpTo());
+        assertNull(model.getMetadata().getSignedBy());
     }
 
     @Test
     void getServiceOfferingDetailsCooperationExistent() throws Exception {
+        GXFSCatalogListResponse<GXFSQueryLegalNameItem> legalNameItems = new GXFSCatalogListResponse<>();
+        GXFSQueryLegalNameItem legalNameItem = new GXFSQueryLegalNameItem();
+        legalNameItem.setLegalName("Some Orga");
+        legalNameItems.setItems(List.of(legalNameItem));
+        legalNameItems.setTotalCount(1);
+
+        lenient().when(gxfsCatalogService.getParticipantLegalNameByUri(eq("MerlotOrganization"), eq("did:web:compliance.lab.gaia-x.eu")))
+            .thenReturn(legalNameItems);
+
         ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(cooperationOffering.getId());
         assertNotNull(model);
         assertInstanceOf(CooperationCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
@@ -747,6 +759,7 @@ class ServiceOfferingsServiceTest {
         CooperationCredentialSubject credentialSubject = (CooperationCredentialSubject) model.getSelfDescription()
                 .getVerifiableCredential().getCredentialSubject();
         assertEquals("merlot:MerlotServiceOfferingCooperation", credentialSubject.getType());
+        assertEquals("Some Orga", model.getMetadata().getSignedBy());
     }
 
     @Test
