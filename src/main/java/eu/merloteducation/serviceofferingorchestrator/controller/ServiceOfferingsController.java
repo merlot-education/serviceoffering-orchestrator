@@ -100,8 +100,8 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionMeta addServiceOfferingSaas(@Valid @RequestBody SaaSCredentialSubject credentialSubject) throws Exception {
-        return serviceOfferingsService.addServiceOffering(credentialSubject);
+    public SelfDescriptionMeta addServiceOfferingSaas(@Valid @RequestBody SaaSCredentialSubject credentialSubject, @RequestHeader(name = "Authorization") String authToken) throws Exception {
+        return serviceOfferingsService.addServiceOffering(credentialSubject, authToken);
     }
 
     /**
@@ -113,8 +113,8 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionMeta addServiceOfferingDataDelivery(@Valid @RequestBody DataDeliveryCredentialSubject credentialSubject) throws Exception {
-        return serviceOfferingsService.addServiceOffering(credentialSubject);
+    public SelfDescriptionMeta addServiceOfferingDataDelivery(@Valid @RequestBody DataDeliveryCredentialSubject credentialSubject, @RequestHeader(name = "Authorization") String authToken) throws Exception {
+        return serviceOfferingsService.addServiceOffering(credentialSubject, authToken);
     }
 
     /**
@@ -126,8 +126,8 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionMeta addServiceOfferingCooperation(@Valid @RequestBody CooperationCredentialSubject credentialSubject) throws Exception {
-        return serviceOfferingsService.addServiceOffering(credentialSubject);
+    public SelfDescriptionMeta addServiceOfferingCooperation(@Valid @RequestBody CooperationCredentialSubject credentialSubject, @RequestHeader(name = "Authorization") String authToken) throws Exception {
+        return serviceOfferingsService.addServiceOffering(credentialSubject, authToken);
     }
 
     /**
@@ -139,9 +139,9 @@ public class ServiceOfferingsController {
      */
     @PostMapping("/serviceoffering/regenerate/{soId}")
     @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuer(authentication, #serviceofferingId)")
-    public SelfDescriptionMeta regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId)
+    public SelfDescriptionMeta regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId, @RequestHeader(name = "Authorization") String authToken)
             throws Exception {
-        return serviceOfferingsService.regenerateOffering(serviceofferingId);
+        return serviceOfferingsService.regenerateOffering(serviceofferingId, authToken);
     }
 
     /**

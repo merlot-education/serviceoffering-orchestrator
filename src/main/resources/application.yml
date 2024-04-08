@@ -74,4 +74,13 @@ keycloak:
   gxfscatalog-user: "gxfscatalog"
   gxfscatalog-pass: "gxfscatalog"
 
-merlot-domain: "marketplace.dev.merlot-education.eu"
+cors:
+  global:
+    origins:
+    patterns: >
+      http://localhost:[*]
+
+merlot-domain: "localhost"
+
+gxfscatalog-library:
+  ignore-ssl: true
