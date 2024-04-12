@@ -65,7 +65,7 @@ class ServiceOfferingsControllerTest {
     @MockBean
     private UserInfoOpaqueTokenIntrospector userInfoOpaqueTokenIntrospector;
 
-    @Autowired
+    @MockBean
     private JwtAuthConverter jwtAuthConverter;
 
     @MockBean
