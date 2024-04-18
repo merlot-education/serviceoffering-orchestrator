@@ -69,9 +69,6 @@ class ServiceOfferingsControllerTest {
     private JwtAuthConverter jwtAuthConverter;
 
     @MockBean
-    private JwtAuthConverterProperties jwtAuthConverterProperties;
-
-    @MockBean
     private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
     @Autowired
@@ -181,7 +178,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -197,7 +194,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -224,7 +221,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -239,7 +236,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -254,7 +251,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -269,7 +266,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -284,7 +281,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -400,7 +397,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -418,7 +415,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -450,7 +447,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -468,7 +465,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -500,7 +497,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(20))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(20))
                         )))
                 .andDo(print())
                 .andExpect(status().isForbidden());
@@ -518,7 +515,7 @@ class ServiceOfferingsControllerTest {
                         .content(objectAsJsonString(credentialSubject))
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -545,7 +542,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -572,7 +569,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -599,7 +596,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
@@ -626,7 +623,7 @@ class ServiceOfferingsControllerTest {
                         .accept(MediaType.APPLICATION_JSON)
                         .with(csrf())
                         .with(jwt().authorities(
-                                new OrganizationRoleGrantedAuthority("OrgLegRep_" + getParticipantId(10))
+                                new OrganizationRoleGrantedAuthority(OrganizationRole.ORG_LEG_REP, getParticipantId(10))
                         )))
                 .andDo(print())
                 .andExpect(status().isOk());
