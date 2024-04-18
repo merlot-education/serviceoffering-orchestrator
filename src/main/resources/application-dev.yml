@@ -7,5 +7,16 @@ cors:
 
 merlot-domain: "marketplace.dev.merlot-education.eu"
 
+spring:
+  h2:
+    console.enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://auth-service.dev.merlot-education.eu
+          jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/oauth2/jwks
+          userinfo-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/userinfo
+
 gxfscatalog-library:
   ignore-ssl: false
