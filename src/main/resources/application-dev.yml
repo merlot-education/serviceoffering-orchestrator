@@ -17,6 +17,8 @@ spring:
           issuer-uri: https://auth-service.dev.merlot-education.eu
           jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/oauth2/jwks
           userinfo-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/userinfo
+          
+jwt-auth-converter: ssiJwtAuthConverter
 
 gxfscatalog-library:
   ignore-ssl: false
