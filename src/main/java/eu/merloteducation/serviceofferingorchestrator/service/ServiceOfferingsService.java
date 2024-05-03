@@ -438,13 +438,14 @@ public class ServiceOfferingsService {
 
     private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject, OrganisationSignerConfigDto orgaSignerConfig) throws JsonProcessingException {
         if (orgaSignerConfig == null || orgaSignerConfig.getPrivateKey() == null || orgaSignerConfig.getPrivateKey().isBlank()
-            || orgaSignerConfig.getVerificationMethod() == null || orgaSignerConfig.getVerificationMethod().isBlank()) {
+            || orgaSignerConfig.getVerificationMethod() == null || orgaSignerConfig.getVerificationMethod().isBlank()
+            || orgaSignerConfig.getMerlotVerificationMethod() == null || orgaSignerConfig.getMerlotVerificationMethod().isBlank()) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Service offering cannot be saved: Missing private key and/or verification method.");
         }
 
         SelfDescriptionMeta response = null;
         try {
-            response = gxfsCatalogService.addServiceOffering(credentialSubject, orgaSignerConfig.getVerificationMethod(), orgaSignerConfig.getPrivateKey());
+            response = gxfsCatalogService.addServiceOffering(credentialSubject, orgaSignerConfig.getMerlotVerificationMethod());
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         } catch (Exception e) {

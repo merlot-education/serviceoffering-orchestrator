@@ -266,6 +266,9 @@ class ServiceOfferingsServiceTest {
         lenient().when(gxfsCatalogService.addServiceOffering(any(), any(), any()))
                 .thenReturn(meta);
 
+        lenient().when(gxfsCatalogService.addServiceOffering(any(), any()))
+            .thenReturn(meta);
+
         lenient().when(gxfsCatalogService.getParticipantLegalNameByUri(eq("MerlotOrganization"), any())).thenReturn(new GXFSCatalogListResponse<>());
 
         MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
@@ -320,7 +323,7 @@ class ServiceOfferingsServiceTest {
         orgaTnC.setHash("hash1234");
         credentialSubject.setTermsAndConditions(orgaTnC);
         MerlotParticipantMetaDto metaDto = new MerlotParticipantMetaDto();
-        metaDto.setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", "verification method"));
+        metaDto.setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", "merlot verification method", "verification method"));
         organizationDetails.setMetadata(metaDto);
         return organizationDetails;
     }
@@ -411,7 +414,7 @@ class ServiceOfferingsServiceTest {
         assertEquals(expectedExceptionMessage, exception.getReason());
 
         // verification method is blank
-        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", ""));
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", "", ""));
 
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
             .thenReturn(organizationDetails);
@@ -422,7 +425,7 @@ class ServiceOfferingsServiceTest {
         assertEquals(expectedExceptionMessage, exception.getReason());
 
         // private key is null
-        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto(null, "verification method"));
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto(null, "merlot verification method", "verification method"));
 
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
             .thenReturn(organizationDetails);
