@@ -397,7 +397,8 @@ class ServiceOfferingsServiceTest {
         SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
 
         MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
-        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("", "merlot verification method", ""));
+        // no private key and verification method, but merlot verification method available
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("", "", "merlot verification method"));
 
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
             .thenReturn(organizationDetails);
@@ -441,7 +442,7 @@ class ServiceOfferingsServiceTest {
         assertEquals(expectedExceptionMessage, exception.getReason());
 
         // private key is null and merlot verification method is blank
-        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto(null, "", "verification method"));
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto(null, "verification method", ""));
 
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
             .thenReturn(organizationDetails);
