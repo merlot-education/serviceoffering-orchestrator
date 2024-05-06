@@ -262,13 +262,13 @@ class ServiceOfferingsServiceTest {
                 {"sdHash":"4321","id":"ServiceOffering:new","status":"active","issuer":"did:web:test.eu:participant:orga-10","validatorDids":["did:web:compliance.lab.gaia-x.eu"],"uploadDatetime":"2023-05-24T13:32:22.712661Z","statusDatetime":"2023-05-24T13:32:22.712662Z"}
                 """;
         SelfDescriptionMeta meta = objectMapper.readValue(unescapeJson(mockOfferingCreatedResponse), new TypeReference<>(){});
-        // for participant endpoint return a dummy list of one item
+
         lenient().when(gxfsCatalogService.addServiceOffering(any(), any(), any()))
                 .thenReturn(meta);
-
         lenient().when(gxfsCatalogService.addServiceOffering(any(), any()))
-            .thenReturn(meta);
+                .thenReturn(meta);
 
+        // for participant endpoint return a dummy list of one item
         lenient().when(gxfsCatalogService.getParticipantLegalNameByUri(eq("MerlotOrganization"), any())).thenReturn(new GXFSCatalogListResponse<>());
 
         MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
@@ -392,6 +392,22 @@ class ServiceOfferingsServiceTest {
         SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, getActiveRoleStringForParticipantId(10));
         assertNotNull(response.getId());
     }
+    @Test
+    void addNewValidServiceOfferingMerlotVerificationMethod() throws Exception {
+        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+
+        MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("", "merlot verification method", ""));
+
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
+            .thenReturn(organizationDetails);
+
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
+            .thenReturn(organizationDetails);
+
+        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, getActiveRoleStringForParticipantId(10));
+        assertNotNull(response.getId());
+    }
 
     @Test
     void addNewValidServiceOfferingButNoValidSignerConfig() throws Exception {
@@ -401,7 +417,7 @@ class ServiceOfferingsServiceTest {
         MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
         String expectedExceptionMessage = "Service offering cannot be saved: Missing private key and/or verification method.";
 
-        // private key and verification method are null
+        // private key, verification method and merlot verification method are null
         organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto());
 
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
@@ -413,7 +429,7 @@ class ServiceOfferingsServiceTest {
 
         assertEquals(expectedExceptionMessage, exception.getReason());
 
-        // verification method is blank
+        // verification method and merlot verification method are blank
         organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", "", ""));
 
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
@@ -424,8 +440,8 @@ class ServiceOfferingsServiceTest {
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
         assertEquals(expectedExceptionMessage, exception.getReason());
 
-        // private key is null
-        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto(null, "merlot verification method", "verification method"));
+        // private key is null and merlot verification method is blank
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto(null, "", "verification method"));
 
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
             .thenReturn(organizationDetails);
