@@ -392,23 +392,6 @@ class ServiceOfferingsServiceTest {
         SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, getActiveRoleStringForParticipantId(10));
         assertNotNull(response.getId());
     }
-    @Test
-    void addNewValidServiceOfferingMerlotVerificationMethod() throws Exception {
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-
-        MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
-        // no private key and verification method, but merlot verification method available
-        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("", "", "merlot verification method"));
-
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
-            .thenReturn(organizationDetails);
-
-        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
-            .thenReturn(organizationDetails);
-
-        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, getActiveRoleStringForParticipantId(10));
-        assertNotNull(response.getId());
-    }
 
     @Test
     void addNewValidServiceOfferingButNoValidSignerConfig() throws Exception {
@@ -443,6 +426,17 @@ class ServiceOfferingsServiceTest {
 
         // private key is null and merlot verification method is blank
         organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto(null, "verification method", ""));
+
+        lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
+            .thenReturn(organizationDetails);
+
+        exception =
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, exception.getStatusCode());
+        assertEquals(expectedExceptionMessage, exception.getReason());
+
+        // private key and verification method are blank
+        organizationDetails.getMetadata().setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("", "", "merlot verification method"));
 
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
             .thenReturn(organizationDetails);

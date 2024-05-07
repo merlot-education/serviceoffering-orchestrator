@@ -450,7 +450,7 @@ public class ServiceOfferingsService {
         boolean merlotVerificationMethodValid = signerConfig.getMerlotVerificationMethod() != null
             && !signerConfig.getMerlotVerificationMethod().isBlank();
 
-        return privateKeyValid && verificationMethodValid || merlotVerificationMethodValid;
+        return privateKeyValid && verificationMethodValid && merlotVerificationMethodValid;
     }
 
     private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject, OrganisationSignerConfigDto orgaSignerConfig) throws JsonProcessingException {
@@ -460,13 +460,9 @@ public class ServiceOfferingsService {
 
         SelfDescriptionMeta response = null;
         try {
-            if (orgaSignerConfig.getMerlotVerificationMethod() != null && !orgaSignerConfig.getMerlotVerificationMethod().isBlank()) {
-                // use merlot verification method if available
-                response = gxfsCatalogService.addServiceOffering(credentialSubject, orgaSignerConfig.getMerlotVerificationMethod());
-            } else {
-                response = gxfsCatalogService.addServiceOffering(credentialSubject, orgaSignerConfig.getVerificationMethod(),
-                    orgaSignerConfig.getPrivateKey());
-            }
+            // sign SD using verification method referencing the merlot certificate and the default/merlot private key
+            response = gxfsCatalogService.addServiceOffering(credentialSubject, orgaSignerConfig.getMerlotVerificationMethod());
+
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         } catch (Exception e) {
