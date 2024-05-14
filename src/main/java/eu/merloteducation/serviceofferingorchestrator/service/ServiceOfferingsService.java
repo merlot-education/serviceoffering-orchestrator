@@ -436,15 +436,33 @@ public class ServiceOfferingsService {
         }
     }
 
+    private boolean isSignerConfigValid(OrganisationSignerConfigDto signerConfig) {
+        if (signerConfig == null) {
+            return false;
+        }
+
+        boolean privateKeyValid = signerConfig.getPrivateKey() != null
+            && !signerConfig.getPrivateKey().isBlank();
+
+        boolean verificationMethodValid = signerConfig.getVerificationMethod() != null
+            && !signerConfig.getVerificationMethod().isBlank();
+
+        boolean merlotVerificationMethodValid = signerConfig.getMerlotVerificationMethod() != null
+            && !signerConfig.getMerlotVerificationMethod().isBlank();
+
+        return privateKeyValid && verificationMethodValid && merlotVerificationMethodValid;
+    }
+
     private SelfDescriptionMeta addServiceOfferingToCatalog(MerlotServiceOfferingCredentialSubject credentialSubject, OrganisationSignerConfigDto orgaSignerConfig) throws JsonProcessingException {
-        if (orgaSignerConfig == null || orgaSignerConfig.getPrivateKey() == null || orgaSignerConfig.getPrivateKey().isBlank()
-            || orgaSignerConfig.getVerificationMethod() == null || orgaSignerConfig.getVerificationMethod().isBlank()) {
+        if (!isSignerConfigValid(orgaSignerConfig)) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Service offering cannot be saved: Missing private key and/or verification method.");
         }
 
         SelfDescriptionMeta response = null;
         try {
-            response = gxfsCatalogService.addServiceOffering(credentialSubject, orgaSignerConfig.getVerificationMethod(), orgaSignerConfig.getPrivateKey());
+            // sign SD using verification method referencing the merlot certificate and the default/merlot private key
+            response = gxfsCatalogService.addServiceOffering(credentialSubject, orgaSignerConfig.getMerlotVerificationMethod());
+
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         } catch (Exception e) {
