@@ -1,9 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.CooperationCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.DataDeliveryCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.SaaSCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.service.GxfsWizardApiService;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
@@ -31,9 +28,6 @@ public class ServiceOfferingsController {
 
     @Autowired
     private ServiceOfferingsService serviceOfferingsService;
-
-    @Autowired
-    private GxfsWizardApiService gxfsWizardApiService;
 
     /**
      * GET request for getting a page of all public service offerings.
@@ -92,42 +86,18 @@ public class ServiceOfferingsController {
     }
 
     /**
-     * POST request for publishing a Software as a Service offering.
+     * POST request for publishing a Service offering.
      *
-     * @param credentialSubject SaaS self description
+     * @param serviceOfferingDto service offering dto
      * @return creation response for this offering
      * @throws Exception exception during offering creation
      */
-    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingSaaS")
-    @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionMeta addServiceOfferingSaas(@Valid @RequestBody SaaSCredentialSubject credentialSubject, @RequestHeader(name = "Authorization") String authToken) throws Exception {
-        return serviceOfferingsService.addServiceOffering(credentialSubject, authToken);
-    }
-
-    /**
-     * POST request for publishing a Data Delivery offering.
-     *
-     * @param credentialSubject SaaS self description
-     * @return creation response for this offering
-     * @throws Exception exception during offering creation
-     */
-    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingDataDelivery")
-    @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionMeta addServiceOfferingDataDelivery(@Valid @RequestBody DataDeliveryCredentialSubject credentialSubject, @RequestHeader(name = "Authorization") String authToken) throws Exception {
-        return serviceOfferingsService.addServiceOffering(credentialSubject, authToken);
-    }
-
-    /**
-     * POST request for publishing a Cooperation Contract offering.
-     *
-     * @param credentialSubject SaaS self description
-     * @return creation response for this offering
-     * @throws Exception exception during offering creation
-     */
-    @PostMapping("/serviceoffering/merlot:MerlotServiceOfferingCooperation")
-    @PreAuthorize("@authorityChecker.representsOrganization(authentication, #credentialSubject.offeredBy.id)")
-    public SelfDescriptionMeta addServiceOfferingCooperation(@Valid @RequestBody CooperationCredentialSubject credentialSubject, @RequestHeader(name = "Authorization") String authToken) throws Exception {
-        return serviceOfferingsService.addServiceOffering(credentialSubject, authToken);
+    @PutMapping("/serviceoffering/{soId}")
+    //@PreAuthorize("@authorityChecker.representsOrganization(authentication, #serviceOfferingDto.selfDescription.offeredBy.id)")
+    public SelfDescriptionMeta updateServiceOffering(@Valid @RequestBody ServiceOfferingDto serviceOfferingDto,
+                                                     @PathVariable(value = "soId") String serviceofferingId,
+                                                      @RequestHeader(name = "Authorization") String authToken) throws Exception {
+        return serviceOfferingsService.updateServiceOffering(serviceOfferingDto, serviceofferingId, authToken);
     }
 
     /**
@@ -155,26 +125,6 @@ public class ServiceOfferingsController {
     public void patchStatusServiceOffering(@PathVariable(value = "soId") String serviceofferingId,
                                            @PathVariable(value = "status") ServiceOfferingState status) {
         serviceOfferingsService.transitionServiceOfferingExtension(serviceofferingId, status);
-    }
-
-    /**
-     * GET request for retrieving all available MERLOT shapes for the catalog.
-     *
-     * @return Map of shape types to shape files
-     */
-    @GetMapping("/shapes/getAvailableShapesCategorized")
-    public Map<String, List<String>> getAvailableShapes() {
-        return Map.of("Service", gxfsWizardApiService.getServiceOfferingShapesByEcosystem("merlot"));
-    }
-
-    /**
-     * GET request for retrieving a specific MERLOT shapes for the catalog.
-     *
-     * @return catalog shape
-     */
-    @GetMapping("/shapes/getJSON")
-    public String getShapeJson(@RequestParam String name) {
-        return gxfsWizardApiService.getShapeByName(name);
     }
 
 }
