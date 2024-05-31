@@ -488,14 +488,25 @@ public class ServiceOfferingsService {
     }
 
     private PojoCredentialSubject handleSpecificMerlotOfferingCs(ExtendedVerifiablePresentation vp) {
-        PojoCredentialSubject cs;
-        if ((cs = vp.findFirstCredentialSubjectByType(MerlotSaasServiceOfferingCredentialSubject.class)) != null) {
-            return cs;
-        } else if ((cs = vp.findFirstCredentialSubjectByType(MerlotDataDeliveryServiceOfferingCredentialSubject.class)) != null) {
-            return cs;
-        } else if ((cs = vp.findFirstCredentialSubjectByType(MerlotCoopContractServiceOfferingCredentialSubject.class)) != null) {
-            return cs;
+
+        // consider all MERLOT specific offering classes
+        List<Class<? extends PojoCredentialSubject>> csClasses =
+                List.of(
+                        MerlotDataDeliveryServiceOfferingCredentialSubject.class,
+                        MerlotSaasServiceOfferingCredentialSubject.class,
+                        MerlotCoopContractServiceOfferingCredentialSubject.class
+                );
+
+        // check if any of them match, and if so, return the pojo object
+        for (Class<? extends PojoCredentialSubject> csClass: csClasses) {
+            PojoCredentialSubject cs = vp.findFirstCredentialSubjectByType(csClass);
+            // if additional logic is needed per type, it can be added here
+            if (cs != null) {
+                return cs;
+            }
         }
+
+        // if none match this is not a valid credential request
         throw new ResponseStatusException(BAD_REQUEST, "Given payload does not contain a full MERLOT offering credential");
     }
 
