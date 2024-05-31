@@ -1,8 +1,13 @@
 package eu.merloteducation.serviceofferingorchestrator.mappers;
 
+import eu.merloteducation.gxfscataloglibrary.models.credentials.ExtendedVerifiablePresentation;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.PojoCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.ServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotLegalParticipantCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotCoopContractServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotDataDeliveryServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotSaasServiceOfferingCredentialSubject;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ProviderDetailsDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
@@ -13,8 +18,9 @@ import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
-@Mapper(componentModel = "spring", imports = { MerlotLegalParticipantCredentialSubject.class })
+@Mapper(componentModel = "spring", imports = { MerlotLegalParticipantCredentialSubject.class, ExtendedVerifiablePresentation.class })
 public interface ServiceOfferingMapper {
 
     default String getDateTimeString(OffsetDateTime offsetDateTime) {
@@ -46,16 +52,40 @@ public interface ServiceOfferingMapper {
                 .findFirstCredentialSubjectByType(MerlotLegalParticipantCredentialSubject.class);
         ServiceOfferingCredentialSubject offeringCs = selfDescriptionMeta.getContent()
                 .findFirstCredentialSubjectByType(ServiceOfferingCredentialSubject.class);
+        PojoCredentialSubject merlotSpecificOfferingCs = getSpecificMerlotOfferingCs(selfDescriptionMeta.getContent());
 
         ServiceOfferingBasicDto dto = new ServiceOfferingBasicDto();
         dto.setId(offeringCs.getId());
-        dto.setType("merlot:MerlotServiceOffering"); // TODO change depending on specific type
+        dto.setType(merlotSpecificOfferingCs == null
+                ? "merlot:MerlotServiceOffering"
+                : merlotSpecificOfferingCs.getType());
         dto.setState(extension.getState().toString());
         dto.setName(offeringCs.getName());
         dto.setCreationDate(getDateTimeString(extension.getCreationDate()));
         dto.setProviderLegalName(participantCs.getLegalName());
 
         return dto;
+    }
+
+    default PojoCredentialSubject getSpecificMerlotOfferingCs(ExtendedVerifiablePresentation vp) {
+
+        // consider all MERLOT specific offering classes
+        List<Class<? extends PojoCredentialSubject>> csClasses =
+                List.of(
+                        MerlotDataDeliveryServiceOfferingCredentialSubject.class,
+                        MerlotSaasServiceOfferingCredentialSubject.class,
+                        MerlotCoopContractServiceOfferingCredentialSubject.class
+                );
+
+        // check if any of them match, and if so, return the pojo object
+        for (Class<? extends PojoCredentialSubject> csClass : csClasses) {
+            PojoCredentialSubject cs = vp.findFirstCredentialSubjectByType(csClass);
+            // if additional logic is needed per type, it can be added here
+            if (cs != null) {
+                return cs;
+            }
+        }
+        return null;
     }
 
     @Mapping(target = "metadata.state", source = "extension.state")

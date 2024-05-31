@@ -420,6 +420,7 @@ public class ServiceOfferingsService {
 
     public SelfDescriptionMeta updateServiceOffering(ServiceOfferingDto serviceOfferingDto,
                                                      String offeringId, String authToken) throws JsonProcessingException {
+        // TODO update this method
         String previousSdHash = null;
 
         ServiceOfferingCredentialSubject offeringCs = serviceOfferingDto.getSelfDescription()
@@ -489,25 +490,16 @@ public class ServiceOfferingsService {
 
     private PojoCredentialSubject handleSpecificMerlotOfferingCs(ExtendedVerifiablePresentation vp) {
 
-        // consider all MERLOT specific offering classes
-        List<Class<? extends PojoCredentialSubject>> csClasses =
-                List.of(
-                        MerlotDataDeliveryServiceOfferingCredentialSubject.class,
-                        MerlotSaasServiceOfferingCredentialSubject.class,
-                        MerlotCoopContractServiceOfferingCredentialSubject.class
-                );
+        // create pojo cs for MERLOT specific offering type from vp
+        PojoCredentialSubject specificOfferingCs = serviceOfferingMapper.getSpecificMerlotOfferingCs(vp);
 
-        // check if any of them match, and if so, return the pojo object
-        for (Class<? extends PojoCredentialSubject> csClass: csClasses) {
-            PojoCredentialSubject cs = vp.findFirstCredentialSubjectByType(csClass);
-            // if additional logic is needed per type, it can be added here
-            if (cs != null) {
-                return cs;
-            }
-        }
+        // if any checks depending on a particular type should be performed, this would be the place
 
         // if none match this is not a valid credential request
-        throw new ResponseStatusException(BAD_REQUEST, "Given payload does not contain a full MERLOT offering credential");
+        if (specificOfferingCs == null) {
+            throw new ResponseStatusException(BAD_REQUEST, "Given payload does not contain a full MERLOT offering credential");
+        }
+        return specificOfferingCs;
     }
 
     private void deleteServiceOfferingFromCatalog(String sdHash) throws JsonProcessingException {
