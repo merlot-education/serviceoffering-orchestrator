@@ -92,6 +92,20 @@ public class ServiceOfferingsController {
      * @return creation response for this offering
      * @throws Exception exception during offering creation
      */
+    @PostMapping("/serviceoffering")
+    //@PreAuthorize("@authorityChecker.representsOrganization(authentication, #serviceOfferingDto.selfDescription.offeredBy.id)")
+    public SelfDescriptionMeta addServiceOffering(@Valid @RequestBody ServiceOfferingDto serviceOfferingDto,
+                                                     @RequestHeader(name = "Authorization") String authToken) throws Exception {
+        return serviceOfferingsService.addServiceOffering(serviceOfferingDto, authToken);
+    }
+
+    /**
+     * PUT request for updating a Service offering.
+     *
+     * @param serviceOfferingDto service offering dto
+     * @return creation response for this offering
+     * @throws Exception exception during offering creation
+     */
     @PutMapping("/serviceoffering/{soId}")
     //@PreAuthorize("@authorityChecker.representsOrganization(authentication, #serviceOfferingDto.selfDescription.offeredBy.id)")
     public SelfDescriptionMeta updateServiceOffering(@Valid @RequestBody ServiceOfferingDto serviceOfferingDto,

@@ -13,6 +13,9 @@ import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescrip
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.datatypes.SOTermsAndConditions;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.ServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotLegalParticipantCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotCoopContractServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotDataDeliveryServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotSaasServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
@@ -379,12 +382,14 @@ public class ServiceOfferingsService {
                 .findFirstCredentialSubjectByType(ServiceOfferingCredentialSubject.class);
         MerlotServiceOfferingCredentialSubject merlotOfferingCs = vp
                 .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
+        PojoCredentialSubject specificMerlotOfferingCs = handleSpecificMerlotOfferingCs(vp);
 
         // generate a new ID for the offerings
         String offeringId = OFFERING_START + UUID.randomUUID();
         offeringCs.setId(offeringId);
-        merlotOfferingCs.setId(extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT));
-        merlotOfferingCs.setCreationDate(offeringId);
+        merlotOfferingCs.setId(offeringId);
+        merlotOfferingCs.setCreationDate(extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT));
+        specificMerlotOfferingCs.setId(offeringId);
 
         MerlotParticipantDto participantDto = organizationOrchestratorClient
                 .getOrganizationDetails(offeringCs.getProvidedBy().getId(), Map.of(AUTHORIZATION, authToken));
@@ -394,7 +399,9 @@ public class ServiceOfferingsService {
 
         OrganisationSignerConfigDto orgaSignerConfig = participantDto.getMetadata().getOrganisationSignerConfigDto();
 
-        SelfDescriptionMeta selfDescriptionsResponse = addServiceOfferingToCatalog(List.of(offeringCs, merlotOfferingCs), orgaSignerConfig);
+        SelfDescriptionMeta selfDescriptionsResponse = addServiceOfferingToCatalog(
+                List.of(offeringCs, merlotOfferingCs, specificMerlotOfferingCs),
+                orgaSignerConfig);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self-description
         extension.setId(selfDescriptionsResponse.getId());
@@ -478,6 +485,18 @@ public class ServiceOfferingsService {
         }
 
         return selfDescriptionsResponse;
+    }
+
+    private PojoCredentialSubject handleSpecificMerlotOfferingCs(ExtendedVerifiablePresentation vp) {
+        PojoCredentialSubject cs;
+        if ((cs = vp.findFirstCredentialSubjectByType(MerlotSaasServiceOfferingCredentialSubject.class)) != null) {
+            return cs;
+        } else if ((cs = vp.findFirstCredentialSubjectByType(MerlotDataDeliveryServiceOfferingCredentialSubject.class)) != null) {
+            return cs;
+        } else if ((cs = vp.findFirstCredentialSubjectByType(MerlotCoopContractServiceOfferingCredentialSubject.class)) != null) {
+            return cs;
+        }
+        throw new ResponseStatusException(BAD_REQUEST, "Given payload does not contain a full MERLOT offering credential");
     }
 
     private void deleteServiceOfferingFromCatalog(String sdHash) throws JsonProcessingException {
