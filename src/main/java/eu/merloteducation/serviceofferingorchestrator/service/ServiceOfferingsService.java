@@ -420,36 +420,36 @@ public class ServiceOfferingsService {
 
     public SelfDescriptionMeta updateServiceOffering(ServiceOfferingDto serviceOfferingDto,
                                                      String offeringId, String authToken) throws JsonProcessingException {
-        // TODO update this method
-        String previousSdHash = null;
 
-        ServiceOfferingCredentialSubject offeringCs = serviceOfferingDto.getSelfDescription()
+        ExtendedVerifiablePresentation vp = serviceOfferingDto.getSelfDescription();
+        ServiceOfferingCredentialSubject offeringCs = vp
                 .findFirstCredentialSubjectByType(ServiceOfferingCredentialSubject.class);
-        MerlotServiceOfferingCredentialSubject merlotOfferingCs = serviceOfferingDto.getSelfDescription()
+        MerlotServiceOfferingCredentialSubject merlotOfferingCs = vp
                 .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
+        PojoCredentialSubject specificMerlotOfferingCs = handleSpecificMerlotOfferingCs(vp);
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository
-                .findById(offeringCs.getId()).orElse(null);
+                .findById(offeringId).orElse(null);
 
-        // handle potential failure points
-        if (extension != null) {
-            previousSdHash = extension.getCurrentSdHash();
-
-            // must be in draft
-            if (extension.getState() != ServiceOfferingState.IN_DRAFT) {
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
-            }
-
-            // issuer may not change
-            if (!extension.getIssuer().equals(offeringCs.getProvidedBy().getId())) {
-                throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
-            }
-
-            // override creation date
-            merlotOfferingCs.setCreationDate(extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT));
-        } else {
+        if (extension == null) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description there is none with this id");
         }
+
+        // handle potential failure points
+        String previousSdHash = extension.getCurrentSdHash();
+
+        // must be in draft
+        if (extension.getState() != ServiceOfferingState.IN_DRAFT) {
+            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it is not in draft");
+        }
+
+        // issuer may not change
+        if (!extension.getIssuer().equals(offeringCs.getProvidedBy().getId())) {
+            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Cannot update Self-Description as it contains invalid fields");
+        }
+
+        // override creation date
+        merlotOfferingCs.setCreationDate(extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT));
 
         MerlotParticipantDto participantDto = organizationOrchestratorClient
                 .getOrganizationDetails(offeringCs.getProvidedBy().getId(), Map.of(AUTHORIZATION, authToken));
@@ -460,7 +460,7 @@ public class ServiceOfferingsService {
         OrganisationSignerConfigDto orgaSignerConfig = participantDto.getMetadata().getOrganisationSignerConfigDto();
 
         SelfDescriptionMeta selfDescriptionsResponse = addServiceOfferingToCatalog(
-                List.of(offeringCs, merlotOfferingCs), orgaSignerConfig);
+                List.of(offeringCs, merlotOfferingCs, specificMerlotOfferingCs), orgaSignerConfig);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self-description
         extension.setId(selfDescriptionsResponse.getId());
@@ -474,15 +474,13 @@ public class ServiceOfferingsService {
             throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be saved.");
         }
 
-        // delete previous entry if it exists
-        if (previousSdHash != null) {
-            try {
-                deleteServiceOfferingFromCatalog(previousSdHash);
-            } catch (ResponseStatusException ex) {
-                //if deleting the previous entry fails, "rollback" the service-offering creation in the catalog
-                deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
-                throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be updated.");
-            }
+        // delete previous entry
+        try {
+            deleteServiceOfferingFromCatalog(previousSdHash);
+        } catch (ResponseStatusException ex) {
+            //if deleting the previous entry fails, "rollback" the service-offering creation in the catalog
+            deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be updated.");
         }
 
         return selfDescriptionsResponse;

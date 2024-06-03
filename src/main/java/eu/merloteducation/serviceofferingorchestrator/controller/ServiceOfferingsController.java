@@ -107,7 +107,7 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering creation
      */
     @PutMapping("/serviceoffering/{soId}")
-    //@PreAuthorize("@authorityChecker.representsOrganization(authentication, #serviceOfferingDto.selfDescription.offeredBy.id)")
+    //@PreAuthorize("@authorityChecker.representsOrganization(authentication, #serviceOfferingDto.selfDescription.offeredBy.id)") // TODO add auth again
     public SelfDescriptionMeta updateServiceOffering(@Valid @RequestBody ServiceOfferingDto serviceOfferingDto,
                                                      @PathVariable(value = "soId") String serviceofferingId,
                                                       @RequestHeader(name = "Authorization") String authToken) throws Exception {
