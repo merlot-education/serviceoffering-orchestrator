@@ -13,9 +13,6 @@ import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescrip
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.datatypes.SOTermsAndConditions;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.ServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotLegalParticipantCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotCoopContractServiceOfferingCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotDataDeliveryServiceOfferingCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotSaasServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
@@ -95,19 +92,24 @@ public class ServiceOfferingsService {
         deleteServiceOfferingFromCatalog(extension.getCurrentSdHash());
     }
 
-    private GXFSCatalogListResponse<SelfDescriptionItem> getSelfDescriptionByOfferingExtension
+    private SelfDescriptionMeta getSelfDescriptionByOfferingExtension
             (ServiceOfferingExtension extension) throws JsonProcessingException {
-        GXFSCatalogListResponse<SelfDescriptionItem> response = null;
+        SelfDescriptionMeta sdMeta = null;
         try {
-            response = gxfsCatalogService.getSelfDescriptionsByIds(new String[]{extension.getId()},
+            GXFSCatalogListResponse<SelfDescriptionItem> response = gxfsCatalogService.getSelfDescriptionsByIds(new String[]{extension.getId()},
                     new SelfDescriptionStatus[]{SelfDescriptionStatus.ACTIVE, SelfDescriptionStatus.REVOKED});
+            if (response.getTotalCount() != 1
+                    || !response.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
+                throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
+            }
+            sdMeta = response.getItems().get(0).getMeta();
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         }
-        return response;
+        return sdMeta;
     }
 
-    private List<SelfDescriptionItem> getSelfDescriptionsByOfferingExtensionList
+    private List<SelfDescriptionMeta> getSelfDescriptionsByOfferingExtensionList
             (Page<ServiceOfferingExtension> extensions, boolean showRevoked) throws JsonProcessingException {
         String[] extensionHashes = extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                 .collect(Collectors.toSet()).toArray(String[]::new);
@@ -132,7 +134,7 @@ public class ServiceOfferingsService {
             logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
-        return selfDescriptionsResponse.getItems();
+        return selfDescriptionsResponse.getItems().stream().map(SelfDescriptionItem::getMeta).toList();
     }
 
     private void handleCatalogError(WebClientResponseException e)
@@ -196,24 +198,18 @@ public class ServiceOfferingsService {
             throw new NoSuchElementException(OFFERING_NOT_FOUND);
         }
 
-        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse =
-                getSelfDescriptionByOfferingExtension(extension);
+        SelfDescriptionMeta sdMeta = getSelfDescriptionByOfferingExtension(extension);
         // if we do not get exactly one item or the id doesn't start with ServiceOffering, we did not find the correct item
-        if (selfDescriptionsResponse.getTotalCount() != 1
-                || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
-            throw new NoSuchElementException(OFFERING_NOT_FOUND);
-        }
-        SelfDescriptionItem item = selfDescriptionsResponse.getItems().get(0);
 
         String signerLegalName = null;
         try {
-            signerLegalName = getSignerLegalNameFromCatalog(item.getMeta().getContent());
+            signerLegalName = getSignerLegalNameFromCatalog(sdMeta.getContent());
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         }
 
         return serviceOfferingMapper.selfDescriptionMetaToServiceOfferingDto(
-                selfDescriptionsResponse.getItems().get(0).getMeta(),
+                sdMeta,
                 extension,
                 organizationOrchestratorClient.getOrganizationDetails(extension.getIssuer()),
                 signerLegalName);
@@ -232,15 +228,15 @@ public class ServiceOfferingsService {
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
 
-        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions, false);
+        List<SelfDescriptionMeta> items = getSelfDescriptionsByOfferingExtensionList(extensions, false);
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
         List<ServiceOfferingBasicDto> models = items.stream()
                 .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingBasicDto(
-                        item.getMeta(),
-                        extensionMap.get(item.getMeta().getSdHash()),
+                        item,
+                        extensionMap.get(item.getSdHash()),
                         organizationOrchestratorClient
-                                .getOrganizationDetails(extensionMap.get(item.getMeta().getSdHash())
+                                .getOrganizationDetails(extensionMap.get(item.getSdHash())
                                         .getIssuer())))
                 .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
                                 ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
@@ -274,15 +270,15 @@ public class ServiceOfferingsService {
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
                 .collect(Collectors.toMap(ServiceOfferingExtension::getCurrentSdHash, Function.identity()));
 
-        List<SelfDescriptionItem> items = getSelfDescriptionsByOfferingExtensionList(extensions, true);
+        List<SelfDescriptionMeta> items = getSelfDescriptionsByOfferingExtensionList(extensions, true);
 
         MerlotParticipantDto providerOrga = organizationOrchestratorClient.getOrganizationDetails(orgaId);
 
         // extract the items from the SelfDescriptionsResponse and map them to Dto instances
         List<ServiceOfferingBasicDto> models = items.stream()
                 .map(item -> serviceOfferingMapper.selfDescriptionMetaToServiceOfferingBasicDto(
-                        item.getMeta(),
-                        extensionMap.get(item.getMeta().getSdHash()),
+                        item,
+                        extensionMap.get(item.getSdHash()),
                         providerOrga))
                 .sorted(Comparator.comparing(offer -> offer.getCreationDate() != null
                                 ? (LocalDateTime.parse(offer.getCreationDate(), DateTimeFormatter.ISO_DATE_TIME))
@@ -317,18 +313,10 @@ public class ServiceOfferingsService {
             throw new ResponseStatusException(PRECONDITION_FAILED, "Invalid state for regenerating this offering");
         }
 
-        GXFSCatalogListResponse<SelfDescriptionItem> selfDescriptionsResponse =
-                getSelfDescriptionByOfferingExtension(extension);
-        // if we do not get exactly one item or the id doesn't start with ServiceOffering, we did not find the correct item
-        if (selfDescriptionsResponse.getTotalCount() != 1
-                || !selfDescriptionsResponse.getItems().get(0).getMeta().getId().startsWith(OFFERING_START)) {
-            throw new ResponseStatusException(NOT_FOUND, OFFERING_NOT_FOUND);
-        }
-
-        SelfDescriptionItem item = selfDescriptionsResponse.getItems().get(0);
+        SelfDescriptionMeta sdMeta = getSelfDescriptionByOfferingExtension(extension);
 
         ServiceOfferingDto offeringDto = new ServiceOfferingDto();
-        offeringDto.setSelfDescription(item.getMeta().getContent());
+        offeringDto.setSelfDescription(sdMeta.getContent());
 
         return addServiceOffering(offeringDto, authToken);
     }
