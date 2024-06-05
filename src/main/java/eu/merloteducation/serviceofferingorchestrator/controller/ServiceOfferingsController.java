@@ -1,7 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
-import eu.merloteducation.gxfscataloglibrary.service.GxfsWizardApiService;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
@@ -16,8 +15,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -93,7 +90,7 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering creation
      */
     @PostMapping("/serviceoffering")
-    //@PreAuthorize("@authorityChecker.representsOrganization(authentication, #serviceOfferingDto.selfDescription.offeredBy.id)")
+    @PreAuthorize("@offeringAuthorityChecker.representsProviderParticipant(authentication, #serviceOfferingDto)")
     public SelfDescriptionMeta addServiceOffering(@Valid @RequestBody ServiceOfferingDto serviceOfferingDto,
                                                      @RequestHeader(name = "Authorization") String authToken) throws Exception {
         return serviceOfferingsService.addServiceOffering(serviceOfferingDto, authToken);
@@ -107,7 +104,7 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering creation
      */
     @PutMapping("/serviceoffering/{soId}")
-    //@PreAuthorize("@authorityChecker.representsOrganization(authentication, #serviceOfferingDto.selfDescription.offeredBy.id)") // TODO add auth again
+    @PreAuthorize("@offeringAuthorityChecker.representsProviderParticipant(authentication, #serviceOfferingDto)")
     public SelfDescriptionMeta updateServiceOffering(@Valid @RequestBody ServiceOfferingDto serviceOfferingDto,
                                                      @PathVariable(value = "soId") String serviceofferingId,
                                                       @RequestHeader(name = "Authorization") String authToken) throws Exception {
