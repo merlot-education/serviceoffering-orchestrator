@@ -10,8 +10,8 @@ import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.GXFSCatalog
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.PojoCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.datatypes.SOTermsAndConditions;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.ServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.datatypes.GxSOTermsAndConditions;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.GxServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotLegalParticipantCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
@@ -321,10 +321,10 @@ public class ServiceOfferingsService {
         return addServiceOffering(offeringDto, authToken);
     }
 
-    private void patchTermsAndConditions(ServiceOfferingCredentialSubject credentialSubject,
+    private void patchTermsAndConditions(GxServiceOfferingCredentialSubject credentialSubject,
                                          MerlotParticipantDto participantDto) {
 
-        SOTermsAndConditions providerTnC = new SOTermsAndConditions(participantDto
+        GxSOTermsAndConditions providerTnC = new GxSOTermsAndConditions(participantDto
                 .getSelfDescription().findFirstCredentialSubjectByType(MerlotLegalParticipantCredentialSubject.class)
                 .getTermsAndConditions());
 
@@ -333,7 +333,7 @@ public class ServiceOfferingsService {
             throw new ResponseStatusException(FORBIDDEN, "Cannot create/update self-description without valid provider TnC");
         }
 
-        SOTermsAndConditions merlotTnC = new SOTermsAndConditions(organizationOrchestratorClient
+        GxSOTermsAndConditions merlotTnC = new GxSOTermsAndConditions(organizationOrchestratorClient
                 .getOrganizationDetails(getMerlotFederationId()).getSelfDescription()
                 .findFirstCredentialSubjectByType(MerlotLegalParticipantCredentialSubject.class)
                 .getTermsAndConditions());
@@ -366,8 +366,8 @@ public class ServiceOfferingsService {
 
         // extract credential subjects from VP
         ExtendedVerifiablePresentation vp = serviceOfferingDto.getSelfDescription();
-        ServiceOfferingCredentialSubject offeringCs = vp
-                .findFirstCredentialSubjectByType(ServiceOfferingCredentialSubject.class);
+        GxServiceOfferingCredentialSubject offeringCs = vp
+                .findFirstCredentialSubjectByType(GxServiceOfferingCredentialSubject.class);
         MerlotServiceOfferingCredentialSubject merlotOfferingCs = vp
                 .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
         PojoCredentialSubject specificMerlotOfferingCs = handleSpecificMerlotOfferingCs(vp);
@@ -410,8 +410,8 @@ public class ServiceOfferingsService {
                                                      String offeringId, String authToken) throws JsonProcessingException {
 
         ExtendedVerifiablePresentation vp = serviceOfferingDto.getSelfDescription();
-        ServiceOfferingCredentialSubject offeringCs = vp
-                .findFirstCredentialSubjectByType(ServiceOfferingCredentialSubject.class);
+        GxServiceOfferingCredentialSubject offeringCs = vp
+                .findFirstCredentialSubjectByType(GxServiceOfferingCredentialSubject.class);
         MerlotServiceOfferingCredentialSubject merlotOfferingCs = vp
                 .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
         PojoCredentialSubject specificMerlotOfferingCs = handleSpecificMerlotOfferingCs(vp);

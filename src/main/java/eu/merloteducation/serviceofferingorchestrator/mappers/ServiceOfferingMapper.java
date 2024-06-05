@@ -3,7 +3,7 @@ package eu.merloteducation.serviceofferingorchestrator.mappers;
 import eu.merloteducation.gxfscataloglibrary.models.credentials.ExtendedVerifiablePresentation;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.PojoCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.ServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.GxServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotLegalParticipantCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotCoopContractServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotDataDeliveryServiceOfferingCredentialSubject;
@@ -50,8 +50,8 @@ public interface ServiceOfferingMapper {
                                                                                  MerlotParticipantDto providerDetails) {
         MerlotLegalParticipantCredentialSubject participantCs = providerDetails.getSelfDescription()
                 .findFirstCredentialSubjectByType(MerlotLegalParticipantCredentialSubject.class);
-        ServiceOfferingCredentialSubject offeringCs = selfDescriptionMeta.getContent()
-                .findFirstCredentialSubjectByType(ServiceOfferingCredentialSubject.class);
+        GxServiceOfferingCredentialSubject offeringCs = selfDescriptionMeta.getContent()
+                .findFirstCredentialSubjectByType(GxServiceOfferingCredentialSubject.class);
         PojoCredentialSubject merlotSpecificOfferingCs = getSpecificMerlotOfferingCs(selfDescriptionMeta.getContent());
 
         ServiceOfferingBasicDto dto = new ServiceOfferingBasicDto();
