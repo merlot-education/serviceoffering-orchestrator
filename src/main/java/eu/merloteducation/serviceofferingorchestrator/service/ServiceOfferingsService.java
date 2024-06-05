@@ -543,7 +543,7 @@ public class ServiceOfferingsService {
 
         GXFSCatalogListResponse<GXFSQueryLegalNameItem>
             response = gxfsCatalogService.getParticipantLegalNameByUri(
-                    MerlotLegalParticipantCredentialSubject.getTypeNoPrefix(), signerId);
+                    MerlotLegalParticipantCredentialSubject.TYPE_CLASS, signerId);
 
         // if we do not get exactly one item, we did not find the signer participant and the corresponding legal name
         if (response.getTotalCount() != 1) {

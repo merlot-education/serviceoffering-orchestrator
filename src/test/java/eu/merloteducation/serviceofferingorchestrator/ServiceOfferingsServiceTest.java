@@ -313,7 +313,7 @@ class ServiceOfferingsServiceTest {
         legalNameItems.setItems(List.of(legalNameItem));
         legalNameItems.setTotalCount(1);
 
-        lenient().when(gxfsCatalogService.getParticipantLegalNameByUri(eq(MerlotLegalParticipantCredentialSubject.getTypeNoPrefix()), any()))
+        lenient().when(gxfsCatalogService.getParticipantLegalNameByUri(eq(MerlotLegalParticipantCredentialSubject.TYPE_CLASS), any()))
                 .thenReturn(legalNameItems);
 
         MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
