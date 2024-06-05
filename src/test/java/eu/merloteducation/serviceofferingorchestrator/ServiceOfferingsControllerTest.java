@@ -44,6 +44,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import static eu.merloteducation.serviceofferingorchestrator.SelfDescriptionDemoData.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
@@ -98,87 +99,6 @@ class ServiceOfferingsControllerTest {
         return "did:web:"+ merlotDomain + ":participant:orga-" + num;
     }
 
-    private GxServiceOfferingCredentialSubject getGxServiceOfferingCs(String id, String providedBy){
-        GxServiceOfferingCredentialSubject cs = new GxServiceOfferingCredentialSubject();
-        cs.setId(id);
-        cs.setName("Some offering");
-        cs.setPolicy(List.of("policy"));
-        cs.setProvidedBy(new NodeKindIRITypeId(providedBy));
-        GxDataAccountExport accountExport = new GxDataAccountExport();
-        accountExport.setFormatType("application/json");
-        accountExport.setAccessType("digital");
-        accountExport.setRequestType("API");
-        cs.setDataAccountExport(List.of(accountExport));
-        cs.setDataProtectionRegime(List.of("GDPR2016"));
-        cs.setDescription("Some offering description");
-        GxSOTermsAndConditions tnc1 = new GxSOTermsAndConditions();
-        tnc1.setUrl("http://example.com/1");
-        tnc1.setHash("1234");
-        GxSOTermsAndConditions tnc2 = new GxSOTermsAndConditions();
-        tnc2.setUrl("http://example.com/2");
-        tnc2.setHash("1234");
-        cs.setTermsAndConditions(List.of(tnc1, tnc2));
-        return cs;
-    }
-
-    private MerlotServiceOfferingCredentialSubject getMerlotServiceOfferingCs(String id){
-        MerlotServiceOfferingCredentialSubject cs = new MerlotServiceOfferingCredentialSubject();
-        cs.setId(id);
-        cs.setCreationDate("2023-05-24T13:32:22.712661Z");
-        cs.setExampleCosts("5€");
-        cs.setMerlotTermsAndConditionsAccepted(true);
-        OfferingRuntime option = new OfferingRuntime();
-        option.setRuntimeCount(5);
-        option.setRuntimeMeasurement("day(s)");
-        cs.setRuntimeOptions(List.of(option));
-        return cs;
-    }
-
-    private MerlotSaasServiceOfferingCredentialSubject getMerlotSaasServiceOfferingCs(String id){
-        MerlotSaasServiceOfferingCredentialSubject cs = new MerlotSaasServiceOfferingCredentialSubject();
-        cs.setId(id);
-        cs.setHardwareRequirements("1.21 Gigawatts");
-        AllowedUserCount userCount = new AllowedUserCount();
-        userCount.setUserCountUpTo(5);
-        cs.setUserCountOptions(List.of(userCount));
-        return cs;
-    }
-
-    private MerlotDataDeliveryServiceOfferingCredentialSubject getMerlotDataDeliveryServiceOfferingCs(String id){
-        MerlotDataDeliveryServiceOfferingCredentialSubject cs = new MerlotDataDeliveryServiceOfferingCredentialSubject();
-        cs.setId(id);
-        cs.setDataAccessType("Download");
-        cs.setDataTransferType("Push");
-        DataExchangeCount exchangeCount = new DataExchangeCount();
-        exchangeCount.setExchangeCountUpTo(6);
-        cs.setExchangeCountOptions(List.of(exchangeCount));
-        return cs;
-    }
-
-    private MerlotCoopContractServiceOfferingCredentialSubject getMerlotCoopContractServiceOfferingCs(String id){
-        MerlotCoopContractServiceOfferingCredentialSubject cs = new MerlotCoopContractServiceOfferingCredentialSubject();
-        cs.setId(id);
-        return cs;
-    }
-
-    private ExtendedVerifiablePresentation createVpFromCsList(List<PojoCredentialSubject> csList, String issuer) throws JsonProcessingException {
-        ExtendedVerifiablePresentation vp = new ExtendedVerifiablePresentation();
-        List<ExtendedVerifiableCredential> vcList = new ArrayList<>();
-        for (PojoCredentialSubject cs : csList) {
-            CastableCredentialSubject ccs = CastableCredentialSubject.fromPojo(cs);
-            VerifiableCredential vc = VerifiableCredential
-                    .builder()
-                    .id(URI.create(cs.getId() + "#" + cs.getType()))
-                    .issuanceDate(Date.from(Instant.now()))
-                    .credentialSubject(ccs)
-                    .issuer(URI.create(issuer))
-                    .build();
-            vcList.add(ExtendedVerifiableCredential.fromMap(vc.getJsonObject()));
-        }
-        vp.setVerifiableCredentials(vcList);
-        return vp;
-    }
-
     @BeforeEach
     public void setUp() throws Exception {
 
@@ -196,7 +116,7 @@ class ServiceOfferingsControllerTest {
         serviceOfferingNotReleasedDto.getMetadata().setState("IN_DRAFT");
         serviceOfferingNotReleasedDto.setSelfDescription(createVpFromCsList(
                 List.of(
-                        getGxServiceOfferingCs("urn:uuid:notreleased", getParticipantId(10)),
+                        getGxServiceOfferingCs("urn:uuid:notreleased", "Some Offering", getParticipantId(10)),
                         getMerlotServiceOfferingCs("urn:uuid:notreleased"),
                         getMerlotSaasServiceOfferingCs("urn:uuid:notreleased")
                 ), getParticipantId(10)
@@ -207,7 +127,7 @@ class ServiceOfferingsControllerTest {
         serviceOfferingDto.getMetadata().setState("RELEASED");
         serviceOfferingDto.setSelfDescription(createVpFromCsList(
                 List.of(
-                        getGxServiceOfferingCs("urn:uuid:released", getParticipantId(10)),
+                        getGxServiceOfferingCs("urn:uuid:released", "Some Offering", getParticipantId(10)),
                         getMerlotServiceOfferingCs("urn:uuid:released"),
                         getMerlotSaasServiceOfferingCs("urn:uuid:released")
                 ), getParticipantId(10)
@@ -388,7 +308,7 @@ class ServiceOfferingsControllerTest {
     private ExtendedVerifiablePresentation createValidSaasVp(String id, String providedBy) throws JsonProcessingException {
         return createVpFromCsList(
                 List.of(
-                        getGxServiceOfferingCs(id, providedBy),
+                        getGxServiceOfferingCs(id, "Some Offering", providedBy),
                         getMerlotServiceOfferingCs(id),
                         getMerlotSaasServiceOfferingCs(id)
                 ), getParticipantId(10)
@@ -398,9 +318,9 @@ class ServiceOfferingsControllerTest {
     private ExtendedVerifiablePresentation createValidDataDeliveryVp(String id, String providedBy) throws JsonProcessingException {
         return createVpFromCsList(
                 List.of(
-                        getGxServiceOfferingCs(id, providedBy),
+                        getGxServiceOfferingCs(id, "Some Offering", providedBy),
                         getMerlotServiceOfferingCs(id),
-                        getMerlotDataDeliveryServiceOfferingCs(id)
+                        getMerlotDataDeliveryServiceOfferingCs(id, "Push")
                 ), getParticipantId(10)
         );
     }
@@ -408,7 +328,7 @@ class ServiceOfferingsControllerTest {
     private ExtendedVerifiablePresentation createValidCooperationVp(String id, String providedBy) throws JsonProcessingException {
         return createVpFromCsList(
                 List.of(
-                        getGxServiceOfferingCs(id, providedBy),
+                        getGxServiceOfferingCs(id, "Some Offering", providedBy),
                         getMerlotServiceOfferingCs(id),
                         getMerlotCoopContractServiceOfferingCs(id)
                 ), getParticipantId(10)
