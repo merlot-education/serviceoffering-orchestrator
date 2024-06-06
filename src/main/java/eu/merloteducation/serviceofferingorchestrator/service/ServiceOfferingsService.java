@@ -351,34 +351,12 @@ public class ServiceOfferingsService {
         }
     }
 
-    /**
-     * Given a self-description, attempt to publish it to the GXFS catalog.
-     * If the id is not specified (set to ServiceOffering:TBR), create a new entry,
-     * otherwise attempt to update an existing offering with this id.
-     *
-     * @param serviceOfferingDto self-description of the offering
-     * @return creation response of the GXFS catalog
-     */
     @Transactional(rollbackOn = {ResponseStatusException.class})
-    public SelfDescriptionMeta addServiceOffering(ServiceOfferingDto serviceOfferingDto, String authToken) {
-
-        ServiceOfferingExtension extension = new ServiceOfferingExtension();
-
-        // extract credential subjects from VP
-        ExtendedVerifiablePresentation vp = serviceOfferingDto.getSelfDescription();
-        GxServiceOfferingCredentialSubject offeringCs = vp
-                .findFirstCredentialSubjectByType(GxServiceOfferingCredentialSubject.class);
-        MerlotServiceOfferingCredentialSubject merlotOfferingCs = vp
-                .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
-        PojoCredentialSubject specificMerlotOfferingCs = handleSpecificMerlotOfferingCs(vp);
-
-        // generate a new ID for the offerings
-        String offeringId = OFFERING_START + UUID.randomUUID();
-        offeringCs.setId(offeringId);
-        merlotOfferingCs.setId(offeringId);
-        merlotOfferingCs.setCreationDate(extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT));
-        specificMerlotOfferingCs.setId(offeringId);
-
+    private SelfDescriptionMeta storeServiceOffering(GxServiceOfferingCredentialSubject offeringCs,
+                                                     MerlotServiceOfferingCredentialSubject merlotOfferingCs,
+                                                     PojoCredentialSubject specificMerlotOfferingCs,
+                                                     ServiceOfferingExtension extension,
+                                                     String authToken) {
         MerlotParticipantDto participantDto = organizationOrchestratorClient
                 .getOrganizationDetails(offeringCs.getProvidedBy().getId(), Map.of(AUTHORIZATION, authToken));
 
@@ -406,6 +384,48 @@ public class ServiceOfferingsService {
         return selfDescriptionsResponse;
     }
 
+    /**
+     * Given a self-description, attempt to publish it to the GXFS catalog.
+     * If the id is not specified (set to ServiceOffering:TBR), create a new entry,
+     * otherwise attempt to update an existing offering with this id.
+     *
+     * @param serviceOfferingDto self-description of the offering
+     * @param authToken authToken to access further backend services
+     * @return creation response of the GXFS catalog
+     */
+    public SelfDescriptionMeta addServiceOffering(ServiceOfferingDto serviceOfferingDto, String authToken) {
+
+        ServiceOfferingExtension extension = new ServiceOfferingExtension();
+
+        // extract credential subjects from VP
+        ExtendedVerifiablePresentation vp = serviceOfferingDto.getSelfDescription();
+        GxServiceOfferingCredentialSubject offeringCs = vp
+                .findFirstCredentialSubjectByType(GxServiceOfferingCredentialSubject.class);
+        MerlotServiceOfferingCredentialSubject merlotOfferingCs = vp
+                .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
+        PojoCredentialSubject specificMerlotOfferingCs = handleSpecificMerlotOfferingCs(vp);
+
+        // generate a new ID for the offerings
+        String offeringId = OFFERING_START + UUID.randomUUID();
+        offeringCs.setId(offeringId);
+        merlotOfferingCs.setId(offeringId);
+        merlotOfferingCs.setCreationDate(extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT));
+        specificMerlotOfferingCs.setId(offeringId);
+
+        return storeServiceOffering(offeringCs, merlotOfferingCs, specificMerlotOfferingCs, extension, authToken);
+    }
+
+    /**
+     *
+     * Given an offeringDto containing a selfdescription and the id of an existing offering,
+     * attempt to update the corresponding catalog entry with the new information.
+     *
+     * @param serviceOfferingDto dto with self-description of the offering
+     * @param offeringId id of the offering to update
+     * @param authToken authToken to access further backend services
+     * @return creation response of the GXFS catalog
+     */
+    @Transactional(rollbackOn = {ResponseStatusException.class})
     public SelfDescriptionMeta updateServiceOffering(ServiceOfferingDto serviceOfferingDto,
                                                      String offeringId, String authToken) {
 
@@ -415,6 +435,10 @@ public class ServiceOfferingsService {
         MerlotServiceOfferingCredentialSubject merlotOfferingCs = vp
                 .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
         PojoCredentialSubject specificMerlotOfferingCs = handleSpecificMerlotOfferingCs(vp);
+
+        if (!offeringCs.getId().equals(offeringId)) {
+            throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Given offering id does not match the self-description.");
+        }
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                 .findById(offeringId).orElse(null);
@@ -439,28 +463,8 @@ public class ServiceOfferingsService {
         // override creation date
         merlotOfferingCs.setCreationDate(extension.getCreationDate().format(DateTimeFormatter.ISO_INSTANT));
 
-        MerlotParticipantDto participantDto = organizationOrchestratorClient
-                .getOrganizationDetails(offeringCs.getProvidedBy().getId(), Map.of(AUTHORIZATION, authToken));
-
-        // request provider details
-        patchTermsAndConditions(offeringCs, participantDto);
-
-        OrganisationSignerConfigDto orgaSignerConfig = participantDto.getMetadata().getOrganisationSignerConfigDto();
-
-        SelfDescriptionMeta selfDescriptionsResponse = addServiceOfferingToCatalog(
-                List.of(offeringCs, merlotOfferingCs, specificMerlotOfferingCs), orgaSignerConfig);
-
-        // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self-description
-        extension.setId(selfDescriptionsResponse.getId());
-        extension.setIssuer(selfDescriptionsResponse.getIssuer());
-        extension.setCurrentSdHash(selfDescriptionsResponse.getSdHash());
-        try {
-            serviceOfferingExtensionRepository.save(extension);
-        } catch (Exception e) {
-            // if saving fails, "rollback" the service-offering creation in the catalog
-            deleteServiceOfferingFromCatalog(selfDescriptionsResponse.getSdHash());
-            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Service offering could not be saved.");
-        }
+        SelfDescriptionMeta selfDescriptionsResponse =
+                storeServiceOffering(offeringCs, merlotOfferingCs, specificMerlotOfferingCs, extension, authToken);
 
         // delete previous entry
         try {

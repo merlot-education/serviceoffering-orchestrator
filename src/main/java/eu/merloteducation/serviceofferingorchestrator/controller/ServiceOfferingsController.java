@@ -1,6 +1,5 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
@@ -36,13 +35,11 @@ public class ServiceOfferingsController {
      * @param page page number
      * @param size number of items
      * @return page of offerings
-     * @throws Exception exception during offering fetching
      */
     @GetMapping("")
     public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(
             @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "9") @Max(15) int size)
-            throws JsonProcessingException {
+            @RequestParam(value = "size", defaultValue = "9") @Max(15) int size) {
 
         return serviceOfferingsService
                 .getAllPublicServiceOfferings(
@@ -58,7 +55,6 @@ public class ServiceOfferingsController {
      * @param state     optional offering state filter
      * @param orgaId    organization to fetch the offerings for
      * @return page of organization offerings
-     * @throws Exception exception during offering fetching
      */
     @GetMapping("/organization/{orgaId}")
     @PreAuthorize("@authorityChecker.representsOrganization(authentication, #orgaId)")
@@ -76,11 +72,10 @@ public class ServiceOfferingsController {
      *
      * @param serviceofferingId id of the offering to fetch data about
      * @return details to the offering
-     * @throws Exception exception during offering fetching
      */
     @GetMapping("/serviceoffering/{soId}")
     @PreAuthorize("@offeringAuthorityChecker.canAccessOffering(authentication, #serviceofferingId)")
-    public ServiceOfferingDto getServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId) throws Exception {
+    public ServiceOfferingDto getServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId) {
         try {
             return serviceOfferingsService.getServiceOfferingById(serviceofferingId);
         } catch (NoSuchElementException e) {
@@ -93,12 +88,11 @@ public class ServiceOfferingsController {
      *
      * @param serviceOfferingDto service offering dto
      * @return creation response for this offering
-     * @throws Exception exception during offering creation
      */
     @PostMapping("/serviceoffering")
     @PreAuthorize("@offeringAuthorityChecker.representsProviderParticipant(authentication, #serviceOfferingDto)")
     public SelfDescriptionMeta addServiceOffering(@Valid @RequestBody ServiceOfferingDto serviceOfferingDto,
-                                                     @RequestHeader(name = "Authorization") String authToken) throws Exception {
+                                                     @RequestHeader(name = "Authorization") String authToken) {
         return serviceOfferingsService.addServiceOffering(serviceOfferingDto, authToken);
     }
 
@@ -107,13 +101,12 @@ public class ServiceOfferingsController {
      *
      * @param serviceOfferingDto service offering dto
      * @return creation response for this offering
-     * @throws Exception exception during offering creation
      */
     @PutMapping("/serviceoffering/{soId}")
     @PreAuthorize("@offeringAuthorityChecker.representsProviderParticipant(authentication, #serviceOfferingDto)")
     public SelfDescriptionMeta updateServiceOffering(@Valid @RequestBody ServiceOfferingDto serviceOfferingDto,
                                                      @PathVariable(value = "soId") String serviceofferingId,
-                                                      @RequestHeader(name = "Authorization") String authToken) throws Exception {
+                                                      @RequestHeader(name = "Authorization") String authToken) {
         return serviceOfferingsService.updateServiceOffering(serviceOfferingDto, serviceofferingId, authToken);
     }
 
@@ -122,12 +115,12 @@ public class ServiceOfferingsController {
      *
      * @param serviceofferingId id of the offering to regenerate
      * @return creation response of catalog
-     * @throws Exception communication or mapping exception
      */
     @PostMapping("/serviceoffering/regenerate/{soId}")
     @PreAuthorize("@offeringAuthorityChecker.isOfferingIssuer(authentication, #serviceofferingId)")
-    public SelfDescriptionMeta regenerateServiceOfferingById(@PathVariable(value = "soId") String serviceofferingId, @RequestHeader(name = "Authorization") String authToken)
-            throws Exception {
+    public SelfDescriptionMeta regenerateServiceOfferingById(
+            @PathVariable(value = "soId") String serviceofferingId,
+            @RequestHeader(name = "Authorization") String authToken) {
         return serviceOfferingsService.regenerateOffering(serviceofferingId, authToken);
     }
 

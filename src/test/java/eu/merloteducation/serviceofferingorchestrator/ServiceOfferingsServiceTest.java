@@ -467,10 +467,12 @@ class ServiceOfferingsServiceTest {
         doThrow(getWebClientResponseException()).when(gxfsCatalogService)
                 .deleteSelfDescriptionByHash(saasOffering.getCurrentSdHash());
 
-        ServiceOfferingDto credentialSubject = createValidSaasOffering(saasOffering.getId(), getParticipantId(10));
+        String id = saasOffering.getId();
+
+        ServiceOfferingDto credentialSubject = createValidSaasOffering(id, getParticipantId(10));
 
         ResponseStatusException exception =
-            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.updateServiceOffering(credentialSubject, saasOffering.getId(), ""));
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.updateServiceOffering(credentialSubject, id, ""));
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exception.getStatusCode());
         assertEquals("Service offering could not be updated.", exception.getReason());
 
