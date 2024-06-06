@@ -11,8 +11,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/shapes")
 public class ServiceOfferingShapeController {
 
-    @Autowired
-    private GxfsWizardApiService gxfsWizardApiService;
+    private final GxfsWizardApiService gxfsWizardApiService;
+
+    public ServiceOfferingShapeController(@Autowired GxfsWizardApiService gxfsWizardApiService) {
+        this.gxfsWizardApiService = gxfsWizardApiService;
+    }
 
     private static final String ECOSYSTEM_MERLOT = "merlot";
     private static final String ECOSYSTEM_GAIAX = "gx";

@@ -72,7 +72,7 @@ public class ServiceOfferingsService {
     private static final String AUTHORIZATION = "Authorization";
 
     @Transactional(rollbackOn = {ResponseStatusException.class})
-    private void deleteOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
+    private void deleteOffering(ServiceOfferingExtension extension) {
         extension.delete();
         serviceOfferingExtensionRepository.save(extension);
 
@@ -84,7 +84,7 @@ public class ServiceOfferingsService {
     }
 
     @Transactional(rollbackOn = {ResponseStatusException.class})
-    private void purgeOffering(ServiceOfferingExtension extension) throws JsonProcessingException {
+    private void purgeOffering(ServiceOfferingExtension extension) {
         if (extension.getState() != ServiceOfferingState.DELETED) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Invalid state transition requested.");
         }
@@ -93,7 +93,7 @@ public class ServiceOfferingsService {
     }
 
     private SelfDescriptionMeta getSelfDescriptionByOfferingExtension
-            (ServiceOfferingExtension extension) throws JsonProcessingException {
+            (ServiceOfferingExtension extension) {
         SelfDescriptionMeta sdMeta = null;
         try {
             GXFSCatalogListResponse<SelfDescriptionItem> response = gxfsCatalogService.getSelfDescriptionsByIds(new String[]{extension.getId()},
@@ -110,7 +110,7 @@ public class ServiceOfferingsService {
     }
 
     private List<SelfDescriptionMeta> getSelfDescriptionsByOfferingExtensionList
-            (Page<ServiceOfferingExtension> extensions, boolean showRevoked) throws JsonProcessingException {
+            (Page<ServiceOfferingExtension> extensions, boolean showRevoked) {
         String[] extensionHashes = extensions.stream().map(ServiceOfferingExtension::getCurrentSdHash)
                 .collect(Collectors.toSet()).toArray(String[]::new);
 
@@ -137,11 +137,15 @@ public class ServiceOfferingsService {
         return selfDescriptionsResponse.getItems().stream().map(SelfDescriptionItem::getMeta).toList();
     }
 
-    private void handleCatalogError(WebClientResponseException e)
-            throws ResponseStatusException, JsonProcessingException {
+    private void handleCatalogError(WebClientResponseException e) {
         logger.warn("Error in communication with catalog: {}", e.getResponseBodyAsString());
-        JsonNode errorMessage = objectMapper.readTree(e.getResponseBodyAsString());
-        String messageText = errorMessage.get("message").asText();
+        String messageText;
+        try {
+            JsonNode errorMessage = objectMapper.readTree(e.getResponseBodyAsString());
+            messageText = errorMessage.get("message").asText();
+        } catch (JsonProcessingException ignored) {
+            messageText = "Unknown error.";
+        }
         throw new ResponseStatusException(e.getStatusCode(),
                 messageText.substring(0, Math.min(500, messageText.length())));
     }
@@ -186,9 +190,8 @@ public class ServiceOfferingsService {
      *
      * @param id        id of the offering to search for
      * @return found offering
-     * @throws Exception mapping exception
      */
-    public ServiceOfferingDto getServiceOfferingById(String id) throws JsonProcessingException {
+    public ServiceOfferingDto getServiceOfferingById(String id) {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -220,9 +223,8 @@ public class ServiceOfferingsService {
      *
      * @param pageable  paging parameters
      * @return page of public offerings
-     * @throws JsonProcessingException mapping exception
      */
-    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable) throws JsonProcessingException {
+    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(Pageable pageable) {
         Page<ServiceOfferingExtension> extensions = serviceOfferingExtensionRepository
                 .findAllByState(ServiceOfferingState.RELEASED, pageable);
         Map<String, ServiceOfferingExtension> extensionMap = extensions.stream()
@@ -255,10 +257,10 @@ public class ServiceOfferingsService {
      * @param state     optional offering state for filtering
      * @param pageable  paging parameters
      * @return page of organization offerings
-     * @throws JsonProcessingException mapping exception
      */
-    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(String orgaId, ServiceOfferingState state, Pageable pageable)
-            throws JsonProcessingException {
+    public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(
+            String orgaId,
+            ServiceOfferingState state, Pageable pageable) {
         Page<ServiceOfferingExtension> extensions;
         if (state != null) {
             extensions = serviceOfferingExtensionRepository
@@ -295,9 +297,8 @@ public class ServiceOfferingsService {
      *
      * @param id                 id of the offering to regenerate
      * @return creation response from catalog
-     * @throws Exception communication or mapping exception
      */
-    public SelfDescriptionMeta regenerateOffering(String id, String authToken) throws Exception {
+    public SelfDescriptionMeta regenerateOffering(String id, String authToken) {
         // basic input sanitization
         id = Jsoup.clean(id, Safelist.basic());
 
@@ -357,10 +358,9 @@ public class ServiceOfferingsService {
      *
      * @param serviceOfferingDto self-description of the offering
      * @return creation response of the GXFS catalog
-     * @throws Exception mapping exception
      */
     @Transactional(rollbackOn = {ResponseStatusException.class})
-    public SelfDescriptionMeta addServiceOffering(ServiceOfferingDto serviceOfferingDto, String authToken) throws Exception {
+    public SelfDescriptionMeta addServiceOffering(ServiceOfferingDto serviceOfferingDto, String authToken) {
 
         ServiceOfferingExtension extension = new ServiceOfferingExtension();
 
@@ -407,7 +407,7 @@ public class ServiceOfferingsService {
     }
 
     public SelfDescriptionMeta updateServiceOffering(ServiceOfferingDto serviceOfferingDto,
-                                                     String offeringId, String authToken) throws JsonProcessingException {
+                                                     String offeringId, String authToken) {
 
         ExtendedVerifiablePresentation vp = serviceOfferingDto.getSelfDescription();
         GxServiceOfferingCredentialSubject offeringCs = vp
@@ -488,7 +488,7 @@ public class ServiceOfferingsService {
         return specificOfferingCs;
     }
 
-    private void deleteServiceOfferingFromCatalog(String sdHash) throws JsonProcessingException {
+    private void deleteServiceOfferingFromCatalog(String sdHash) {
         try {
             gxfsCatalogService.deleteSelfDescriptionByHash(sdHash);
         } catch (WebClientResponseException e) {
@@ -514,7 +514,7 @@ public class ServiceOfferingsService {
     }
 
     private SelfDescriptionMeta addServiceOfferingToCatalog(List<PojoCredentialSubject> credentialSubjects,
-                                                            OrganisationSignerConfigDto orgaSignerConfig) throws JsonProcessingException {
+                                                            OrganisationSignerConfigDto orgaSignerConfig) {
         if (!isSignerConfigValid(orgaSignerConfig)) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Service offering cannot be saved: Missing private key and/or verification method.");
         }

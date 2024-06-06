@@ -1,5 +1,6 @@
 package eu.merloteducation.serviceofferingorchestrator.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingBasicDto;
 import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
@@ -23,8 +24,11 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @RequestMapping("/")
 public class ServiceOfferingsController {
 
-    @Autowired
-    private ServiceOfferingsService serviceOfferingsService;
+    private final ServiceOfferingsService serviceOfferingsService;
+
+    public ServiceOfferingsController(@Autowired ServiceOfferingsService serviceOfferingsService) {
+        this.serviceOfferingsService = serviceOfferingsService;
+    }
 
     /**
      * GET request for getting a page of all public service offerings.
@@ -35,8 +39,10 @@ public class ServiceOfferingsController {
      * @throws Exception exception during offering fetching
      */
     @GetMapping("")
-    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
-                                                                      @RequestParam(value = "size", defaultValue = "9") @Max(15) int size) throws Exception {
+    public Page<ServiceOfferingBasicDto> getAllPublicServiceOfferings(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "9") @Max(15) int size)
+            throws JsonProcessingException {
 
         return serviceOfferingsService
                 .getAllPublicServiceOfferings(
@@ -59,7 +65,7 @@ public class ServiceOfferingsController {
     public Page<ServiceOfferingBasicDto> getOrganizationServiceOfferings(@RequestParam(value = "page", defaultValue = "0") int page,
                                                                            @RequestParam(value = "size", defaultValue = "9") @Max(15) int size,
                                                                            @RequestParam(name = "state", required = false) ServiceOfferingState state,
-                                                                           @PathVariable(value = "orgaId") String orgaId) throws Exception {
+                                                                           @PathVariable(value = "orgaId") String orgaId) {
         return serviceOfferingsService
                 .getOrganizationServiceOfferings(
                         orgaId, state, PageRequest.of(page, size, Sort.by("creationDate").descending()));
