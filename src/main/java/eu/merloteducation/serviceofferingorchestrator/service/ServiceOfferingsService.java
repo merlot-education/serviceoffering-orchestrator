@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.gxfscataloglibrary.models.client.SelfDescriptionStatus;
+import eu.merloteducation.gxfscataloglibrary.models.credentials.ExtendedVerifiableCredential;
 import eu.merloteducation.gxfscataloglibrary.models.credentials.ExtendedVerifiablePresentation;
 import eu.merloteducation.gxfscataloglibrary.models.query.GXFSQueryLegalNameItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.GXFSCatalogListResponse;
@@ -11,6 +12,8 @@ import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.PojoCredent
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.SelfDescriptionMeta;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.datatypes.GxSOTermsAndConditions;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.participants.GxLegalParticipantCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.participants.GxLegalRegistrationNumberCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.GxServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotLegalParticipantCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
@@ -359,6 +362,16 @@ public class ServiceOfferingsService {
                                                      String authToken) {
         MerlotParticipantDto participantDto = organizationOrchestratorClient
                 .getOrganizationDetails(offeringCs.getProvidedBy().getId(), Map.of(AUTHORIZATION, authToken));
+        List<ExtendedVerifiableCredential> participantCredentials = participantDto.getSelfDescription()
+                .getVerifiableCredentials().stream().filter(vc -> {
+                    try {
+                        return vc.getCredentialSubject().getType().equals(GxLegalParticipantCredentialSubject.TYPE)
+                                || vc.getCredentialSubject().getType().equals(GxLegalRegistrationNumberCredentialSubject.TYPE);
+                    } catch (Exception ignored) {
+                        return false;
+                    }
+                })
+                .toList();
 
         // request provider details
         patchTermsAndConditions(offeringCs, participantDto);
@@ -366,7 +379,7 @@ public class ServiceOfferingsService {
         OrganisationSignerConfigDto orgaSignerConfig = participantDto.getMetadata().getOrganisationSignerConfigDto();
 
         SelfDescriptionMeta selfDescriptionsResponse = addServiceOfferingToCatalog(
-                List.of(offeringCs, merlotOfferingCs, specificMerlotOfferingCs),
+                List.of(offeringCs, merlotOfferingCs, specificMerlotOfferingCs), participantCredentials,
                 orgaSignerConfig);
 
         // with a successful response (i.e. no exception was thrown) we are good to save the new or updated self-description
@@ -518,6 +531,7 @@ public class ServiceOfferingsService {
     }
 
     private SelfDescriptionMeta addServiceOfferingToCatalog(List<PojoCredentialSubject> credentialSubjects,
+                                                            List<ExtendedVerifiableCredential> participantCredentials,
                                                             OrganisationSignerConfigDto orgaSignerConfig) {
         if (!isSignerConfigValid(orgaSignerConfig)) {
             throw new ResponseStatusException(UNPROCESSABLE_ENTITY, "Service offering cannot be saved: Missing private key and/or verification method.");
@@ -526,7 +540,8 @@ public class ServiceOfferingsService {
         SelfDescriptionMeta response = null;
         try {
             // sign SD using verification method referencing the merlot certificate and the default/merlot private key
-            response = gxfsCatalogService.addServiceOffering(credentialSubjects, orgaSignerConfig.getMerlotVerificationMethod());
+            response = gxfsCatalogService.addServiceOffering(credentialSubjects, participantCredentials,
+                    orgaSignerConfig.getMerlotVerificationMethod());
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
         } catch (Exception e) {
