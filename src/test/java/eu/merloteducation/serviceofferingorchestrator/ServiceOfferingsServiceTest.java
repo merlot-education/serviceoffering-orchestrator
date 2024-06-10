@@ -1,19 +1,31 @@
 package eu.merloteducation.serviceofferingorchestrator;
 
+import com.danubetech.verifiablecredentials.VerifiableCredential;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.merloteducation.gxfscataloglibrary.models.credentials.CastableCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.credentials.ExtendedVerifiableCredential;
+import eu.merloteducation.gxfscataloglibrary.models.credentials.ExtendedVerifiablePresentation;
 import eu.merloteducation.gxfscataloglibrary.models.exception.CredentialPresentationException;
 import eu.merloteducation.gxfscataloglibrary.models.exception.CredentialSignatureException;
 import eu.merloteducation.gxfscataloglibrary.models.query.GXFSQueryLegalNameItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.*;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gax.datatypes.*;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.datatypes.GxDataAccountExport;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.datatypes.GxSOTermsAndConditions;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.datatypes.GxVcard;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.datatypes.NodeKindIRITypeId;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.participants.GxLegalParticipantCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.participants.GxLegalRegistrationNumberCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.GxServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.AllowedUserCount;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.Runtime;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotOrganizationCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.CooperationCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.DataDeliveryCredentialSubject;
-import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.SaaSCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.DataExchangeCount;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.OfferingRuntime;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.datatypes.ParticipantTermsAndConditions;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.participants.MerlotLegalParticipantCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotCoopContractServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotDataDeliveryServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotSaasServiceOfferingCredentialSubject;
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.merlot.serviceofferings.MerlotServiceOfferingCredentialSubject;
 import eu.merloteducation.gxfscataloglibrary.service.GxfsCatalogService;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantDto;
 import eu.merloteducation.modelslib.api.organization.MerlotParticipantMetaDto;
@@ -26,8 +38,8 @@ import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOff
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import eu.merloteducation.serviceofferingorchestrator.service.*;
+import info.weboftrust.ldsignatures.LdProof;
 import org.apache.commons.text.StringEscapeUtils;
-import org.apache.commons.text.StringSubstitutor;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,9 +65,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URI;
+import java.time.Instant;
 import java.util.*;
 
+import static eu.merloteducation.serviceofferingorchestrator.SelfDescriptionDemoData.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.AdditionalMatchers.aryEq;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
@@ -90,7 +106,7 @@ class ServiceOfferingsServiceTest {
     private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
 
     private ServiceOfferingExtension saasOffering;
-    private ServiceOfferingExtension dateDeliveryOffering;
+    private ServiceOfferingExtension dataDeliveryOffering;
     private ServiceOfferingExtension cooperationOffering;
 
     @Autowired
@@ -106,63 +122,89 @@ class ServiceOfferingsServiceTest {
         return "OrgLegRep_did:web:"+ MERLOT_DOMAIN + ":participant:orga-" + num;
     }
 
-    private String createCatalogItem(String id, String issuer, String sdHash, String type) {
-        String contentSaas = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"id\":\"http://example.edu/verifiablePresentation/self-description1\",\"type\":[\"VerifiablePresentation\"],\"verifiableCredential\":{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"id\":\"https://www.example.org/ServiceOffering.json\",\"type\":[\"VerifiableCredential\"],\"issuer\":\"" + getParticipantId(10) + "\",\"issuanceDate\":\"2022-10-19T18:48:09Z\",\"credentialSubject\":{\"id\":\"${id}\",\"type\":\"merlot:MerlotServiceOfferingSaaS\",\"@context\":{\"merlot\":\"http://w3id.org/gaia-x/merlot#\",\"dct\":\"http://purl.org/dc/terms/\",\"gax-trust-framework\":\"http://w3id.org/gaia-x/gax-trust-framework#\",\"rdf\":\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\"sh\":\"http://www.w3.org/ns/shacl#\",\"xsd\":\"http://www.w3.org/2001/XMLSchema#\",\"gax-validation\":\"http://w3id.org/gaia-x/validation#\",\"skos\":\"http://www.w3.org/2004/02/skos/core#\",\"dcat\":\"http://www.w3.org/ns/dcat#\",\"gax-core\":\"http://w3id.org/gaia-x/core#\"},\"gax-core:offeredBy\":{\"@id\":\""+ getParticipantId(10) +"\"},\"gax-trust-framework:name\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"gax-trust-framework:termsAndConditions\":[{\"gax-trust-framework:content\":{\"@type\":\"xsd:anyURI\",\"@value\":\"Test\"},\"gax-trust-framework:hash\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"@type\":\"gax-trust-framework:TermsAndConditions\"}],\"gax-trust-framework:policy\":[{\"@type\":\"xsd:string\",\"@value\":\"dummyPolicy\"}],\"gax-trust-framework:dataAccountExport\":[{\"gax-trust-framework:formatType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:accessType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:requestType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"@type\":\"gax-trust-framework:DataAccountExport\"}],\"gax-trust-framework:providedBy\":{\"@id\":\""+ getParticipantId(10) +"\"},\"merlot:creationDate\":{\"@type\":\"xsd:string\",\"@value\":\"2023-05-24T13:30:12.382871745Z\"},\"merlot:runtimeOption\": { \"@type\": \"merlot:Runtime\",\"merlot:runtimeCount\": {\"@value\": \"0\",\"@type\": \"xsd:number\"},\"merlot:runtimeMeasurement\": {\"@value\": \"unlimited\",\"@type\": \"xsd:string\"}},\"merlot:merlotTermsAndConditionsAccepted\":true,\"merlot:userCountOption\": { \"@type\": \"merlot:AllowedUserCount\",\"merlot:userCountUpTo\": {\"@value\": \"0\",\"@type\": \"xsd:number\"}}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\"}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\"}}";
-        String contentCooperation = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"id\":\"http://example.edu/verifiablePresentation/self-description1\",\"type\":[\"VerifiablePresentation\"],\"verifiableCredential\":{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"id\":\"https://www.example.org/ServiceOffering.json\",\"type\":[\"VerifiableCredential\"],\"issuer\":\""+ getParticipantId(10) +"\",\"issuanceDate\":\"2022-10-19T18:48:09Z\",\"credentialSubject\":{\"id\":\"${id}\",\"type\":\"merlot:MerlotServiceOfferingCooperation\",\"@context\":{\"merlot\":\"http://w3id.org/gaia-x/merlot#\",\"dct\":\"http://purl.org/dc/terms/\",\"gax-trust-framework\":\"http://w3id.org/gaia-x/gax-trust-framework#\",\"rdf\":\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\"sh\":\"http://www.w3.org/ns/shacl#\",\"xsd\":\"http://www.w3.org/2001/XMLSchema#\",\"gax-validation\":\"http://w3id.org/gaia-x/validation#\",\"skos\":\"http://www.w3.org/2004/02/skos/core#\",\"dcat\":\"http://www.w3.org/ns/dcat#\",\"gax-core\":\"http://w3id.org/gaia-x/core#\"},\"gax-core:offeredBy\":{\"@id\":\""+ getParticipantId(10) +"\"},\"gax-trust-framework:name\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"gax-trust-framework:termsAndConditions\":[{\"gax-trust-framework:content\":{\"@type\":\"xsd:anyURI\",\"@value\":\"Test\"},\"gax-trust-framework:hash\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"@type\":\"gax-trust-framework:TermsAndConditions\"}],\"gax-trust-framework:policy\":[{\"@type\":\"xsd:string\",\"@value\":\"dummyPolicy\"}],\"gax-trust-framework:dataAccountExport\":[{\"gax-trust-framework:formatType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:accessType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:requestType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"@type\":\"gax-trust-framework:DataAccountExport\"}],\"gax-trust-framework:providedBy\":{\"@id\":\""+ getParticipantId(10) +"\"},\"merlot:creationDate\":{\"@type\":\"xsd:string\",\"@value\":\"2023-05-24T13:30:12.382871745Z\"},\"merlot:runtimeOption\": { \"@type\": \"merlot:Runtime\",\"merlot:runtimeCount\": {\"@value\": \"0\",\"@type\": \"xsd:number\"},\"merlot:runtimeMeasurement\": {\"@value\": \"unlimited\",\"@type\": \"xsd:string\"}},\"merlot:merlotTermsAndConditionsAccepted\":true},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\"}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\"}}";
-        String contentDataDelivery = "{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"id\":\"http://example.edu/verifiablePresentation/self-description1\",\"type\":[\"VerifiablePresentation\"],\"verifiableCredential\":{\"@context\":[\"https://www.w3.org/2018/credentials/v1\"],\"id\":\"https://www.example.org/ServiceOffering.json\",\"type\":[\"VerifiableCredential\"],\"issuer\":\""+ getParticipantId(10) +"\",\"issuanceDate\":\"2022-10-19T18:48:09Z\",\"credentialSubject\":{\"id\":\"${id}\",\"type\":\"merlot:MerlotServiceOfferingDataDelivery\",\"@context\":{\"merlot\":\"http://w3id.org/gaia-x/merlot#\",\"dct\":\"http://purl.org/dc/terms/\",\"gax-trust-framework\":\"http://w3id.org/gaia-x/gax-trust-framework#\",\"rdf\":\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\",\"sh\":\"http://www.w3.org/ns/shacl#\",\"xsd\":\"http://www.w3.org/2001/XMLSchema#\",\"gax-validation\":\"http://w3id.org/gaia-x/validation#\",\"skos\":\"http://www.w3.org/2004/02/skos/core#\",\"dcat\":\"http://www.w3.org/ns/dcat#\",\"gax-core\":\"http://w3id.org/gaia-x/core#\"},\"gax-core:offeredBy\":{\"@id\":\""+ getParticipantId(10) +"\"},\"gax-trust-framework:name\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"gax-trust-framework:termsAndConditions\":[{\"gax-trust-framework:content\":{\"@type\":\"xsd:anyURI\",\"@value\":\"Test\"},\"gax-trust-framework:hash\":{\"@type\":\"xsd:string\",\"@value\":\"Test\"},\"@type\":\"gax-trust-framework:TermsAndConditions\"}],\"gax-trust-framework:policy\":[{\"@type\":\"xsd:string\",\"@value\":\"dummyPolicy\"}],\"gax-trust-framework:dataAccountExport\":[{\"gax-trust-framework:formatType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:accessType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"gax-trust-framework:requestType\":{\"@type\":\"xsd:string\",\"@value\":\"dummyValue\"},\"@type\":\"gax-trust-framework:DataAccountExport\"}],\"gax-trust-framework:providedBy\":{\"@id\":\""+ getParticipantId(10) +"\"},\"merlot:creationDate\":{\"@type\":\"xsd:string\",\"@value\":\"2023-05-24T13:30:12.382871745Z\"},\"merlot:dataAccessType\":{\"@type\":\"xsd:string\",\"@value\":\"Download\"},\"merlot:dataTransferType\":{\"@type\":\"xsd:string\",\"@value\":\"Push\"},\"merlot:runtimeOption\": { \"@type\": \"merlot:Runtime\",\"merlot:runtimeCount\": {\"@value\": \"0\",\"@type\": \"xsd:number\"},\"merlot:runtimeMeasurement\": {\"@value\": \"unlimited\",\"@type\": \"xsd:string\"}},\"merlot:merlotTermsAndConditionsAccepted\":true,\"merlot:exchangeCountOption\": { \"@type\": \"merlot:DataExchangeCount\",\"merlot:exchangeCountUpTo\": {\"@value\": \"0\",\"@type\": \"xsd:number\"}}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..j1bhdECZ4y2IQfyPLZYKRJzxk0K3mNwbBQ_Lxc0PA5v_2DG_nhdW9Nck2k-Q2g_WjY8ypIgpm-4ooFkIGfflWegs9gV4i8OhbBV9qKP-wplGgVUcBZ-gSW5_xjbvfrFMre1JiZNHa4cKXDFC68MAEUb7lxUufbg4yk5JO1qgwPKu49OtL9DaJjGe1IlENj2-MCR1PbmQ0Ygpu4LapojonX0NdfJfBPufr_g_iaaSAS9y35Evjek2Bie_YMqymARXkGQSlJGhFHd8HzZfletnAA8ZUYAgxxPAgJZCpWZRCqi59bmxAxkJVV0DfX0hUQZnDwDPbuxLLVKHbcJaVrhbu9M8x-KLgJPmfLOc1XoX-fa71hSpvQaXz-a3j3ycjgrQ6kiExK0IMpLOZ4J6fUEGaguufhpOtM_Q6sc28uhfQ8Obav4xktNz4vrOsWxQJkd9nEvmMZN-xLswiSQvy-kLwosjvZ9CnIElRz7-ge_pAToPa6748GmBEFUqNSskg0Saz-vR8B23yi67KdmjTXToLj-_KPiUd7IJESLvrzSFwEVwlTguaPQ0jQJ64BBx_mKG5pIAKTAfBol4aOzyFgJ8Wf0Bz3d9oANks5ESJE7jdJIu8xR3UW3eqgxsoQPw__ArxC6v1xnBWXueUewXGbHS1UfgfRobCX5e9bRc0mCrIUQ\"}},\"proof\":{\"type\":\"JsonWebSignature2020\",\"created\":\"2023-05-24T13:32:22Z\",\"proofPurpose\":\"assertionMethod\",\"verificationMethod\":\"did:web:compliance.lab.gaia-x.eu\",\"jws\":\"eyJiNjQiOmZhbHNlLCJjcml0IjpbImI2NCJdLCJhbGciOiJQUzI1NiJ9..c-Cha-QPu0cao8jeAnNdDxamY97qlpwAb0jGkEGGyTTPWLjH0j38KOWSb6dZEdsPeVjT8k5GYc_tc5HDe-c3Oe0ur79IVSAfR_RIUk1ozrMCGJTWimXs_Vo_EHmiRfdhj1S1MWOKmECTG7jDWAru4odPB-zMb1Oh0v7WI3eD1neKdNaCSsqrSmEDgv7ep63d-iLsh-7czzj8fqZZktHfVSzaD_Ml-6Um7zU-W2LC01WftqFTMIBOEkpj-ypZNMdroeBuJPp2jJMi1HW0QRgNriwsqKC9xpalkx9IcF-Xj5AItfWYJwnXv0K4mzNWCjor21h48TDwBL7N0qrRb9h3BFux9FbfNpOIXbG4oxtUtaHMEOB6_4S3usLE80PgogP_v7_ImZ4Zfe_43I9Lku3ePqUIMbl5mF7UeIt0jARSJwNdchqPoqC0nnOTt89SG9VsMqtIHZ0m-A0NR-hAOnHdkEalFeULL9xrZ6oZ5e3aKg5rDbyPBwf__f3Ip8l3--BX92C-b-MuNFEKzBEpRax4iVSdkCRx-ZLQZa9Z2LPBFOrQYo05txZBzrBWEBoRH9WYB8pxix-rrYzo2PNaoYDw9v7q4_JG0nx18XFzZBvNxqPgZyLyH76CebEI7qxfxvtta1NPWw2QFuJc3RiFQbAAvQzRbegDLYELfmVro_CQ2Jo\"}}";
-        String catalogItem = """
-                        {
-                            "meta": {
-                                "expirationTime": null,
-                                "content": "${content}",
-                                "validators": [
-                                    "did:web:compliance.lab.gaia-x.eu"
-                                ],
-                                "subjectId": "${id}",
-                                "sdHash": "${sdHash}",
-                                "id": "${id}",
-                                "status": "active",
-                                "issuer": "${issuer}",
-                                "validatorDids": [
-                                    "did:web:compliance.lab.gaia-x.eu"
-                                ],
-                                "uploadDatetime": "2023-05-24T13:32:22.712661Z",
-                                "statusDatetime": "2023-05-24T13:32:22.712662Z"
-                            },
-                            "content": "${content}"
-                        }
-                """;
-        Map<String, Object> params = new HashMap<>();
-        params.put("id", id);
-        params.put("issuer", issuer);
-        params.put("sdHash", sdHash);
-        if (type.equals("saas")) {
-            params.put("content", StringSubstitutor.replace(contentSaas, params, "${", "}"));
-        } else if (type.equals("dataDelivery")) {
-            params.put("content", StringSubstitutor.replace(contentDataDelivery, params, "${", "}"));
-        } else if (type.equals("coop")) {
-            params.put("content", StringSubstitutor.replace(contentCooperation, params, "${", "}"));
-        }
-        return StringSubstitutor.replace(catalogItem, params, "${", "}");
+    private SelfDescriptionItem createCatalogItem(String id, String issuer, String sdHash, String type, String providedBy) throws JsonProcessingException {
+        SelfDescriptionItem item = new SelfDescriptionItem();
+        SelfDescriptionMeta meta = new SelfDescriptionMeta();
+        item.setMeta(meta);
+        meta.setSubjectId(id);
+        GxServiceOfferingCredentialSubject gxCs = getGxServiceOfferingCs(id, "Some Offering", providedBy);
+        MerlotServiceOfferingCredentialSubject merlotCs = getMerlotServiceOfferingCs(id);
+        PojoCredentialSubject merlotSpecificCs = switch (type) {
+            case "coop" -> getMerlotCoopContractServiceOfferingCs(id);
+            case "dataDelivery" -> getMerlotDataDeliveryServiceOfferingCs(id, "Push");
+            case "saas" -> getMerlotSaasServiceOfferingCs(id);
+            default -> null;
+        };
+        ExtendedVerifiablePresentation vp = createVpFromCsList(List.of(gxCs, merlotCs, merlotSpecificCs), "did:web:someorga");
+        LdProof proof = new LdProof();
+        proof.setJsonObjectKeyValue("verificationMethod", issuer);
+        vp.setJsonObjectKeyValue("proof", proof.getJsonObject());
+        meta.setContent(vp);
+        meta.setSdHash(sdHash);
+        meta.setId(id);
+        meta.setStatus("active");
+        meta.setIssuer(issuer);
+        meta.setValidatorDids(List.of("did:web:compliance.lab.gaia-x.eu"));
+        meta.setUploadDatetime("2023-05-24T13:32:22.712661Z");
+        meta.setStatusDatetime("2023-05-24T13:32:22.712662Z");
+
+        return item;
     }
 
-    private String createCatalogResponse(List<String> catalogItems) {
-        StringBuilder offeringQueryResponseBuilder = new StringBuilder(String.format("""
-                {
-                    "totalCount": %d,
-                    "items": [
-                    """, catalogItems.size()));
-        for (int i = 0; i < catalogItems.size(); i++) {
-            offeringQueryResponseBuilder.append(catalogItems.get(i));
-            if (i != catalogItems.size() - 1) {
-                offeringQueryResponseBuilder.append(",");
-            }
-        }
-        offeringQueryResponseBuilder.append("""
-                    ]
-                }
-                """);
-        return offeringQueryResponseBuilder.toString();
+    private GXFSCatalogListResponse<SelfDescriptionItem> createCatalogResponse(List<SelfDescriptionItem> catalogItems) {
+        GXFSCatalogListResponse<SelfDescriptionItem> response = new GXFSCatalogListResponse<>();
+        response.setTotalCount(catalogItems.size());
+        response.setItems(catalogItems);
+        return response;
+    }
+
+    private GxLegalParticipantCredentialSubject getGxParticipantCs(String id) {
+        GxLegalParticipantCredentialSubject cs = new GxLegalParticipantCredentialSubject();
+        cs.setId(id);
+        cs.setName("Organization");
+        GxVcard address = new GxVcard();
+        address.setCountryCode("DE");
+        address.setCountrySubdivisionCode("DE-BE");
+        address.setStreetAddress("Some Street 3");
+        address.setLocality("Berlin");
+        address.setPostalCode("12345");
+        cs.setHeadquarterAddress(address);
+        cs.setLegalAddress(address);
+        cs.setLegalRegistrationNumber(List.of(new NodeKindIRITypeId(id + "-regId")));
+        return cs;
+    }
+
+    private GxLegalRegistrationNumberCredentialSubject getGxRegistrationNumberCs(String id) {
+        GxLegalRegistrationNumberCredentialSubject cs = new GxLegalRegistrationNumberCredentialSubject();
+        cs.setId(id  + "-regId");
+        cs.setLeiCode("894500MQZ65CN32S9A66");
+        return cs;
+    }
+
+    private MerlotLegalParticipantCredentialSubject getMerlotParticipantCs(String id, String tncUrl, String tncHash) {
+        MerlotLegalParticipantCredentialSubject cs = new MerlotLegalParticipantCredentialSubject();
+        cs.setId(id);
+        cs.setLegalForm("LLC");
+        cs.setLegalName("Organization");
+        ParticipantTermsAndConditions tnc = new ParticipantTermsAndConditions();
+        tnc.setUrl(tncUrl);
+        tnc.setHash(tncHash);
+        cs.setTermsAndConditions(tnc);
+        return cs;
+    }
+
+    private MerlotParticipantDto createMerlotParticipantDto(String id, String tncUrl, String tncHash) throws JsonProcessingException {
+        MerlotParticipantDto merlotDetails = new MerlotParticipantDto();
+        merlotDetails.setId(id);
+        merlotDetails.setSelfDescription(createVpFromCsList(
+                List.of(
+                        getGxParticipantCs(id),
+                        getGxRegistrationNumberCs(id),
+                        getMerlotParticipantCs(id, tncUrl, tncHash)
+                ),
+                "did:web:someorga"
+        ));
+        return merlotDetails;
     }
 
     private String unescapeJson(String jsonString) {
@@ -185,91 +227,94 @@ class ServiceOfferingsServiceTest {
         saasOffering = new ServiceOfferingExtension();
         saasOffering.setIssuer(getParticipantId(10));
         saasOffering.setCurrentSdHash("1234");
-        saasOffering.setId("ServiceOffering:exists");
+        saasOffering.setId("urn:uuid:exists");
         serviceOfferingExtensionRepository.save(saasOffering);
 
-        dateDeliveryOffering = new ServiceOfferingExtension();
-        dateDeliveryOffering.setIssuer(getParticipantId(10));
-        dateDeliveryOffering.setCurrentSdHash("12345");
-        dateDeliveryOffering.setId("ServiceOffering:exists2");
-        dateDeliveryOffering.release();
-        serviceOfferingExtensionRepository.save(dateDeliveryOffering);
+        dataDeliveryOffering = new ServiceOfferingExtension();
+        dataDeliveryOffering.setIssuer(getParticipantId(10));
+        dataDeliveryOffering.setCurrentSdHash("12345");
+        dataDeliveryOffering.setId("urn:uuid:exists2");
+        dataDeliveryOffering.release();
+        serviceOfferingExtensionRepository.save(dataDeliveryOffering);
 
         cooperationOffering = new ServiceOfferingExtension();
         cooperationOffering.setIssuer(getParticipantId(10));
         cooperationOffering.setCurrentSdHash("123456");
-        cooperationOffering.setId("ServiceOffering:exists3");
+        cooperationOffering.setId("urn:uuid:exists3");
         cooperationOffering.release();
         serviceOfferingExtensionRepository.save(cooperationOffering);
 
-        List<String> catalogItems = new ArrayList<>();
+        List<SelfDescriptionItem> catalogItems = new ArrayList<>();
         //catalogItems.add(createCatalogItem(saasOffering.getId(), saasOffering.getIssuer(), saasOffering.getCurrentSdHash(), "saas"));
-        catalogItems.add(createCatalogItem(dateDeliveryOffering.getId(), dateDeliveryOffering.getIssuer(), dateDeliveryOffering.getCurrentSdHash(), "dataDelivery"));
-        catalogItems.add(createCatalogItem(cooperationOffering.getId(), cooperationOffering.getIssuer(), cooperationOffering.getCurrentSdHash(), "coop"));
+        catalogItems.add(createCatalogItem(dataDeliveryOffering.getId(), dataDeliveryOffering.getIssuer(), dataDeliveryOffering.getCurrentSdHash(), "dataDelivery", getParticipantId(10)));
+        catalogItems.add(createCatalogItem(cooperationOffering.getId(), cooperationOffering.getIssuer(), cooperationOffering.getCurrentSdHash(), "coop", getParticipantId(10)));
 
-        String offeringQueryResponse = createCatalogResponse(catalogItems);
+        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponse = createCatalogResponse(catalogItems);
 
-        List<String> catalogSingleItemSaas = new ArrayList<>();
-        catalogSingleItemSaas.add(createCatalogItem(saasOffering.getId(), saasOffering.getIssuer(), saasOffering.getCurrentSdHash(), "saas"));
-        String offeringQueryResponseSingleSaas = createCatalogResponse(catalogSingleItemSaas);
+        List<SelfDescriptionItem> catalogSingleItemSaas = new ArrayList<>();
+        catalogSingleItemSaas.add(createCatalogItem(saasOffering.getId(), saasOffering.getIssuer(), saasOffering.getCurrentSdHash(), "saas", getParticipantId(10)));
+        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseSingleSaas = createCatalogResponse(catalogSingleItemSaas);
 
-        List<String> catalogSingleItemDataDelivery = new ArrayList<>();
-        catalogSingleItemDataDelivery.add(createCatalogItem(dateDeliveryOffering.getId(), dateDeliveryOffering.getIssuer(), dateDeliveryOffering.getCurrentSdHash(), "dataDelivery"));
-        String offeringQueryResponseSingleDataDelivery = createCatalogResponse(catalogSingleItemDataDelivery);
+        List<SelfDescriptionItem> catalogSingleItemDataDelivery = new ArrayList<>();
+        catalogSingleItemDataDelivery.add(createCatalogItem(dataDeliveryOffering.getId(), dataDeliveryOffering.getIssuer(), dataDeliveryOffering.getCurrentSdHash(), "dataDelivery", getParticipantId(10)));
+        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseSingleDataDelivery = createCatalogResponse(catalogSingleItemDataDelivery);
 
-        List<String> catalogSingleItemCooperation = new ArrayList<>();
-        catalogSingleItemCooperation.add(createCatalogItem(cooperationOffering.getId(), cooperationOffering.getIssuer(), cooperationOffering.getCurrentSdHash(), "coop"));
-        String offeringQueryResponseSingleCooperation = createCatalogResponse(catalogSingleItemCooperation);
-
-        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseObj =
-                mapper.readValue(unescapeJson(offeringQueryResponse), new TypeReference<>(){});
-        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseSingleSaasObj =
-                mapper.readValue(unescapeJson(offeringQueryResponseSingleSaas), new TypeReference<>(){});
-        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseSingleDataDeliveryObj =
-                mapper.readValue(unescapeJson(offeringQueryResponseSingleDataDelivery), new TypeReference<>(){});
-
-        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseSingleCooperationObj =
-                mapper.readValue(unescapeJson(offeringQueryResponseSingleCooperation), new TypeReference<>(){});
+        List<SelfDescriptionItem> catalogSingleItemCooperation = new ArrayList<>();
+        catalogSingleItemCooperation.add(createCatalogItem(cooperationOffering.getId(), cooperationOffering.getIssuer(), cooperationOffering.getCurrentSdHash(), "coop", getParticipantId(10)));
+        GXFSCatalogListResponse<SelfDescriptionItem> offeringQueryResponseSingleCooperation = createCatalogResponse(catalogSingleItemCooperation);
 
         lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(any()))
-                .thenReturn(offeringQueryResponseObj);
+                .thenReturn(offeringQueryResponse);
         lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(any(), any()))
-                .thenReturn(offeringQueryResponseObj);
+                .thenReturn(offeringQueryResponse);
         lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(any()))
-                .thenReturn(offeringQueryResponseObj);
+                .thenReturn(offeringQueryResponse);
         lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(any(), any()))
-                .thenReturn(offeringQueryResponseObj);
+                .thenReturn(offeringQueryResponse);
 
-        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{saasOffering.getId()}), any()))
-                .thenReturn(offeringQueryResponseSingleSaasObj);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(aryEq(new String[]{saasOffering.getId()})))
+                .thenReturn(offeringQueryResponseSingleSaas);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(aryEq(new String[]{saasOffering.getId()}), any()))
+                .thenReturn(offeringQueryResponseSingleSaas);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(aryEq(new String[]{saasOffering.getCurrentSdHash()})))
+                .thenReturn(offeringQueryResponseSingleSaas);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(aryEq(new String[]{saasOffering.getCurrentSdHash()}), any()))
+                .thenReturn(offeringQueryResponseSingleSaas);
 
-        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(eq(new String[]{saasOffering.getCurrentSdHash()})))
-                .thenReturn(offeringQueryResponseSingleSaasObj);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(aryEq(new String[]{cooperationOffering.getId()})))
+                .thenReturn(offeringQueryResponseSingleCooperation);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(aryEq(new String[]{cooperationOffering.getId()}), any()))
+                .thenReturn(offeringQueryResponseSingleCooperation);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(aryEq(new String[]{cooperationOffering.getCurrentSdHash()})))
+                .thenReturn(offeringQueryResponseSingleCooperation);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(aryEq(new String[]{cooperationOffering.getCurrentSdHash()}), any()))
+                .thenReturn(offeringQueryResponseSingleCooperation);
 
-        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{dateDeliveryOffering.getId()}), any()))
-                .thenReturn(offeringQueryResponseSingleDataDeliveryObj);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(aryEq(new String[]{dataDeliveryOffering.getId()})))
+                .thenReturn(offeringQueryResponseSingleDataDelivery);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(aryEq(new String[]{dataDeliveryOffering.getId()}), any()))
+                .thenReturn(offeringQueryResponseSingleDataDelivery);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(aryEq(new String[]{dataDeliveryOffering.getCurrentSdHash()})))
+                .thenReturn(offeringQueryResponseSingleDataDelivery);
+        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(aryEq(new String[]{dataDeliveryOffering.getCurrentSdHash()}), any()))
+                .thenReturn(offeringQueryResponseSingleDataDelivery);
+        
 
-        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(eq(new String[]{dateDeliveryOffering.getCurrentSdHash()})))
-                .thenReturn(offeringQueryResponseSingleDataDeliveryObj);
-
-        lenient().when(gxfsCatalogService.getSelfDescriptionsByIds(eq(new String[]{cooperationOffering.getId()}), any()))
-                .thenReturn(offeringQueryResponseSingleCooperationObj);
-
-        lenient().when(gxfsCatalogService.getSelfDescriptionsByHashes(eq(new String[]{cooperationOffering.getCurrentSdHash()})))
-                .thenReturn(offeringQueryResponseSingleCooperationObj);
-
-        String mockOfferingCreatedResponse = """
-                {"sdHash":"4321","id":"ServiceOffering:new","status":"active","issuer":"did:web:test.eu:participant:orga-10","validatorDids":["did:web:compliance.lab.gaia-x.eu"],"uploadDatetime":"2023-05-24T13:32:22.712661Z","statusDatetime":"2023-05-24T13:32:22.712662Z"}
-                """;
-        SelfDescriptionMeta meta = objectMapper.readValue(unescapeJson(mockOfferingCreatedResponse), new TypeReference<>(){});
+        SelfDescriptionMeta offeringCreatedResponse = createOfferingCreatedResponse();
 
         lenient().when(gxfsCatalogService.addServiceOffering(any(), any(), any()))
-                .thenReturn(meta);
+                .thenReturn(offeringCreatedResponse);
         lenient().when(gxfsCatalogService.addServiceOffering(any(), any()))
-                .thenReturn(meta);
+                .thenReturn(offeringCreatedResponse);
 
-        // for participant endpoint return a dummy list of one item
-        lenient().when(gxfsCatalogService.getParticipantLegalNameByUri(eq("MerlotOrganization"), any())).thenReturn(new GXFSCatalogListResponse<>());
+        GXFSCatalogListResponse<GXFSQueryLegalNameItem> legalNameItems = new GXFSCatalogListResponse<>();
+        GXFSQueryLegalNameItem legalNameItem = new GXFSQueryLegalNameItem();
+        legalNameItem.setLegalName("Some Orga");
+        legalNameItems.setItems(List.of(legalNameItem));
+        legalNameItems.setTotalCount(1);
+
+        lenient().when(gxfsCatalogService.getParticipantLegalNameByUri(eq(MerlotLegalParticipantCredentialSubject.TYPE_CLASS), any()))
+                .thenReturn(legalNameItems);
 
         MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any()))
@@ -278,116 +323,67 @@ class ServiceOfferingsServiceTest {
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(any(), any()))
             .thenReturn(organizationDetails);
 
-        MerlotParticipantDto merlotDetails = new MerlotParticipantDto();
-        merlotDetails.setSelfDescription(new SelfDescription());
-        merlotDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
-        MerlotOrganizationCredentialSubject credentialSubjectDetails = new MerlotOrganizationCredentialSubject();
-        merlotDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubjectDetails);
-        credentialSubjectDetails.setId(getParticipantId(1234));
-        credentialSubjectDetails.setLegalName("Organization");
-        TermsAndConditions merlotTnc = new TermsAndConditions();
-        merlotTnc.setContent("https://merlot-education.eu");
-        merlotTnc.setHash("hash12345");
-        credentialSubjectDetails.setTermsAndConditions(merlotTnc);
+        MerlotParticipantDto merlotDetails = createMerlotParticipantDto(
+                getParticipantId(1234),
+                "https://merlot-education.eu",
+                "hash12345"
+        );
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("did:web:" + MERLOT_DOMAIN + ":participant:df15587a-0760-32b5-9c42-bb7be66e8076"), any()))
                 .thenReturn(merlotDetails);
 
-        MerlotParticipantDto organizationDetails2 = new MerlotParticipantDto();
-        organizationDetails2.setSelfDescription(new SelfDescription());
-        organizationDetails2.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
-        MerlotOrganizationCredentialSubject credentialSubject2 = new MerlotOrganizationCredentialSubject();
-        organizationDetails2.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubject2);
-        credentialSubject2.setId(getParticipantId(1234));
-        credentialSubject2.setLegalName("Organization");
-        TermsAndConditions emptyOrgaTnC = new TermsAndConditions();
-        emptyOrgaTnC.setContent("");
-        emptyOrgaTnC.setHash("");
-        credentialSubject2.setTermsAndConditions(emptyOrgaTnC);
+        MerlotParticipantDto organizationDetails2 = createMerlotParticipantDto(
+                getParticipantId(1234),
+                "",
+                ""
+        );
         lenient().when(organizationOrchestratorClient.getOrganizationDetails(eq("did:web:" + MERLOT_DOMAIN + ":participant:no-tnc"), any()))
                 .thenReturn(organizationDetails2);
 
 
     }
 
-    private MerlotParticipantDto getValidMerlotParticipantDto() {
-
-        MerlotParticipantDto organizationDetails = new MerlotParticipantDto();
-        organizationDetails.setSelfDescription(new SelfDescription());
-        organizationDetails.getSelfDescription().setVerifiableCredential(new SelfDescriptionVerifiableCredential());
-        MerlotOrganizationCredentialSubject credentialSubject = new MerlotOrganizationCredentialSubject();
-        organizationDetails.getSelfDescription().getVerifiableCredential().setCredentialSubject(credentialSubject);
-        credentialSubject.setId(getParticipantId(1234));
-        credentialSubject.setLegalName("Organization");
-        TermsAndConditions orgaTnC = new TermsAndConditions();
-        orgaTnC.setContent("http://example.com");
-        orgaTnC.setHash("hash1234");
-        credentialSubject.setTermsAndConditions(orgaTnC);
-        MerlotParticipantMetaDto metaDto = new MerlotParticipantMetaDto();
-        metaDto.setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", "merlot verification method", "verification method"));
-        organizationDetails.setMetadata(metaDto);
-        return organizationDetails;
+    private SelfDescriptionMeta createOfferingCreatedResponse() {
+        SelfDescriptionMeta offeringCreatedResponse = new SelfDescriptionMeta();
+        offeringCreatedResponse.setSdHash("4321");
+        offeringCreatedResponse.setId("urn:uuid:1234");
+        offeringCreatedResponse.setStatus("active");
+        offeringCreatedResponse.setIssuer("did:web:test.eu:participant:orga-10");
+        offeringCreatedResponse.setValidatorDids(List.of("did:web:compliance.lab.gaia-x.eu"));
+        offeringCreatedResponse.setUploadDatetime("2023-05-24T13:32:22.712661Z");
+        offeringCreatedResponse.setStatusDatetime("2023-05-24T13:32:22.712662Z");
+        return offeringCreatedResponse;
     }
 
-    private SaaSCredentialSubject createValidSaasCredentialSubject() {
-        SaaSCredentialSubject credentialSubject = new SaaSCredentialSubject();
-        credentialSubject.setId("ServiceOffering:TBR");
-        credentialSubject.setContext(new HashMap<>());
-        credentialSubject.setOfferedBy(new NodeKindIRITypeId(getParticipantId(10)));
-        credentialSubject.setName("Test Offering");
+    private MerlotParticipantDto getValidMerlotParticipantDto() throws JsonProcessingException {
 
-        List<TermsAndConditions> tncList = new ArrayList<>();
-        TermsAndConditions tnc = new TermsAndConditions();
-        tnc.setContent("http://myexample.com");
-        tnc.setHash("1234");
-        tnc.setType("gax-trust-framework:TermsAndConditions");
-        TermsAndConditions providerTnc = new TermsAndConditions();
-        providerTnc.setContent("http://example.com");
-        providerTnc.setHash("hash1234");
-        providerTnc.setType("gax-trust-framework:TermsAndConditions");
-        TermsAndConditions merlotTnc = new TermsAndConditions();
-        merlotTnc.setContent("https://merlot-education.eu");
-        merlotTnc.setHash("hash12345");
-        merlotTnc.setType("gax-trust-framework:TermsAndConditions");
-        tncList.add(tnc);
-        tncList.add(providerTnc);
-        tncList.add(merlotTnc);
-        credentialSubject.setTermsAndConditions(tncList);
+        MerlotParticipantDto dto = createMerlotParticipantDto(
+                getParticipantId(1234),
+                "http://example.com",
+                "hash1234");
+        MerlotParticipantMetaDto metaDto = new MerlotParticipantMetaDto();
+        metaDto.setOrganisationSignerConfigDto(new OrganisationSignerConfigDto("private key", "merlot verification method", "verification method"));
+        dto.setMetadata(metaDto);
+        return dto;
+    }
 
-        List<String> policies = new ArrayList<>();
-        policies.add("Policy");
-        credentialSubject.setPolicy(policies);
-
-        List<DataAccountExport> exports = new ArrayList<>();
-        DataAccountExport export = new DataAccountExport();
-        export.setFormatType("dummyValue");
-        export.setAccessType("dummyValue");
-        export.setRequestType("dummyValue");
-        exports.add(export);
-        credentialSubject.setDataAccountExport(exports);
-
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId(getParticipantId(10)));
-        credentialSubject.setCreationDate("1234");
-
-        List<Runtime> runtimeOptions = new ArrayList<>();
-        Runtime runtimeUnlimited = new Runtime();
-        runtimeUnlimited.setRuntimeCount(0);
-        runtimeUnlimited.setRuntimeMeasurement("unlimited");
-        runtimeOptions.add(runtimeUnlimited);
-        credentialSubject.setRuntimeOptions(runtimeOptions);
-
-        List<AllowedUserCount> userCountOptions = new ArrayList<>();
-        AllowedUserCount userCountUnlimted = new AllowedUserCount();
-        userCountUnlimted.setUserCountUpTo(0);
-        userCountOptions.add(userCountUnlimted);
-        credentialSubject.setUserCountOptions(userCountOptions);
-
-        credentialSubject.setMerlotTermsAndConditionsAccepted(true);
-        return credentialSubject;
+    private ServiceOfferingDto createValidSaasOffering(String id, String providedBy) throws JsonProcessingException {
+        ServiceOfferingDto dto = new ServiceOfferingDto();
+        dto.setSelfDescription(
+                createVpFromCsList(
+                        List.of(
+                                getGxServiceOfferingCs(id, "Some offering", providedBy),
+                                getMerlotServiceOfferingCs(id),
+                                getMerlotSaasServiceOfferingCs(id)
+                        ),
+                        "did:web:someorga"
+                )
+        );
+        return dto;
     }
 
     @Test
     void addNewValidServiceOffering() throws Exception {
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
+        ServiceOfferingDto credentialSubject = createValidSaasOffering("urn:uuid:TBR", getParticipantId(10));
 
         SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, getActiveRoleStringForParticipantId(10));
         assertNotNull(response.getId());
@@ -395,8 +391,7 @@ class ServiceOfferingsServiceTest {
 
     @Test
     void addNewValidServiceOfferingButNoValidSignerConfig() throws Exception {
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setId(saasOffering.getId());
+        ServiceOfferingDto credentialSubject = createValidSaasOffering(saasOffering.getId(), getParticipantId(10));
 
         MerlotParticipantDto organizationDetails = getValidMerlotParticipantDto();
         String expectedExceptionMessage = "Service offering cannot be saved: Missing private key and/or verification method.";
@@ -448,12 +443,10 @@ class ServiceOfferingsServiceTest {
     }
 
     @Test
-    void addNewValidServiceOfferingButNoProviderTnC() {
+    void addNewValidServiceOfferingButNoProviderTnC() throws JsonProcessingException {
         String didWeb = "did:web:" + MERLOT_DOMAIN + ":participant:no-tnc";
 
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId(didWeb));
-        credentialSubject.setOfferedBy(new NodeKindIRITypeId(didWeb));
+        ServiceOfferingDto credentialSubject = createValidSaasOffering("urn:uuid:TBR", didWeb);
 
         ResponseStatusException exception =
                 assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
@@ -461,24 +454,10 @@ class ServiceOfferingsServiceTest {
     }
 
     @Test
-    @Transactional
-    void addNewValidServiceOfferingWithoutTncInCredentialSubject() throws Exception {
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setProvidedBy(new NodeKindIRITypeId(getParticipantId(1234)));
-        credentialSubject.setOfferedBy(new NodeKindIRITypeId(getParticipantId(1234)));
-        credentialSubject.setTermsAndConditions(null);
-
-        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, "");
-        assertNotNull(response.getId());
-        // TODO assert that TnC are actually set (landing in mock catalog currently which discards it)
-    }
-
-    @Test
     void updateExistingWithValidServiceOffering() throws Exception {
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setId(saasOffering.getId());
+        ServiceOfferingDto credentialSubject = createValidSaasOffering(saasOffering.getId(), getParticipantId(10));
 
-        SelfDescriptionMeta response = serviceOfferingsService.addServiceOffering(credentialSubject, "");
+        SelfDescriptionMeta response = serviceOfferingsService.updateServiceOffering(credentialSubject, saasOffering.getId(), "");
         assertNotNull(response.getId());
 
     }
@@ -488,31 +467,29 @@ class ServiceOfferingsServiceTest {
         doThrow(getWebClientResponseException()).when(gxfsCatalogService)
                 .deleteSelfDescriptionByHash(saasOffering.getCurrentSdHash());
 
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setId(saasOffering.getId());
+        String id = saasOffering.getId();
+
+        ServiceOfferingDto credentialSubject = createValidSaasOffering(id, getParticipantId(10));
 
         ResponseStatusException exception =
-            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
+            assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.updateServiceOffering(credentialSubject, id, ""));
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exception.getStatusCode());
         assertEquals("Service offering could not be updated.", exception.getReason());
 
     }
 
     @Test
-    void updateExistingWithInvalidServiceOfferingDifferentIssuer() {
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setId("ServiceOffering:exists");
-        credentialSubject.setOfferedBy(new NodeKindIRITypeId(getParticipantId(20)));
+    void updateExistingWithInvalidServiceOfferingDifferentIssuer() throws JsonProcessingException {
+        ServiceOfferingDto credentialSubject = createValidSaasOffering("urn:uuid:exists", getParticipantId(20));
 
-        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.updateServiceOffering(credentialSubject, "urn:uuid:exists", ""));
     }
 
     @Test
-    void updateExistingWithInvalidServiceOfferingNotInDraft() {
-        SaaSCredentialSubject credentialSubject = createValidSaasCredentialSubject();
-        credentialSubject.setId("ServiceOffering:exists2");
+    void updateExistingWithInvalidServiceOfferingNotInDraft() throws JsonProcessingException {
+        ServiceOfferingDto credentialSubject = createValidSaasOffering("urn:uuid:exists2", getParticipantId(10));
 
-        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.addServiceOffering(credentialSubject, ""));
+        assertThrows(ResponseStatusException.class, () -> serviceOfferingsService.updateServiceOffering(credentialSubject, "urn:uuid:exists2", ""));
     }
 
     @Test
@@ -724,55 +701,65 @@ class ServiceOfferingsServiceTest {
         ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(saasOffering.getId());
         assertNotNull(model);
 
-        assertInstanceOf(SaaSCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
-                .getCredentialSubject());
-        SaaSCredentialSubject credentialSubject = (SaaSCredentialSubject) model.getSelfDescription()
-                .getVerifiableCredential().getCredentialSubject();
-        assertEquals("merlot:MerlotServiceOfferingSaaS",credentialSubject.getType());
-        assertEquals(saasOffering.getId(), credentialSubject.getId());
+        GxServiceOfferingCredentialSubject gxCs = model.getSelfDescription()
+                .findFirstCredentialSubjectByType(GxServiceOfferingCredentialSubject.class);
+        MerlotServiceOfferingCredentialSubject merlotCs = model.getSelfDescription()
+                .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
+        MerlotSaasServiceOfferingCredentialSubject merlotSpecificCs = model.getSelfDescription()
+                .findFirstCredentialSubjectByType(MerlotSaasServiceOfferingCredentialSubject.class);
+
+        assertNotNull(gxCs);
+        assertNotNull(merlotCs);
+        assertNotNull(merlotSpecificCs);
+        assertEquals(saasOffering.getId(), gxCs.getId());
         assertEquals(saasOffering.getState().name(), model.getMetadata().getState());
-        assertEquals(saasOffering.getIssuer(), credentialSubject.getOfferedBy().getId());
+        assertEquals(saasOffering.getIssuer(), gxCs.getProvidedBy().getId());
         assertEquals(saasOffering.getCurrentSdHash(), model.getMetadata().getHash());
 
-        assertNull(credentialSubject.getHardwareRequirements());
-        assertEquals(0, credentialSubject.getUserCountOptions().get(0).getUserCountUpTo());
-        assertNull(model.getMetadata().getSignedBy());
+        assertEquals("1.21 Gigawatts", merlotSpecificCs.getHardwareRequirements());
+        assertEquals(0, merlotSpecificCs.getUserCountOptions().get(0).getUserCountUpTo());
+        assertNotNull(model.getMetadata().getSignedBy());
     }
 
     @Test
     void getServiceOfferingDetailsDataDeliveryExistent() throws Exception {
-        ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(dateDeliveryOffering.getId());
+        ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(dataDeliveryOffering.getId());
         assertNotNull(model);
-        assertInstanceOf(DataDeliveryCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
-                .getCredentialSubject());
-        DataDeliveryCredentialSubject credentialSubject = (DataDeliveryCredentialSubject) model.getSelfDescription()
-                .getVerifiableCredential().getCredentialSubject();
-        assertEquals("merlot:MerlotServiceOfferingDataDelivery", credentialSubject.getType());
 
-        assertEquals("Download", credentialSubject.getDataAccessType());
-        assertEquals("Push", credentialSubject.getDataTransferType());
-        assertEquals(0, credentialSubject.getExchangeCountOptions().get(0).getExchangeCountUpTo());
-        assertNull(model.getMetadata().getSignedBy());
+        GxServiceOfferingCredentialSubject gxCs = model.getSelfDescription()
+                .findFirstCredentialSubjectByType(GxServiceOfferingCredentialSubject.class);
+        MerlotServiceOfferingCredentialSubject merlotCs = model.getSelfDescription()
+                .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
+        MerlotDataDeliveryServiceOfferingCredentialSubject merlotSpecificCs = model.getSelfDescription()
+                .findFirstCredentialSubjectByType(MerlotDataDeliveryServiceOfferingCredentialSubject.class);
+
+        assertNotNull(gxCs);
+        assertNotNull(merlotCs);
+        assertNotNull(merlotSpecificCs);
+
+        assertEquals("Download", merlotSpecificCs.getDataAccessType());
+        assertEquals("Push", merlotSpecificCs.getDataTransferType());
+        assertEquals(0, merlotSpecificCs.getExchangeCountOptions().get(0).getExchangeCountUpTo());
+        assertNotNull(model.getMetadata().getSignedBy());
     }
 
     @Test
     void getServiceOfferingDetailsCooperationExistent() throws Exception {
-        GXFSCatalogListResponse<GXFSQueryLegalNameItem> legalNameItems = new GXFSCatalogListResponse<>();
-        GXFSQueryLegalNameItem legalNameItem = new GXFSQueryLegalNameItem();
-        legalNameItem.setLegalName("Some Orga");
-        legalNameItems.setItems(List.of(legalNameItem));
-        legalNameItems.setTotalCount(1);
-
-        lenient().when(gxfsCatalogService.getParticipantLegalNameByUri(eq("MerlotOrganization"), eq("did:web:compliance.lab.gaia-x.eu")))
-            .thenReturn(legalNameItems);
 
         ServiceOfferingDto model = serviceOfferingsService.getServiceOfferingById(cooperationOffering.getId());
         assertNotNull(model);
-        assertInstanceOf(CooperationCredentialSubject.class, model.getSelfDescription().getVerifiableCredential()
-                .getCredentialSubject());
-        CooperationCredentialSubject credentialSubject = (CooperationCredentialSubject) model.getSelfDescription()
-                .getVerifiableCredential().getCredentialSubject();
-        assertEquals("merlot:MerlotServiceOfferingCooperation", credentialSubject.getType());
+
+        GxServiceOfferingCredentialSubject gxCs = model.getSelfDescription()
+                .findFirstCredentialSubjectByType(GxServiceOfferingCredentialSubject.class);
+        MerlotServiceOfferingCredentialSubject merlotCs = model.getSelfDescription()
+                .findFirstCredentialSubjectByType(MerlotServiceOfferingCredentialSubject.class);
+        MerlotCoopContractServiceOfferingCredentialSubject merlotSpecificCs = model.getSelfDescription()
+                .findFirstCredentialSubjectByType(MerlotCoopContractServiceOfferingCredentialSubject.class);
+
+        assertNotNull(gxCs);
+        assertNotNull(merlotCs);
+        assertNotNull(merlotSpecificCs);
+
         assertEquals("Some Orga", model.getMetadata().getSignedBy());
     }
 

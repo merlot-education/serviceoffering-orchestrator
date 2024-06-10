@@ -1,5 +1,7 @@
 package eu.merloteducation.serviceofferingorchestrator.auth;
 
+import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.gx.serviceofferings.GxServiceOfferingCredentialSubject;
+import eu.merloteducation.modelslib.api.serviceoffering.ServiceOfferingDto;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
@@ -59,5 +61,12 @@ public class OfferingAuthorityChecker {
     public boolean isOfferingIssuer(Authentication authentication, String offeringId) {
         return isOfferingIssuer(authentication,
                 serviceOfferingExtensionRepository.findById(offeringId).orElse(null));
+    }
+
+    public boolean representsProviderParticipant(Authentication authentication, ServiceOfferingDto dto) {
+        Set<String> representedOrgaIds = authorityChecker.getRepresentedOrgaIds(authentication);
+        GxServiceOfferingCredentialSubject cs =
+                dto.getSelfDescription().findFirstCredentialSubjectByType(GxServiceOfferingCredentialSubject.class);
+        return representedOrgaIds.contains(cs.getProvidedBy().getId());
     }
 }
