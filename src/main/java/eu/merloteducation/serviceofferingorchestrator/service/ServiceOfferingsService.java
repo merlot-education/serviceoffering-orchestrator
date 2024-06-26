@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.merloteducation.gxfscataloglibrary.models.client.SelfDescriptionStatus;
 import eu.merloteducation.gxfscataloglibrary.models.credentials.ExtendedVerifiableCredential;
 import eu.merloteducation.gxfscataloglibrary.models.credentials.ExtendedVerifiablePresentation;
+import eu.merloteducation.gxfscataloglibrary.models.exception.CredentialPresentationException;
+import eu.merloteducation.gxfscataloglibrary.models.exception.CredentialSignatureException;
 import eu.merloteducation.gxfscataloglibrary.models.query.GXFSQueryLegalNameItem;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.GXFSCatalogListResponse;
 import eu.merloteducation.gxfscataloglibrary.models.selfdescriptions.PojoCredentialSubject;
@@ -544,6 +546,8 @@ public class ServiceOfferingsService {
                     orgaSignerConfig.getMerlotVerificationMethod());
         } catch (WebClientResponseException e) {
             handleCatalogError(e);
+        } catch (CredentialPresentationException | CredentialSignatureException e) {
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, e.getMessage());
         } catch (Exception e) {
             throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Unknown error");
         }
