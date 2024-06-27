@@ -111,7 +111,7 @@ public class ServiceOfferingsController {
     }
 
     /**
-     * POST request for given an offering id, attempt to copy all fields to a new offering with a new id.
+     * POST request for a given offering id, attempt to copy all fields to a new offering with a new id.
      *
      * @param serviceofferingId id of the offering to regenerate
      * @return creation response of catalog

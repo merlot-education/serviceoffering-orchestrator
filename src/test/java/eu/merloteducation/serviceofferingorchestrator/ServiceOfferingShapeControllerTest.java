@@ -85,10 +85,7 @@ class ServiceOfferingShapeControllerTest {
     }
 
     @BeforeEach
-    public void setUp() throws Exception {
-
-        lenient().when(gxfsWizardApiService.getServiceOfferingShapesByEcosystem(eq("merlot"))).thenReturn(Collections.emptyList());
-
+    public void setUp() {
         lenient().when(gxfsWizardApiService.getShapeByName(any(), any())).thenReturn("shape");
     }
 

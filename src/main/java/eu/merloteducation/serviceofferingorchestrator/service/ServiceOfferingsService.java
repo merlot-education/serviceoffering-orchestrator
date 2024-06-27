@@ -362,6 +362,7 @@ public class ServiceOfferingsService {
                                                      PojoCredentialSubject specificMerlotOfferingCs,
                                                      ServiceOfferingExtension extension,
                                                      String authToken) {
+        // request provider details
         MerlotParticipantDto participantDto = organizationOrchestratorClient
                 .getOrganizationDetails(offeringCs.getProvidedBy().getId(), Map.of(AUTHORIZATION, authToken));
         List<ExtendedVerifiableCredential> participantCredentials = participantDto.getSelfDescription()
@@ -375,7 +376,6 @@ public class ServiceOfferingsService {
                 })
                 .toList();
 
-        // request provider details
         patchTermsAndConditions(offeringCs, participantDto);
 
         OrganisationSignerConfigDto orgaSignerConfig = participantDto.getMetadata().getOrganisationSignerConfigDto();
@@ -400,14 +400,14 @@ public class ServiceOfferingsService {
     }
 
     /**
-     * Given a self-description, attempt to publish it to the GXFS catalog.
-     * If the id is not specified (set to ServiceOffering:TBR), create a new entry,
-     * otherwise attempt to update an existing offering with this id.
+     * Given an offeringDto containing a self-description, create a new offering and
+     * attempt to publish it to the GXFS catalog.
      *
      * @param serviceOfferingDto self-description of the offering
      * @param authToken authToken to access further backend services
      * @return creation response of the GXFS catalog
      */
+    @Transactional(rollbackOn = {ResponseStatusException.class})
     public SelfDescriptionMeta addServiceOffering(ServiceOfferingDto serviceOfferingDto, String authToken) {
 
         ServiceOfferingExtension extension = new ServiceOfferingExtension();
@@ -432,7 +432,7 @@ public class ServiceOfferingsService {
 
     /**
      *
-     * Given an offeringDto containing a selfdescription and the id of an existing offering,
+     * Given an offeringDto containing a self-description and the id of an existing offering,
      * attempt to update the corresponding catalog entry with the new information.
      *
      * @param serviceOfferingDto dto with self-description of the offering

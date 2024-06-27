@@ -81,8 +81,8 @@ class ServiceOfferingsControllerTest {
     private MockMvc mvc;
 
     private final String saasId = "urn:uuid:somesaasid";
-    private final String dataDeliveryId = "urn:uuid:somesaasid";
-    private final String coopId = "urn:uuid:somesaasid";
+    private final String dataDeliveryId = "urn:uuid:somedatadeliveryid";
+    private final String coopId = "urn:uuid:somecoopid";
 
     private String objectAsJsonString(final Object obj) {
         try {

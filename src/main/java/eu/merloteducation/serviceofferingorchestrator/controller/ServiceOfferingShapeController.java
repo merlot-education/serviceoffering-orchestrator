@@ -22,7 +22,7 @@ public class ServiceOfferingShapeController {
 
 
     /**
-     * GET request for retrieving a specific MERLOT shapes for the catalog.
+     * GET request for retrieving the Gaia-X service offering shape.
      *
      * @return catalog shape
      */
@@ -32,7 +32,7 @@ public class ServiceOfferingShapeController {
     }
 
     /**
-     * GET request for retrieving a specific MERLOT shapes for the catalog.
+     * GET request for retrieving the MERLOT general service offering shape.
      *
      * @return catalog shape
      */
@@ -42,7 +42,7 @@ public class ServiceOfferingShapeController {
     }
 
     /**
-     * GET request for retrieving a specific MERLOT shapes for the catalog.
+     * GET request for retrieving the MERLOT Software as a Service service offering shape.
      *
      * @return catalog shape
      */
@@ -52,7 +52,7 @@ public class ServiceOfferingShapeController {
     }
 
     /**
-     * GET request for retrieving a specific MERLOT shapes for the catalog.
+     * GET request for retrieving the MERLOT Data Delivery service offering shape.
      *
      * @return catalog shape
      */
@@ -62,7 +62,7 @@ public class ServiceOfferingShapeController {
     }
 
     /**
-     * GET request for retrieving a specific MERLOT shapes for the catalog.
+     * GET request for retrieving the MERLOT Coop Contract service offering shape.
      *
      * @return catalog shape
      */

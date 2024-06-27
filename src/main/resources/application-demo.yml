@@ -24,8 +24,6 @@ gxfscatalog-library:
   ignore-ssl: false
 
 gxdch-services:
-  max-retries: 1
-  retry-delay: 15000
   enforce-compliance: true
   enforce-notary: true
   compliance-base-uris:
