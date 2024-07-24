@@ -46,10 +46,9 @@ import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOff
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
 import io.netty.util.internal.StringUtil;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -68,26 +67,29 @@ import java.util.stream.Collectors;
 import static org.springframework.http.HttpStatus.*;
 
 @Service
+@Slf4j
 public class ServiceOfferingsService {
+    private final OrganizationOrchestratorClient organizationOrchestratorClient;
+    private final ServiceOfferingMapper serviceOfferingMapper;
+    private final GxfsCatalogService gxfsCatalogService;
+    private final ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
+    private final ObjectMapper objectMapper;
+    private final String merlotDomain;
 
-    @Autowired
-    private OrganizationOrchestratorClient organizationOrchestratorClient;
+    public ServiceOfferingsService(@Autowired OrganizationOrchestratorClient organizationOrchestratorClient,
+                                   @Autowired ServiceOfferingMapper serviceOfferingMapper,
+                                   @Autowired GxfsCatalogService gxfsCatalogService,
+                                   @Autowired ServiceOfferingExtensionRepository serviceOfferingExtensionRepository,
+                                   @Autowired ObjectMapper objectMapper,
+                                   @Value("${merlot-domain}") String merlotDomain) {
+        this.organizationOrchestratorClient = organizationOrchestratorClient;
+        this.serviceOfferingMapper = serviceOfferingMapper;
+        this.gxfsCatalogService = gxfsCatalogService;
+        this.serviceOfferingExtensionRepository = serviceOfferingExtensionRepository;
+        this.objectMapper = objectMapper;
+        this.merlotDomain = merlotDomain;
+    }
 
-    @Autowired
-    private ServiceOfferingMapper serviceOfferingMapper;
-
-    @Autowired
-    private GxfsCatalogService gxfsCatalogService;
-
-    @Autowired
-    private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Value("${merlot-domain}")
-    private String merlotDomain;
-    private final Logger logger = LoggerFactory.getLogger(ServiceOfferingsService.class);
     private static final String OFFERING_START = "urn:uuid:";
     private static final String OFFERING_NOT_FOUND = "No valid service offering with this id was found.";
     private static final String AUTHORIZATION = "Authorization";
@@ -152,14 +154,14 @@ public class ServiceOfferingsService {
         }
 
         if (selfDescriptionsResponse.getTotalCount() != extensions.getNumberOfElements()) {
-            logger.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
+            log.warn("Inconsistent state detected, there are service offerings in the local database that are not in the catalog.");
         }
 
         return selfDescriptionsResponse.getItems().stream().map(SelfDescriptionItem::getMeta).toList();
     }
 
     private void handleCatalogError(WebClientResponseException e) {
-        logger.warn("Error in communication with catalog: {}", e.getResponseBodyAsString());
+        log.warn("Error in communication with catalog: {}", e.getResponseBodyAsString());
         String messageText;
         try {
             JsonNode errorMessage = objectMapper.readTree(e.getResponseBodyAsString());
@@ -267,7 +269,7 @@ public class ServiceOfferingsService {
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
-        return new PageImpl<>(models, pageable, extensions.getTotalElements()); // TODO check if we need custom impl
+        return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
     /**
@@ -309,7 +311,7 @@ public class ServiceOfferingsService {
                         Comparator.reverseOrder()))  // since the catalog does not respect the order of the hashes, we need to reorder again
                 .toList();
 
-        return new PageImpl<>(models, pageable, extensions.getTotalElements()); // TODO check if we need custom impl
+        return new PageImpl<>(models, pageable, extensions.getTotalElements());
     }
 
     /**

@@ -31,11 +31,15 @@ import java.util.Set;
 @Component("offeringAuthorityChecker")
 public class OfferingAuthorityChecker {
 
-    @Autowired
-    private AuthorityChecker authorityChecker;
+    private final AuthorityChecker authorityChecker;
 
-    @Autowired
-    private ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
+    private final ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
+
+    public OfferingAuthorityChecker(@Autowired AuthorityChecker authorityChecker,
+                                    @Autowired ServiceOfferingExtensionRepository serviceOfferingExtensionRepository) {
+        this.authorityChecker = authorityChecker;
+        this.serviceOfferingExtensionRepository = serviceOfferingExtensionRepository;
+    }
 
     /**
      * Given the current authentication and the id of a service offering, check if it is readable by the requesting

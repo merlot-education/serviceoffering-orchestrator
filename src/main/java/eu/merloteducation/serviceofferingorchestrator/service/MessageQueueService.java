@@ -22,27 +22,25 @@ import eu.merloteducation.serviceofferingorchestrator.config.MessageQueueConfig;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingExtension;
 import eu.merloteducation.serviceofferingorchestrator.models.entities.ServiceOfferingState;
 import eu.merloteducation.serviceofferingorchestrator.repositories.ServiceOfferingExtensionRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@Slf4j
 public class MessageQueueService {
 
-    @Autowired
-    ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
+    private final ServiceOfferingExtensionRepository serviceOfferingExtensionRepository;
+    private final ServiceOfferingsService serviceOfferingsService;
 
-    @Autowired
-    ServiceOfferingsService serviceOfferingsService;
-
-    private final Logger logger = LoggerFactory.getLogger(MessageQueueService.class);
+    public MessageQueueService(@Autowired ServiceOfferingExtensionRepository serviceOfferingExtensionRepository,
+                               @Autowired ServiceOfferingsService serviceOfferingsService) {
+        this.serviceOfferingExtensionRepository = serviceOfferingExtensionRepository;
+        this.serviceOfferingsService = serviceOfferingsService;
+    }
 
     /**
      * Listen for the event that a contract was created on the message bus.
@@ -52,7 +50,7 @@ public class MessageQueueService {
      */
     @RabbitListener(queues = MessageQueueConfig.CONTRACT_CREATED_QUEUE)
     public void contractCreatedListener(ContractTemplateUpdated contractTemplateUpdated) {
-        logger.info("Contract created message: {}", contractTemplateUpdated);
+        log.info("Contract created message: {}", contractTemplateUpdated);
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                 .findById(contractTemplateUpdated.getServiceOfferingId()).orElse(null);
@@ -60,7 +58,7 @@ public class MessageQueueService {
         if (extension != null) {
             extension.addAssociatedContract(contractTemplateUpdated.getContractId());
         } else {
-            logger.error("No Service Offering with ID {} was found, hence associated contracts are not updated.",
+            log.error("No Service Offering with ID {} was found, hence associated contracts are not updated.",
                     contractTemplateUpdated.getServiceOfferingId());
             return;
         }
@@ -76,7 +74,7 @@ public class MessageQueueService {
      */
     @RabbitListener(queues = MessageQueueConfig.CONTRACT_PURGED_QUEUE)
     public void contractPurgedListener(ContractTemplateUpdated contractTemplateUpdated) {
-        logger.info("Contract deleted message: {}", contractTemplateUpdated);
+        log.info("Contract deleted message: {}", contractTemplateUpdated);
 
         ServiceOfferingExtension extension = serviceOfferingExtensionRepository
                 .findById(contractTemplateUpdated.getServiceOfferingId()).orElse(null);
@@ -85,12 +83,12 @@ public class MessageQueueService {
             if (extension.getAssociatedContractIds().contains(contractTemplateUpdated.getContractId())) {
                 extension.getAssociatedContractIds().remove(contractTemplateUpdated.getContractId());
             } else {
-                logger.error("No Contract with ID {} was found in service offering {}.",
+                log.error("No Contract with ID {} was found in service offering {}.",
                         contractTemplateUpdated.getContractId(), contractTemplateUpdated.getServiceOfferingId());
                 return;
             }
         } else {
-            logger.error("No Service Offering with ID {} was found, hence associated contracts are not updated.",
+            log.error("No Service Offering with ID {} was found, hence associated contracts are not updated.",
                     contractTemplateUpdated.getServiceOfferingId());
             return;
         }
@@ -104,8 +102,8 @@ public class MessageQueueService {
      * @param offeringId id of the offering
      */
     @RabbitListener(queues = MessageQueueConfig.OFFERING_REQUEST_QUEUE)
-    public ServiceOfferingDto offeringDetailsRequestListener(String offeringId) throws Exception {
-        logger.info("Offering request message: offering ID {}", offeringId);
+    public ServiceOfferingDto offeringDetailsRequestListener(String offeringId) {
+        log.info("Offering request message: offering ID {}", offeringId);
         return serviceOfferingsService.getServiceOfferingById(offeringId);
     }
 
@@ -117,19 +115,19 @@ public class MessageQueueService {
      */
     @RabbitListener(queues = MessageQueueConfig.ORGANIZATION_REVOKED_QUEUE)
     public void organizationRevokedListener(String orgaId) {
-        logger.info("Organization revoked message: organization ID {}", orgaId);
+        log.info("Organization revoked message: organization ID {}", orgaId);
 
         List<ServiceOfferingExtension> releasedOfferingsByRevokedOrga = serviceOfferingExtensionRepository.findAllByIssuerAndState(
             orgaId, ServiceOfferingState.RELEASED);
 
         if (!releasedOfferingsByRevokedOrga.isEmpty()) {
-            logger.info("Revoking released service offerings of organization with ID {}", orgaId);
+            log.info("Revoking released service offerings of organization with ID {}", orgaId);
             releasedOfferingsByRevokedOrga.forEach(extension -> {
                 extension.revoke();
                 serviceOfferingExtensionRepository.save(extension);
             });
         } else {
-            logger.info("No released service offerings of organization with ID {} found to delete", orgaId);
+            log.info("No released service offerings of organization with ID {} found to delete", orgaId);
         }
     }
 }
